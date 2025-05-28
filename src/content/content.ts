@@ -20,12 +20,16 @@ class ContentManager {
      * 初始化消息监听器
      */
     private initializeMessageListener(): void {
+        console.log('PageEdit: Initializing message listener');
         chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+            console.log('PageEdit: Received message:', message);
             switch (message.type) {
                 case 'MODIFY_PAGE':
+                    console.log('PageEdit: Handling MODIFY_PAGE message');
                     this.handleModifyPage(message.data);
                     break;
                 case 'UNDO':
+                    console.log('PageEdit: Handling UNDO message');
                     this.handleUndo();
                     break;
             }
@@ -37,15 +41,21 @@ class ContentManager {
      * @param data 修改数据
      */
     private async handleModifyPage(data: { text: string }): Promise<void> {
+        console.log('PageEdit: Handling modify page request:', data);
         try {
             // 解析用户输入
             const modification = await this.parseUserInput(data.text);
-            if (!modification) return;
+            console.log('PageEdit: Parsed modification:', modification);
+            if (!modification) {
+                console.log('PageEdit: No modification generated');
+                return;
+            }
 
             // 定位目标元素
             const element = document.querySelector(modification.target) as HTMLElement;
+            console.log('PageEdit: Target element:', element);
             if (!element) {
-                console.error('Target element not found:', modification.target);
+                console.error('PageEdit: Target element not found:', modification.target);
                 return;
             }
 
@@ -53,6 +63,7 @@ class ContentManager {
             let success = false;
             switch (modification.type) {
                 case 'style':
+                    console.log('PageEdit: Applying style modification');
                     success = StyleModifier.modifyStyle({
                         element,
                         property: modification.property,
@@ -60,16 +71,19 @@ class ContentManager {
                     });
                     break;
                 case 'layout':
+                    console.log('PageEdit: Applying layout modification');
                     success = this.applyLayoutModification(element, modification);
                     break;
             }
 
+            console.log('PageEdit: Modification success:', success);
             if (success) {
                 // 保存修改历史
                 await HistoryManager.saveModification(modification);
+                console.log('PageEdit: Modification saved to history');
             }
         } catch (error) {
-            console.error('Failed to modify page:', error);
+            console.error('PageEdit: Failed to modify page:', error);
         }
     }
 

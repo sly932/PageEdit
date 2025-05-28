@@ -50,20 +50,30 @@ class PopupManager {
      */
     private async handleApply(): Promise<void> {
         const text = this.userInput.value.trim();
-        if (!text) return;
+        if (!text) {
+            console.log('PageEdit: No input text');
+            return;
+        }
 
         try {
+            console.log('PageEdit: Getting current tab');
             // 获取当前标签页
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab.id) return;
+            if (!tab.id) {
+                console.error('PageEdit: No tab id found');
+                return;
+            }
+            console.log('PageEdit: Current tab id:', tab.id);
 
             // 发送消息到content script
             const message: Message = {
                 type: 'MODIFY_PAGE',
                 data: { text }
             };
+            console.log('PageEdit: Sending message to content script:', message);
 
             await chrome.tabs.sendMessage(tab.id, message);
+            console.log('PageEdit: Message sent successfully');
             
             // 清空输入框
             this.userInput.value = '';
@@ -71,7 +81,7 @@ class PopupManager {
             // 重新加载历史记录
             await this.loadHistory();
         } catch (error) {
-            console.error('Failed to apply modification:', error);
+            console.error('PageEdit: Failed to apply modification:', error);
         }
     }
 
