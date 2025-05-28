@@ -1,19 +1,49 @@
 /**
- * 修改操作的类型定义
+ * 修改类型
+ */
+export type ModificationType = 'style' | 'layout';
+
+/**
+ * 布局修改选项
+ */
+export interface LayoutOptions {
+    // 弹性布局选项
+    direction?: 'row' | 'column';
+    justify?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around';
+    align?: 'flex-start' | 'center' | 'flex-end' | 'stretch';
+    gap?: string;
+
+    // 网格布局选项
+    columns?: string;
+    rows?: string;
+
+    // 尺寸选项
+    width?: string;
+    height?: string;
+    minWidth?: string;
+    maxWidth?: string;
+
+    // 间距选项
+    margin?: string;
+    padding?: string;
+
+    // 定位选项
+    top?: string;
+    left?: string;
+    zIndex?: string;
+}
+
+/**
+ * 修改对象
  */
 export interface Modification {
-  // 修改的唯一标识
-  id: string;
-  // 修改的类型（样式、布局等）
-  type: 'style' | 'layout';
-  // 目标元素的选择器
-  target: string;
-  // 要修改的属性
-  property: string;
-  // 新的值
-  value: string;
-  // 修改时间戳
-  timestamp: number;
+    id: string;
+    type: ModificationType;
+    target: string;
+    property: string;
+    value: string;
+    options?: LayoutOptions;
+    timestamp: number;
 }
 
 /**

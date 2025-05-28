@@ -1,6 +1,7 @@
 import { Message, Modification, UserInput } from '../types';
 import { ElementLocator } from '../utils/dom/elementLocator';
 import { StyleModifier } from '../utils/dom/styleModifier';
+import { LayoutManager } from '../utils/dom/layoutManager';
 import { HistoryManager } from '../utils/storage/historyManager';
 
 /**
@@ -17,31 +18,16 @@ class ContentManager {
      * 初始化消息监听器
      */
     private initializeMessageListener(): void {
-        chrome.runtime.onMessage.addListener(
-            (message: Message, sender, sendResponse) => {
-                this.handleMessage(message)
-                    .then(sendResponse)
-                    .catch(console.error);
-                return true; // 保持消息通道开放
+        chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+            switch (message.type) {
+                case 'MODIFY_PAGE':
+                    this.handleModifyPage(message.data);
+                    break;
+                case 'UNDO':
+                    this.handleUndo();
+                    break;
             }
-        );
-    }
-
-    /**
-     * 处理接收到的消息
-     * @param message 接收到的消息
-     */
-    private async handleMessage(message: Message): Promise<void> {
-        switch (message.type) {
-            case 'MODIFY_PAGE':
-                await this.handleModifyPage(message.data);
-                break;
-            case 'UNDO':
-                await this.handleUndo();
-                break;
-            default:
-                console.warn('Unknown message type:', message.type);
-        }
+        });
     }
 
     /**
@@ -61,12 +47,20 @@ class ContentManager {
                 return;
             }
 
-            // 应用样式修改
-            const success = StyleModifier.modifyStyle({
-                element,
-                property: modification.property,
-                value: modification.value
-            });
+            // 根据修改类型应用不同的修改
+            let success = false;
+            switch (modification.type) {
+                case 'style':
+                    success = StyleModifier.modifyStyle({
+                        element,
+                        property: modification.property,
+                        value: modification.value
+                    });
+                    break;
+                case 'layout':
+                    success = this.applyLayoutModification(element, modification);
+                    break;
+            }
 
             if (success) {
                 // 保存修改历史
@@ -74,6 +68,57 @@ class ContentManager {
             }
         } catch (error) {
             console.error('Failed to modify page:', error);
+        }
+    }
+
+    /**
+     * 应用布局修改
+     * @param element 目标元素
+     * @param modification 修改对象
+     * @returns 是否修改成功
+     */
+    private applyLayoutModification(element: HTMLElement, modification: Modification): boolean {
+        try {
+            switch (modification.property) {
+                case 'flex':
+                    return LayoutManager.createFlexContainer(`#${element.id}`, {
+                        direction: modification.value as 'row' | 'column',
+                        justify: modification.options?.justify as any,
+                        align: modification.options?.align as any,
+                        gap: modification.options?.gap
+                    });
+                case 'grid':
+                    return LayoutManager.createGridContainer(`#${element.id}`, {
+                        columns: modification.options?.columns,
+                        rows: modification.options?.rows,
+                        gap: modification.options?.gap
+                    });
+                case 'size':
+                    return LayoutManager.setElementSize(`#${element.id}`, {
+                        width: modification.options?.width,
+                        height: modification.options?.height,
+                        minWidth: modification.options?.minWidth,
+                        maxWidth: modification.options?.maxWidth
+                    });
+                case 'spacing':
+                    return LayoutManager.setElementSpacing(`#${element.id}`, {
+                        margin: modification.options?.margin,
+                        padding: modification.options?.padding,
+                        gap: modification.options?.gap
+                    });
+                case 'position':
+                    return LayoutManager.setElementPosition(`#${element.id}`, {
+                        position: modification.value as any,
+                        top: modification.options?.top,
+                        left: modification.options?.left,
+                        zIndex: modification.options?.zIndex
+                    });
+                default:
+                    return false;
+            }
+        } catch (error) {
+            console.error('Layout modification failed:', error);
+            return false;
         }
     }
 
@@ -90,14 +135,61 @@ class ContentManager {
             const element = document.querySelector(lastModification.target) as HTMLElement;
             if (!element) return;
 
-            // 恢复原始样式
-            StyleModifier.restoreStyle(
-                element,
-                lastModification.property,
-                '' // 清空样式值
-            );
+            // 根据修改类型撤销
+            switch (lastModification.type) {
+                case 'style':
+                    StyleModifier.restoreStyle(
+                        element,
+                        lastModification.property,
+                        '' // 清空样式值
+                    );
+                    break;
+                case 'layout':
+                    // 撤销布局修改
+                    this.undoLayoutModification(element, lastModification);
+                    break;
+            }
         } catch (error) {
             console.error('Failed to undo modification:', error);
+        }
+    }
+
+    /**
+     * 撤销布局修改
+     * @param element 目标元素
+     * @param modification 修改对象
+     */
+    private undoLayoutModification(element: HTMLElement, modification: Modification): void {
+        try {
+            switch (modification.property) {
+                case 'flex':
+                case 'grid':
+                    element.style.display = '';
+                    element.style.flexDirection = '';
+                    element.style.justifyContent = '';
+                    element.style.alignItems = '';
+                    element.style.gap = '';
+                    break;
+                case 'size':
+                    element.style.width = '';
+                    element.style.height = '';
+                    element.style.minWidth = '';
+                    element.style.maxWidth = '';
+                    break;
+                case 'spacing':
+                    element.style.margin = '';
+                    element.style.padding = '';
+                    element.style.gap = '';
+                    break;
+                case 'position':
+                    element.style.position = '';
+                    element.style.top = '';
+                    element.style.left = '';
+                    element.style.zIndex = '';
+                    break;
+            }
+        } catch (error) {
+            console.error('Failed to undo layout modification:', error);
         }
     }
 
@@ -116,6 +208,21 @@ class ContentManager {
                 target: 'body',
                 property: 'background-color',
                 value: 'blue',
+                timestamp: Date.now()
+            };
+        }
+        if (text.includes('弹性布局')) {
+            return {
+                id: Date.now().toString(),
+                type: 'layout',
+                target: '#container',
+                property: 'flex',
+                value: 'row',
+                options: {
+                    justify: 'center',
+                    align: 'center',
+                    gap: '10px'
+                },
                 timestamp: Date.now()
             };
         }
