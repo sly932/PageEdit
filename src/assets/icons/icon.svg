@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-    <rect width="128" height="128" fill="#4CAF50"/>
-    <text x="64" y="80" font-family="Arial" font-size="80" fill="white" text-anchor="middle">P</text>
+    <rect width="128" height="128" fill="#4CAF50" rx="20"/>
+    <path d="M40 64 L88 64 M64 40 L64 88" stroke="white" stroke-width="8" stroke-linecap="round"/>
 </svg> 

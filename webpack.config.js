@@ -6,6 +6,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default {
+  mode: 'development',
+  devtool: 'source-map',
   entry: {
     popup: './src/popup/popup.ts',
     content: './src/content/content.ts',
@@ -13,7 +15,8 @@ export default {
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: '[name]/[name].js'
+    filename: '[name]/[name].js',
+    clean: true
   },
   module: {
     rules: [
@@ -27,11 +30,14 @@ export default {
   resolve: {
     extensions: ['.ts', '.js']
   },
+  optimization: {
+    minimize: false
+  },
   plugins: [
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/manifest.json', to: 'manifest.json' },
-        { from: 'src/popup/popup.html', to: 'popup.html' },
+        { from: 'src/popup/popup.html', to: 'popup/popup.html' },
         { from: 'src/content/content.css', to: 'content/content.css' },
         { from: 'src/assets', to: 'assets' }
       ]

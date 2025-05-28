@@ -43,6 +43,8 @@ class PopupManager {
                 this.handleApply();
             }
         });
+
+        console.log('PageEdit: Popup events bound');
     }
 
     /**
@@ -60,10 +62,27 @@ class PopupManager {
             // 获取当前标签页
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab.id) {
-                console.error('PageEdit: No tab id found');
+                const error = 'No tab id found';
+                console.error('PageEdit:', error);
+                alert('应用修改失败：' + error);
                 return;
             }
-            console.log('PageEdit: Current tab id:', tab.id);
+            console.log('PageEdit: Current tab id:', tab.id, 'url:', tab.url);
+
+            // 确保content script已注入
+            try {
+                console.log('PageEdit: Injecting content script');
+                await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['content/content.js']
+                });
+                console.log('PageEdit: Content script injected successfully');
+            } catch (error) {
+                const errorMsg = 'Content script injection failed: ' + (error instanceof Error ? error.message : String(error));
+                console.error('PageEdit:', errorMsg);
+                alert('应用修改失败：' + errorMsg);
+                return;
+            }
 
             // 发送消息到content script
             const message: Message = {
@@ -72,16 +91,35 @@ class PopupManager {
             };
             console.log('PageEdit: Sending message to content script:', message);
 
-            await chrome.tabs.sendMessage(tab.id, message);
-            console.log('PageEdit: Message sent successfully');
-            
-            // 清空输入框
-            this.userInput.value = '';
-            
-            // 重新加载历史记录
-            await this.loadHistory();
-        } catch (error) {
-            console.error('PageEdit: Failed to apply modification:', error);
+            // 使用 Promise 包装消息发送
+            const response = await new Promise<{ success?: boolean; error?: string }>((resolve, reject) => {
+                chrome.tabs.sendMessage(tab.id!, message, (response) => {
+                    if (chrome.runtime.lastError) {
+                        const error = chrome.runtime.lastError;
+                        const errorMsg = 'Failed to send message: ' + error.message;
+                        console.error('PageEdit:', errorMsg);
+                        reject(new Error(errorMsg));
+                    } else {
+                        console.log('PageEdit: Message sent successfully, response:', response);
+                        resolve(response);
+                    }
+                });
+            });
+
+            if (response?.success) {
+                // 清空输入框
+                this.userInput.value = '';
+                // 重新加载历史记录
+                await this.loadHistory();
+            } else {
+                const errorMsg = response?.error || '未知错误';
+                console.error('PageEdit: Modification failed:', errorMsg);
+                alert('应用修改失败：' + errorMsg);
+            }
+        } catch (error: any) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.error('PageEdit: Failed to apply modification:', errorMsg);
+            alert('应用修改失败：' + errorMsg);
         }
     }
 
@@ -157,6 +195,23 @@ class PopupManager {
 }
 
 // 当DOM加载完成后初始化PopupManager
-document.addEventListener('DOMContentLoaded', () => {
-    new PopupManager();
-}); 
+console.log('PageEdit: Script loaded');
+
+// 立即执行初始化
+function initialize() {
+    console.log('PageEdit: DOMContentLoaded event fired');
+    try {
+        new PopupManager();
+        console.log('PageEdit: PopupManager initialized successfully');
+    } catch (error) {
+        console.error('PageEdit: Failed to initialize PopupManager:', error);
+    }
+}
+
+// 如果 DOM 已经加载完成，立即初始化
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initialize();
+} else {
+    // 否则等待 DOMContentLoaded 事件
+    document.addEventListener('DOMContentLoaded', initialize);
+} 

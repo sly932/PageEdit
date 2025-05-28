@@ -106,13 +106,13 @@ class BackgroundManager {
             // 更新插件图标状态
             await chrome.action.setIcon({
                 path: isSupported ? {
-                    16: 'assets/icons/icon16.png',
-                    48: 'assets/icons/icon48.png',
-                    128: 'assets/icons/icon128.png'
+                    16: chrome.runtime.getURL('assets/icons/icon16.png'),
+                    48: chrome.runtime.getURL('assets/icons/icon48.png'),
+                    128: chrome.runtime.getURL('assets/icons/icon128.png')
                 } : {
-                    16: 'assets/icons/icon16-disabled.png',
-                    48: 'assets/icons/icon48-disabled.png',
-                    128: 'assets/icons/icon128-disabled.png'
+                    16: chrome.runtime.getURL('assets/icons/icon16-disabled.png'),
+                    48: chrome.runtime.getURL('assets/icons/icon48-disabled.png'),
+                    128: chrome.runtime.getURL('assets/icons/icon128-disabled.png')
                 }
             });
         } catch (error) {
