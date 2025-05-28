@@ -69,22 +69,7 @@ class PopupManager {
             }
             console.log('PageEdit: Current tab id:', tab.id, 'url:', tab.url);
 
-            // 确保content script已注入
-            try {
-                console.log('PageEdit: Injecting content script');
-                await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ['content/content.js']
-                });
-                console.log('PageEdit: Content script injected successfully');
-            } catch (error) {
-                const errorMsg = 'Content script injection failed: ' + (error instanceof Error ? error.message : String(error));
-                console.error('PageEdit:', errorMsg);
-                alert('应用修改失败：' + errorMsg);
-                return;
-            }
-
-            // 发送消息到content script
+            // 发送消息到content script（不再注入 content script）
             const message: Message = {
                 type: 'MODIFY_PAGE',
                 data: { text }
@@ -132,13 +117,12 @@ class PopupManager {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab.id) return;
 
-            // 发送撤销消息到content script
+            // 发送撤销消息到content script（不再注入 content script）
             const message: Message = {
                 type: 'UNDO'
             };
 
             await chrome.tabs.sendMessage(tab.id, message);
-            
             // 重新加载历史记录
             await this.loadHistory();
         } catch (error) {
