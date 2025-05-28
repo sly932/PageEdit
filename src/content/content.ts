@@ -4,7 +4,7 @@ import { StyleModifier } from '../utils/dom/styleModifier';
 import { LayoutManager } from '../utils/dom/layoutManager';
 import { HistoryManager } from '../utils/storage/historyManager';
 
-console.log('PageEdit: Content script loaded at', new Date().toISOString());
+console.log('[content] PageEdit: Content script loaded at', new Date().toISOString());
 
 /**
  * Content Script的主要类
@@ -12,7 +12,7 @@ console.log('PageEdit: Content script loaded at', new Date().toISOString());
  */
 class ContentManager {
     constructor() {
-        console.log('PageEdit: ContentManager initialized');
+        console.log('[content] PageEdit: ContentManager initialized');
         // 初始化消息监听
         this.initializeMessageListener();
     }
@@ -21,44 +21,36 @@ class ContentManager {
      * 初始化消息监听器
      */
     private initializeMessageListener(): void {
-        console.log('PageEdit: Initializing message listener');
+        console.log('[content] PageEdit: Initializing message listener');
         chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
-            console.log('PageEdit: Received message:', message, 'from:', sender);
-            
-            // 立即发送一个响应，表示消息已收到
-            sendResponse({ received: true });
-            
-            // 使用 setTimeout 来确保消息通道保持开放
-            setTimeout(() => {
-                switch (message.type) {
-                    case 'MODIFY_PAGE':
-                        console.log('PageEdit: Handling MODIFY_PAGE message');
-                        this.handleModifyPage(message.data)
-                            .then(() => {
-                                console.log('PageEdit: Modification completed successfully');
-                                sendResponse({ success: true });
-                            })
-                            .catch(error => {
-                                console.error('PageEdit: Error handling MODIFY_PAGE:', error);
-                                sendResponse({ success: false, error: error.message });
-                            });
-                        break;
-                    case 'UNDO':
-                        console.log('PageEdit: Handling UNDO message');
-                        this.handleUndo()
-                            .then(() => {
-                                console.log('PageEdit: Undo completed successfully');
-                                sendResponse({ success: true });
-                            })
-                            .catch(error => {
-                                console.error('PageEdit: Error handling UNDO:', error);
-                                sendResponse({ success: false, error: error.message });
-                            });
-                        break;
-                }
-            }, 0);
-            
-            return true; // 保持消息通道开放
+            console.log('[content] PageEdit: Received message:', message, 'from:', sender);
+            // 不再立即 sendResponse
+            switch (message.type) {
+                case 'MODIFY_PAGE':
+                    console.log('[content] PageEdit: Handling MODIFY_PAGE message');
+                    this.handleModifyPage(message.data)
+                        .then(() => {
+                            console.log('[content] PageEdit: Modification completed successfully');
+                            sendResponse({ success: true });
+                        })
+                        .catch(error => {
+                            console.error('[content] PageEdit: Error handling MODIFY_PAGE:', error);
+                            sendResponse({ success: false, error: error.message });
+                        });
+                    return true; // 保持消息通道开放
+                case 'UNDO':
+                    console.log('[content] PageEdit: Handling UNDO message');
+                    this.handleUndo()
+                        .then(() => {
+                            console.log('[content] PageEdit: Undo completed successfully');
+                            sendResponse({ success: true });
+                        })
+                        .catch(error => {
+                            console.error('[content] PageEdit: Error handling UNDO:', error);
+                            sendResponse({ success: false, error: error.message });
+                        });
+                    return true; // 保持消息通道开放
+            }
         });
     }
 
@@ -67,21 +59,21 @@ class ContentManager {
      * @param data 修改数据
      */
     private async handleModifyPage(data: { text: string }): Promise<void> {
-        console.log('PageEdit: Handling modify page request:', data);
+        console.log('[content] PageEdit: Handling modify page request:', data);
         try {
             // 解析用户输入
             const modification = await this.parseUserInput(data.text);
-            console.log('PageEdit: Parsed modification:', modification);
+            console.log('[content] PageEdit: Parsed modification:', modification);
             if (!modification) {
-                console.log('PageEdit: No modification generated');
+                console.log('[content] PageEdit: No modification generated');
                 return;
             }
 
             // 定位目标元素
             const element = document.querySelector(modification.target) as HTMLElement;
-            console.log('PageEdit: Target element:', element);
+            console.log('[content] PageEdit: Target element:', element);
             if (!element) {
-                console.error('PageEdit: Target element not found:', modification.target);
+                console.error('[content] PageEdit: Target element not found:', modification.target);
                 return;
             }
 
@@ -89,7 +81,7 @@ class ContentManager {
             let success = false;
             switch (modification.type) {
                 case 'style':
-                    console.log('PageEdit: Applying style modification');
+                    console.log('[content] PageEdit: Applying style modification');
                     success = StyleModifier.modifyStyle({
                         element,
                         property: modification.property,
@@ -97,19 +89,19 @@ class ContentManager {
                     });
                     break;
                 case 'layout':
-                    console.log('PageEdit: Applying layout modification');
+                    console.log('[content] PageEdit: Applying layout modification');
                     success = this.applyLayoutModification(element, modification);
                     break;
             }
 
-            console.log('PageEdit: Modification success:', success);
+            console.log('[content] PageEdit: Modification success:', success);
             if (success) {
                 // 保存修改历史
                 await HistoryManager.saveModification(modification);
-                console.log('PageEdit: Modification saved to history');
+                console.log('[content] PageEdit: Modification saved to history');
             }
         } catch (error) {
-            console.error('PageEdit: Failed to modify page:', error);
+            console.error('[content] PageEdit: Failed to modify page:', error);
             throw error; // 重新抛出错误，让调用者处理
         }
     }
@@ -242,12 +234,12 @@ class ContentManager {
      * @returns 修改对象
      */
     private async parseUserInput(text: string): Promise<Modification | null> {
-        console.log('PageEdit: Parsing user input:', text);
+        console.log('[content] PageEdit: Parsing user input:', text);
         try {
             // TODO: 实现自然语言解析
             // 这里先使用简单的硬编码示例
             if (text.includes('背景') && text.includes('蓝色')) {
-                console.log('PageEdit: Detected background color change to blue');
+                console.log('[content] PageEdit: Detected background color change to blue');
                 return {
                     id: Date.now().toString(),
                     type: 'style',
@@ -258,11 +250,11 @@ class ContentManager {
                 };
             }
             if (text.includes('弹性布局')) {
-                console.log('PageEdit: Detected flex layout request');
+                console.log('[content] PageEdit: Detected flex layout request');
                 // 检查目标元素是否存在
                 const container = document.querySelector('#container');
                 if (!container) {
-                    console.error('PageEdit: Container element not found');
+                    console.error('[content] PageEdit: Container element not found');
                     return null;
                 }
                 return {
@@ -279,10 +271,10 @@ class ContentManager {
                     timestamp: Date.now()
                 };
             }
-            console.log('PageEdit: No matching modification pattern found for text:', text);
+            console.log('[content] PageEdit: No matching modification pattern found for text:', text);
             return null;
         } catch (error) {
-            console.error('PageEdit: Error parsing user input:', error);
+            console.error('[content] PageEdit: Error parsing user input:', error);
             return null;
         }
     }

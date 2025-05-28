@@ -24,7 +24,7 @@ class PopupManager {
         // 初始化历史记录显示
         this.loadHistory();
 
-        console.log('PageEdit: Popup loaded');
+        console.log('[popup] PageEdit: Popup loaded');
     }
 
     /**
@@ -44,7 +44,7 @@ class PopupManager {
             }
         });
 
-        console.log('PageEdit: Popup events bound');
+        console.log('[popup] PageEdit: Popup events bound');
     }
 
     /**
@@ -53,28 +53,28 @@ class PopupManager {
     private async handleApply(): Promise<void> {
         const text = this.userInput.value.trim();
         if (!text) {
-            console.log('PageEdit: No input text');
+            console.log('[popup] PageEdit: No input text');
             return;
         }
 
         try {
-            console.log('PageEdit: Getting current tab');
+            console.log('[popup] PageEdit: Getting current tab');
             // 获取当前标签页
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab.id) {
                 const error = 'No tab id found';
-                console.error('PageEdit:', error);
+                console.error('[popup] PageEdit:', error);
                 alert('应用修改失败：' + error);
                 return;
             }
-            console.log('PageEdit: Current tab id:', tab.id, 'url:', tab.url);
+            console.log('[popup] PageEdit: Current tab id:', tab.id, 'url:', tab.url);
 
             // 发送消息到content script（不再注入 content script）
             const message: Message = {
                 type: 'MODIFY_PAGE',
-                data: { text }
+                data: { text: '输入：' + text }
             };
-            console.log('PageEdit: Sending message to content script:', message);
+            console.log('[popup] PageEdit: Sending message to content script:', message);
 
             // 使用 Promise 包装消息发送
             const response = await new Promise<{ success?: boolean; error?: string }>((resolve, reject) => {
@@ -82,14 +82,16 @@ class PopupManager {
                     if (chrome.runtime.lastError) {
                         const error = chrome.runtime.lastError;
                         const errorMsg = 'Failed to send message: ' + error.message;
-                        console.error('PageEdit:', errorMsg);
+                        console.error('[popup] PageEdit:', errorMsg);
                         reject(new Error(errorMsg));
                     } else {
-                        console.log('PageEdit: Message sent successfully, response:', response);
+                        console.log('[popup] PageEdit: Message sent successfully, response:', response);
                         resolve(response);
                     }
                 });
             });
+            
+            console.log('[popup] PageEdit: Response:', response);
 
             if (response?.success) {
                 // 清空输入框
@@ -98,12 +100,12 @@ class PopupManager {
                 await this.loadHistory();
             } else {
                 const errorMsg = response?.error || '未知错误';
-                console.error('PageEdit: Modification failed:', errorMsg);
+                console.error('[popup] PageEdit: Modification failed:', errorMsg);
                 alert('应用修改失败：' + errorMsg);
             }
         } catch (error: any) {
             const errorMsg = error instanceof Error ? error.message : String(error);
-            console.error('PageEdit: Failed to apply modification:', errorMsg);
+            console.error('[popup] PageEdit: Failed to apply modification:', errorMsg);
             alert('应用修改失败：' + errorMsg);
         }
     }
@@ -126,7 +128,7 @@ class PopupManager {
             // 重新加载历史记录
             await this.loadHistory();
         } catch (error) {
-            console.error('Failed to undo modification:', error);
+            console.error('[popup] Failed to undo modification:', error);
         }
     }
 
@@ -138,7 +140,7 @@ class PopupManager {
             const history = await HistoryManager.getHistory();
             this.displayHistory(history);
         } catch (error) {
-            console.error('Failed to load history:', error);
+            console.error('[popup] Failed to load history:', error);
         }
     }
 
