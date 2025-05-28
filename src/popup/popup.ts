@@ -23,6 +23,8 @@ class PopupManager {
         
         // 初始化历史记录显示
         this.loadHistory();
+
+        console.log('PageEdit: Popup loaded');
     }
 
     /**

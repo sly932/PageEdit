@@ -1,3 +1,5 @@
+console.log('PageEdit: Background script loaded');
+
 /**
  * Background Script的主要类
  * 处理插件的后台任务

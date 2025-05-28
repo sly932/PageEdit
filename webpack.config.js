@@ -1,6 +1,11 @@
-const path = require('path');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import CopyWebpackPlugin from 'copy-webpack-plugin';
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default {
   entry: {
     popup: './src/popup/popup.ts',
     content: './src/content/content.ts',
@@ -8,7 +13,7 @@ module.exports = {
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: '[name].js'
+    filename: '[name]/[name].js'
   },
   module: {
     rules: [
@@ -21,5 +26,15 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.js']
-  }
+  },
+  plugins: [
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'src/manifest.json', to: 'manifest.json' },
+        { from: 'src/popup/popup.html', to: 'popup.html' },
+        { from: 'src/content/content.css', to: 'content/content.css' },
+        { from: 'src/assets', to: 'assets' }
+      ]
+    })
+  ]
 }; 

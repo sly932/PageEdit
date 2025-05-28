@@ -9,14 +9,16 @@ export class DOMManager {
      * @returns 包含查找结果的对象，success 表示是否找到元素，element 是找到的元素
      */
     static findElement(selector: string): { success: boolean; element: Element | null } {
+        console.log('PageEdit: Finding element with selector:', selector);
         try {
             const element = document.querySelector(selector);
+            console.log('PageEdit: Element found:', element);
             return {
                 success: !!element,
                 element
             };
         } catch (error) {
-            console.error('查找元素时出错:', error);
+            console.error('PageEdit: Error finding element:', error);
             return { success: false, element: null };
         }
     }
@@ -33,22 +35,25 @@ export class DOMManager {
         property: string,
         value: string
     ): { success: boolean; element: HTMLElement | null } {
+        console.log('PageEdit: Applying style:', { selector, property, value });
         try {
             const element = document.querySelector(selector) as HTMLElement;
             if (!element) {
+                console.log('PageEdit: Element not found');
                 return { success: false, element: null };
             }
 
             // 验证 CSS 属性是否有效
             if (!this.validateCSSProperty(property, value)) {
-                console.warn(`无效的 CSS 属性: ${property}: ${value}`);
+                console.warn('PageEdit: Invalid CSS property:', { property, value });
             }
 
             // 应用样式
             element.style[property as any] = value;
+            console.log('PageEdit: Style applied successfully');
             return { success: true, element };
         } catch (error) {
-            console.error('应用样式时出错:', error);
+            console.error('PageEdit: Error applying style:', error);
             return { success: false, element: null };
         }
     }

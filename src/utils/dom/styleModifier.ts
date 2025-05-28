@@ -13,10 +13,15 @@ export class StyleModifier {
   static modifyStyle(modification: StyleModification): boolean {
     try {
       // 保存原始样式
-      const originalValue = modification.element.style[modification.property];
+      const property = modification.property;
+      if (property === 'length' || property === 'parentRule') {
+        console.warn(`不能修改只读属性: ${property}`);
+        return false;
+      }
+      const originalValue = (modification.element.style as any)[property];
       
       // 应用新样式
-      modification.element.style[modification.property] = modification.value;
+      (modification.element.style as any)[property] = modification.value;
       
       // 返回修改是否成功
       return true;
@@ -82,7 +87,11 @@ export class StyleModifier {
     originalValue: string
   ): boolean {
     try {
-      element.style[property] = originalValue;
+      if (property === 'length' || property === 'parentRule') {
+        console.warn(`不能恢复只读属性: ${property}`);
+        return false;
+      }
+      (element.style as any)[property] = originalValue;
       return true;
     } catch (error) {
       console.error('Style restoration failed:', error);

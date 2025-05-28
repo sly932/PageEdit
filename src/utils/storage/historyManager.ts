@@ -95,7 +95,7 @@ export class HistoryManager {
       // 更新存储
       await chrome.storage.local.set({ [this.STORAGE_KEY]: history });
       
-      return lastModification;
+      return lastModification === undefined ? null : lastModification;
     } catch (error) {
       console.error('Failed to undo last modification:', error);
       return null;

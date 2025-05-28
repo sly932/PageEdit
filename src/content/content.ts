@@ -4,6 +4,8 @@ import { StyleModifier } from '../utils/dom/styleModifier';
 import { LayoutManager } from '../utils/dom/layoutManager';
 import { HistoryManager } from '../utils/storage/historyManager';
 
+console.log('PageEdit: Content script loaded');
+
 /**
  * Content Script的主要类
  * 处理页面修改和与popup的通信
