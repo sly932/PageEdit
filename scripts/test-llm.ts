@@ -6,13 +6,13 @@ async function testLLM() {
         openai: {
             provider: 'openai' as const,
             apiKey: process.env.OPENAI_API_KEY || '',
-            model: 'gpt-3.5-turbo',
+            model: 'gpt-4.1',
             baseUrl: process.env.OPENAI_API_BASE_URL
         },
         claude: {
             provider: 'claude' as const,
             apiKey: process.env.CLAUDE_API_KEY || '',
-            model: 'claude-3-opus-20240229',
+            model: 'anthropic.claude-3.5-sonnet',
             baseUrl: process.env.CLAUDE_API_BASE_URL
         }
     };

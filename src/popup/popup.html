@@ -5,23 +5,24 @@
     <title>PageEdit</title>
     <style>
         body {
-            width: 300px;
-            padding: 10px;
+            width: 350px;
+            padding: 15px;
             font-family: Arial, sans-serif;
         }
         .input-container {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
         #userInput {
             width: 100%;
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 14px;
         }
         .button-container {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
         button {
             padding: 8px 16px;
@@ -30,9 +31,44 @@
             background-color: #4CAF50;
             color: white;
             cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
         }
         button:hover {
             background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .tab-container {
+            margin-bottom: 15px;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .tab-button {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px 4px 0 0;
+            background-color: #f8f8f8;
+            cursor: pointer;
+        }
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        .tab-content {
+            display: none;
+            border: 1px solid #ccc;
+            border-radius: 0 4px 4px 4px;
+            padding: 15px;
+        }
+        .tab-content.active {
+            display: block;
         }
         .history-container {
             max-height: 200px;
@@ -40,6 +76,67 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             padding: 10px;
+        }
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .history-time {
+            color: #666;
+            font-size: 12px;
+        }
+        .history-action {
+            color: #4CAF50;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .settings-group {
+            margin-bottom: 15px;
+        }
+        .settings-group h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .settings-item label {
+            font-size: 14px;
+        }
+        .settings-item select {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .feedback {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .feedback.success {
+            background-color: #4CAF50;
+        }
+        .feedback.error {
+            background-color: #f44336;
+        }
+        .feedback.show {
+            opacity: 1;
         }
     </style>
 </head>
@@ -51,9 +148,54 @@
         <button id="applyButton">应用修改</button>
         <button id="undoButton">撤销</button>
     </div>
-    <div class="history-container" id="historyContainer">
-        <!-- 历史记录将在这里动态显示 -->
+    
+    <div class="tab-container">
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="history">历史记录</button>
+            <button class="tab-button" data-tab="settings">设置</button>
+        </div>
+        
+        <div id="historyTab" class="tab-content active">
+            <div class="history-container" id="historyContainer">
+                <!-- 历史记录将在这里动态显示 -->
+            </div>
+        </div>
+        
+        <div id="settingsTab" class="tab-content">
+            <div class="settings-group">
+                <h3>LLM 设置</h3>
+                <div class="settings-item">
+                    <label for="llmProvider">LLM 提供商：</label>
+                    <select id="llmProvider">
+                        <option value="openai">OpenAI</option>
+                        <option value="claude">Claude</option>
+                    </select>
+                </div>
+                <div class="settings-item">
+                    <label for="llmModel">模型：</label>
+                    <select id="llmModel">
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="settings-group">
+                <h3>界面设置</h3>
+                <div class="settings-item">
+                    <label for="theme">主题：</label>
+                    <select id="theme">
+                        <option value="light">浅色</option>
+                        <option value="dark">深色</option>
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
+    
+    <div id="feedback" class="feedback"></div>
+    
     <script src="popup.js"></script>
 </body>
 </html> 

@@ -37,7 +37,7 @@ export class LLMService {
     private readonly defaultConfig: LLMConfig = {
         provider: 'openai',
         apiKey: '',
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4.1',
         baseUrl: 'https://api.openai.com/v1'
     };
 
@@ -51,9 +51,10 @@ export class LLMService {
      * @returns LLMService实例
      */
     public static getInstance(config: Partial<LLMConfig> = {}): LLMService {
-        if (!LLMService.instance) {
-            LLMService.instance = new LLMService(config);
-        }
+        // if (!LLMService.instance) {
+        //     LLMService.instance = new LLMService(config);
+        // }
+        LLMService.instance = new LLMService(config);
         return LLMService.instance;
     }
 
@@ -129,7 +130,7 @@ export class LLMService {
             3. 如果用户没有明确指定具体元素，应该根据上下文选择最合适的元素
         `;
 
-        const response = await fetch(`${baseUrl}`, {
+        const response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -188,12 +189,15 @@ export class LLMService {
 
         const baseUrl = this.config.baseUrl || 'https://api.anthropic.com/v1';
         const systemPrompt = `
-            请根据以下HTML内容和用户指令，生成相应的CSS样式修改操作：
+            # 角色
+            你是一个专业的网页样式助手。请根据以下HTML内容和用户指令，生成相应的CSS样式修改操作。
+            你必须以JSON格式返回结果，不要添加任何其他解释或对话。
 
-            HTML内容:
+            # HTML内容:
             ${htmlContext}
 
-            用户指令: "${input}"
+            # 用户指令
+            ${input}
             
             请以 JSON 格式返回，包含以下字段：
             - target: 目标元素选择器（英文，如 'body', 'h1', 'p', '.class', '#id'）
@@ -213,18 +217,24 @@ export class LLMService {
             1. 字体大小应该根据实际需求选择合适的值（如 '16px', '20px', '24px' 等）
             2. 选择器应该基于提供的HTML内容，选择最精确的目标元素
             3. 如果用户没有明确指定具体元素，应该根据上下文选择最合适的元素
+            4. 必须返回JSON格式，不要添加任何其他文本
         `;
 
-        const response = await fetch(`${baseUrl}/messages`, {
+        const response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.config.apiKey}`,
                 'x-api-key': this.config.apiKey,
                 'anthropic-version': '2023-06-01'
             },
             body: JSON.stringify({
                 model: this.config.model,
                 messages: [
+                    {
+                        role: 'user',
+                        content: systemPrompt
+                    },
                     {
                         role: 'user',
                         content: input
@@ -236,16 +246,31 @@ export class LLMService {
         });
 
         if (!response.ok) {
+            console.error('Claude API request failed:', response);
             throw new Error(`Claude API request failed: ${response.statusText}`);
         }
 
+        // const data = await response.json() as {
+        //     content: Array<{ text: string }>;
+        // };
+
+        
+        // const content = data.content[0].text;
         const data = await response.json() as {
-            content: Array<{ text: string }>;
+            choices: Array<{ message: { content: string } }>;
         };
-        const content = data.content[0].text;
+        const content = data.choices[0].message.content;
+        // console.log('Claude response:', data);
+        // console.log('Claude content:', content);
         
         try {
-            const result = JSON.parse(content);
+            // 尝试从响应中提取JSON部分
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('No JSON found in response');
+            }
+            
+            const result = JSON.parse(jsonMatch[0]);
             return {
                 target: result.target,
                 property: result.property,

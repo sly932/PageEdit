@@ -36,6 +36,7 @@ export class NLPProcessor {
      */
     public static async processInput(
         text: string,
+        htmlContext: string,
         options: {
             preferLLM?: boolean;    // 是否优先使用LLM
             minConfidence?: number; // 最小置信度
@@ -47,7 +48,7 @@ export class NLPProcessor {
 
             // 1. 如果优先使用LLM或规则解析失败，尝试使用LLM
             if (preferLLM) {
-                result = await this.processWithLLM(text);
+                result = await this.processWithLLM(text, htmlContext);
             }
 
             // 2. 如果LLM处理失败或未优先使用LLM，尝试规则解析
@@ -100,16 +101,24 @@ export class NLPProcessor {
      * @param text 用户输入文本
      * @returns 处理结果
      */
-    private static async processWithLLM(text: string): Promise<NLPResult | null> {
+    private static async processWithLLM(text: string, htmlContext: string): Promise<NLPResult | null> {
         try {
-            const config = {
+            const provider = process.env.LLM_PROVIDER || 'openai';
+            const openaiConfig = {
                 provider: (process.env.LLM_PROVIDER || 'openai') as LLMProvider,
-                apiKey: process.env.LLM_API_KEY || '',
-                model: process.env.LLM_MODEL || 'gpt-3.5-turbo',
-                baseUrl: process.env.LLM_API_BASE_URL
-            };
+                apiKey: process.env.OPENAI_API_KEY || '',
+                model: process.env.OPENAI_MODEL || 'gpt-4.1',
+                baseUrl: process.env.OPENAI_API_BASE_URL
+            }
+            const claudeConfig = {
+                provider: (process.env.LLM_PROVIDER || 'claude') as LLMProvider,
+                apiKey: process.env.CLAUDE_API_KEY || '',
+                model: process.env.CLAUDE_MODEL || 'anthropic.claude-3-opus',
+                baseUrl: process.env.CLAUDE_API_BASE_URL
+            }
+            const config = provider === 'openai' ? openaiConfig : claudeConfig;
             const llmService = LLMService.getInstance(config);
-            const result = await llmService.processInput(text);
+            const result = await llmService.processInput(text, htmlContext);
             if (result) {
                 return {
                     target: result.target,
