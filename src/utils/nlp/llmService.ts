@@ -51,10 +51,9 @@ export class LLMService {
      * @returns LLMService实例
      */
     public static getInstance(config: Partial<LLMConfig> = {}): LLMService {
-        // if (!LLMService.instance) {
-        //     LLMService.instance = new LLMService(config);
-        // }
-        LLMService.instance = new LLMService(config);
+        if (!LLMService.instance) {
+            LLMService.instance = new LLMService(config);
+        }
         return LLMService.instance;
     }
 

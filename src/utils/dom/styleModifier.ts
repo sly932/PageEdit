@@ -39,7 +39,23 @@ export class StyleModifier {
    */
   static modifyByClass(element: HTMLElement, className: string): boolean {
     try {
-      element.classList.add(className);
+      // 验证输入
+      if (!element || !className) {
+        console.warn('Invalid element or class name');
+        return false;
+      }
+
+      // 将单个类名转换为数组
+      const classNames = Array.isArray(className) ? className : [className];
+
+      // 过滤掉空字符串和已存在的类名
+      const validClassNames = classNames.filter(name => 
+        name && typeof name === 'string' && !element.classList.contains(name)
+      );
+
+      // 添加有效的类名
+      validClassNames.forEach(name => element.classList.add(name));
+      
       return true;
     } catch (error) {
       console.error('Class modification failed:', error);

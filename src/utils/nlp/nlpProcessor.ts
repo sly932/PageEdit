@@ -1,5 +1,5 @@
 import { Modification } from '../../types/index';
-import { LLMService, LLMProvider } from './llmService.js';
+import { LLMService, LLMProvider } from './llmService';
 
 /**
  * 自然语言处理结果接口
@@ -118,6 +118,7 @@ export class NLPProcessor {
             }
             const config = provider === 'openai' ? openaiConfig : claudeConfig;
             const llmService = LLMService.getInstance(config);
+            console.log('[nlpProcessor] LLM service:', llmService);
             const result = await llmService.processInput(text, htmlContext);
             if (result) {
                 return {

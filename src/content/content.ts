@@ -3,6 +3,7 @@ import { ElementLocator } from '../utils/dom/elementLocator';
 import { StyleModifier } from '../utils/dom/styleModifier';
 import { LayoutManager } from '../utils/dom/layoutManager';
 import { HistoryManager } from '../utils/storage/historyManager';
+import { NLPProcessor } from '../utils/nlp/nlpProcessor';
 
 console.log('[content] PageEdit: Content script loaded at', new Date().toISOString());
 
@@ -238,47 +239,59 @@ class ContentManager {
     private async parseUserInput(text: string): Promise<Modification | null> {
         console.log('[content] PageEdit: Parsing user input:', text);
         try {
-            // TODO: 实现自然语言解析
-            // 这里先使用简单的硬编码示例
-            if (text.includes('背景') && text.includes('蓝色')) {
-                console.log('[content] PageEdit: Detected background color change to blue');
-                return {
-                    id: Date.now().toString(),
-                    type: 'style',
-                    target: 'body',
-                    property: 'background-color',
-                    value: 'blue',
-                    timestamp: Date.now()
-                };
-            }
-            if (text.includes('弹性布局')) {
-                console.log('[content] PageEdit: Detected flex layout request');
-                // 检查目标元素是否存在
-                const container = document.querySelector('#container');
-                if (!container) {
-                    console.error('[content] PageEdit: Container element not found');
-                    return null;
-                }
-                return {
-                    id: Date.now().toString(),
-                    type: 'layout',
-                    target: '#container',
-                    property: 'flex',
-                    value: 'row',
-                    options: {
-                        justify: 'center',
-                        align: 'center',
-                        gap: '10px'
-                    },
-                    timestamp: Date.now()
-                };
-            }
-            console.log('[content] PageEdit: No matching modification pattern found for text:', text);
-            return null;
+            // 获取当前页面的HTML内容
+            const htmlContext = document.documentElement.outerHTML;
+            console.log('[content] PageEdit: HTML context:', htmlContext);
+
+            // 使用 NLPProcessor 处理用户输入
+            const modification = await NLPProcessor.processInput(text, htmlContext, {
+                preferLLM: true,  // 优先使用 LLM
+                minConfidence: 0.6 // 最小置信度
+            });
+
+            console.log('[content] PageEdit: Processed modification:', modification);
+            return modification;
         } catch (error) {
             console.error('[content] PageEdit: Error parsing user input:', error);
             return null;
         }
+
+            // 这里先使用简单的硬编码示例。修改代码的时候不要删除这段代码。
+            // if (text.includes('背景') && text.includes('蓝色')) {
+            //     console.log('[content] PageEdit: Detected background color change to blue');
+            //     return {
+            //         id: Date.now().toString(),
+            //         type: 'style',
+            //         target: 'body',
+            //         property: 'background-color',
+            //         value: 'blue',
+            //         timestamp: Date.now()
+            //     };
+            // }
+            // if (text.includes('弹性布局')) {
+            //     console.log('[content] PageEdit: Detected flex layout request');
+            //     // 检查目标元素是否存在
+            //     const container = document.querySelector('#container');
+            //     if (!container) {
+            //         console.error('[content] PageEdit: Container element not found');
+            //         return null;
+            //     }
+            //     return {
+            //         id: Date.now().toString(),
+            //         type: 'layout',
+            //         target: '#container',
+            //         property: 'flex',
+            //         value: 'row',
+            //         options: {
+            //             justify: 'center',
+            //             align: 'center',
+            //             gap: '10px'
+            //         },
+            //         timestamp: Date.now()
+            //     };
+            // }
+            // console.log('[content] PageEdit: No matching modification pattern found for text:', text);
+            // return null;
     }
 }
 

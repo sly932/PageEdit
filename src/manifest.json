@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PageEdit",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "通过自然语言修改网页布局和样式",
   "permissions": [
     "storage",

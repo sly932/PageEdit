@@ -7,12 +7,12 @@
     "test:llm": "ts-node --esm scripts/test-llm.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "build": "webpack --config webpack.config.js",
-    "dev": "webpack --watch --config webpack.config.js"
+    "build": "webpack --config webpack.config.cjs",
+    "dev": "webpack --watch --config webpack.config.cjs"
   },
   "dependencies": {
     "dotenv": "^16.5.0",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -21,15 +21,25 @@
     "@types/chrome": "^0.0.260",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.11.24",
+    "@types/node-fetch": "^2.6.12",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
     "copy-webpack-plugin": "^13.0.0",
+    "https-browserify": "^1.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
     "ts-jest": "^29.3.4",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
+    "url": "^0.11.4",
+    "util": "^0.12.5",
     "webpack": "^5.90.3",
     "webpack-cli": "^5.1.4"
   }
