@@ -42,6 +42,7 @@ export interface Modification {
     target: string;
     property: string;
     value: string;
+    originalValue?: string;
     options?: LayoutOptions;
     timestamp: number;
 }

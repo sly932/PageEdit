@@ -82,6 +82,8 @@ class ContentManager {
             switch (modification.type) {
                 case 'style':
                     console.log('[content] PageEdit: Applying style modification');
+                    // 保存原始值
+                    modification.originalValue = element.style[modification.property as any] || '';
                     success = StyleModifier.modifyStyle({
                         element,
                         property: modification.property,
@@ -176,7 +178,7 @@ class ContentManager {
                     StyleModifier.restoreStyle(
                         element,
                         lastModification.property,
-                        '' // 清空样式值
+                        lastModification.originalValue || '' // 使用保存的原始值
                     );
                     break;
                 case 'layout':
