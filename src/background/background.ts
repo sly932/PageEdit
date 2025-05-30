@@ -28,9 +28,11 @@ class BackgroundManager {
     private handleInstall(details: chrome.runtime.InstalledDetails): void {
         if (details.reason === 'install') {
             // 首次安装时的初始化
+            console.log('[background] PageEdit: First install');
             this.initializeStorage();
         } else if (details.reason === 'update') {
             // 更新时的处理
+            console.log('[background] PageEdit: Update');
             this.handleUpdate(details.previousVersion);
         }
     }
