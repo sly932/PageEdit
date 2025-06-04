@@ -185,6 +185,7 @@ ${htmlContext}
                         content: input
                     }
                 ],
+                max_tokens: 30000,
                 temperature: 0.7
             })
         });
