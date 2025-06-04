@@ -1,10 +1,39 @@
-import { StyleModification } from '../../types';
+import { StyleModification, ModificationMethod, Modification } from '../../types';
 
 /**
  * 样式修改工具类
  * 提供多种方式修改元素样式
  */
 export class StyleModifier {
+  /**
+   * 根据修改方法应用样式
+   * @param modification 样式修改对象
+   * @returns 是否修改成功
+   */
+  static applyModification(modification: StyleModification): boolean {
+    try {
+      switch (modification.method) {
+        case 'style':
+          // 使用 style 标签方式
+          return this.modifyByCSSRule({
+            target: modification.element.tagName.toLowerCase(),
+            property: modification.property,
+            value: modification.value,
+            method: modification.method
+          });
+        case 'DOM':
+          // 使用直接 DOM 方式
+          return this.modifyStyle(modification);
+        default:
+          console.warn('Unknown modification method:', modification.method);
+          return false;
+      }
+    } catch (error) {
+      console.error('Modification failed:', error);
+      return false;
+    }
+  }
+
   /**
    * 直接修改元素样式
    * @param modification 样式修改对象
@@ -18,7 +47,6 @@ export class StyleModifier {
         console.warn(`不能修改只读属性: ${property}`);
         return false;
       }
-      const originalValue = (modification.element.style as any)[property];
       
       // 应用新样式
       (modification.element.style as any)[property] = modification.value;
@@ -65,23 +93,25 @@ export class StyleModifier {
 
   /**
    * 通过CSS规则修改样式
-   * @param selector 选择器
-   * @param styles 样式对象
+   * @param modification 修改对象
    * @returns 是否修改成功
    */
-  static modifyByCSSRule(selector: string, styles: Record<string, string>): boolean {
+  static modifyByCSSRule(modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>): boolean {
     try {
       // 创建样式规则
-      const styleText = Object.entries(styles)
-        .map(([property, value]) => `${property}: ${value}`)
-        .join('; ');
+      const styleText = `${modification.property}: ${modification.value}`;
 
       // 创建新的样式元素
       const styleElement = document.createElement('style');
-      styleElement.textContent = `${selector} { ${styleText} }`;
+      styleElement.textContent = `${modification.target} { ${styleText} }`;
       
       // 添加到文档中
       document.head.appendChild(styleElement);
+      
+      // 保存样式元素引用，用于后续撤销
+      (window as any).__pageEditStyleElements = 
+        (window as any).__pageEditStyleElements || [];
+      (window as any).__pageEditStyleElements.push(styleElement);
       
       return true;
     } catch (error) {
@@ -95,20 +125,36 @@ export class StyleModifier {
    * @param element 目标元素
    * @param property 样式属性
    * @param originalValue 原始值
+   * @param method 修改方法
    * @returns 是否恢复成功
    */
   static restoreStyle(
     element: HTMLElement,
     property: string,
-    originalValue: string
+    originalValue: string,
+    method: ModificationMethod
   ): boolean {
     try {
-      if (property === 'length' || property === 'parentRule') {
-        console.warn(`不能恢复只读属性: ${property}`);
-        return false;
+      if (method === 'style') {
+        // 移除对应的 style 标签
+        const styleElements = (window as any).__pageEditStyleElements || [];
+        for (let i = styleElements.length - 1; i >= 0; i--) {
+          const styleElement = styleElements[i];
+          if (styleElement.textContent?.includes(property)) {
+            styleElement.remove();
+            styleElements.splice(i, 1);
+          }
+        }
+        return true;
+      } else {
+        // 直接恢复 DOM 样式
+        if (property === 'length' || property === 'parentRule') {
+          console.warn(`不能恢复只读属性: ${property}`);
+          return false;
+        }
+        (element.style as any)[property] = originalValue;
+        return true;
       }
-      (element.style as any)[property] = originalValue;
-      return true;
     } catch (error) {
       console.error('Style restoration failed:', error);
       return false;

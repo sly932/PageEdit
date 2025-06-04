@@ -1,4 +1,4 @@
-import { Modification, ParseResult } from '../../types/index';
+import { Modification, ModificationMethod, ParseResult } from '../../types/index';
 import { LLMService, LLMProvider } from './llmService';
 
 /**
@@ -9,6 +9,7 @@ interface NLPResult {
     property: string;        // CSS属性
     value: string;          // 属性值
     confidence: number;     // 置信度 (0-1)
+    method: ModificationMethod;
     source: 'rule' | 'llm'; // 处理来源
 }
 
@@ -96,6 +97,7 @@ export class NLPProcessor {
                     property,
                     value: processedValue,
                     confidence: 0.9, // 规则匹配的置信度较高
+                    method: 'style',
                     source: 'rule'
                 };
             }
@@ -143,6 +145,7 @@ export class NLPProcessor {
                     property: result.property,
                     value: result.value,
                     confidence: result.confidence,
+                    method: result.method,
                     source: 'llm'
                 }));
             }
@@ -199,6 +202,7 @@ export class NLPProcessor {
             target: result.target,
             property: result.property,
             value: result.value,
+            method: result.method,
             timestamp: Date.now()
         };
     }

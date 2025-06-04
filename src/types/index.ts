@@ -4,6 +4,11 @@
 export type ModificationType = 'style' | 'layout';
 
 /**
+ * 修改方法
+ */
+export type ModificationMethod = 'style' | 'DOM';
+
+/**
  * 布局修改选项
  */
 export interface LayoutOptions {
@@ -46,6 +51,7 @@ export interface Modification {
     options?: LayoutOptions;
     timestamp: number;
     location?: ElementLocation;
+    method: ModificationMethod;
 }
 
 /**
@@ -78,6 +84,7 @@ export interface StyleModification {
   property: string;
   // 新的样式值
   value: string;
+  method: ModificationMethod;
 }
 
 /**

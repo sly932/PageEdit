@@ -1,4 +1,4 @@
-import { Message, Modification, UserInput, ElementLocation, ParseResult } from '../types';
+import { Message, Modification, UserInput, ElementLocation, ParseResult, ModificationMethod, StyleModification } from '../types';
 import { ElementLocator } from '../utils/dom/elementLocator';
 import { StyleModifier } from '../utils/dom/styleModifier';
 import { LayoutManager } from '../utils/dom/layoutManager';
@@ -11,7 +11,14 @@ console.log('[content] PageEdit: Content script loaded at', new Date().toISOStri
  * Content Script的主要类
  * 处理页面修改和与popup的通信
  */
-class ContentManager {
+export class ContentManager {
+    private undoStack: Array<{
+        element: HTMLElement;
+        property: string;
+        originalValue: string;
+        method: ModificationMethod;
+    }> = [];
+
     constructor() {
         console.log('[content] PageEdit: ContentManager initialized');
         // 初始化消息监听
@@ -29,7 +36,7 @@ class ContentManager {
             switch (message.type) {
                 case 'MODIFY_PAGE':
                     console.log('[content] PageEdit: Handling MODIFY_PAGE message');
-                    this.handleModifyPage(message.data)
+                    this.handleModifyPage(message)
                         .then(() => {
                             console.log('[content] PageEdit: Modification completed successfully');
                             sendResponse({ success: true });
@@ -123,11 +130,10 @@ class ContentManager {
         const success = StyleModifier.modifyStyle({
             element,
             property: modification.property,
-            value: modification.value
+            value: modification.value,
+            method: modification.method
         }) || StyleModifier.modifyByClass(element, modification.value) ||
-             StyleModifier.modifyByCSSRule(modification.target, {
-                 [modification.property]: modification.value
-             });
+             StyleModifier.modifyByCSSRule(modification);
 
         if (!success) {
             console.error('[content] PageEdit: All style modification attempts failed');
@@ -168,58 +174,61 @@ class ContentManager {
 
     /**
      * 处理页面修改请求
-     * @param data 修改数据
+     * @param message 修改消息
      */
-    private async handleModifyPage(data: { text: string }): Promise<void> {
-        console.log('[content] PageEdit: Handling modify page request:', data);
+    private async handleModifyPage(message: Message): Promise<void> {
         try {
             // 解析用户输入
-            const result = await this.parseUserInput(data.text);
-            console.log('[content] PageEdit: Parsed result:', result);
-            
-            if (!result.success || result.modifications.length === 0) {
-                console.log('[content] PageEdit: No modifications generated');
-                return;
+            const parseResult = await this.parseUserInput(message.data.text);
+            if (!parseResult.success) {
+                throw new Error(parseResult.error || 'Failed to parse user input');
             }
 
             // 应用所有修改
-            for (const modification of result.modifications) {
-                // 查找目标元素
-                const { element, location } = await this.findElement(
-                    modification.target,
-                    modification.location
-                );
-                
-                if (!element) {
-                    console.error('[content] PageEdit: Target element not found:', modification.target);
-                    continue;
-                }
+            for (const modification of parseResult.modifications) {
+                try {
+                    // 查找目标元素
+                    const { element } = await this.findElement(
+                        modification.target,
+                        modification.location
+                    );
+                    
+                    if (!element) {
+                        console.error('Target element not found:', modification.target);
+                        continue;
+                    }
 
-                // 根据修改类型应用不同的修改
-                let success = false;
-                switch (modification.type) {
-                    case 'style':
-                        console.log('[content] PageEdit: Applying style modification');
-                        success = await this.applyStyleModification(element, modification);
-                        break;
-                    case 'layout':
-                        console.log('[content] PageEdit: Applying layout modification');
-                        success = this.applyLayoutModification(element, modification);
-                        break;
-                }
+                    // 保存原始值用于撤销
+                    const originalValue = element.style[modification.property as any];
+                    
+                    // 创建样式修改对象
+                    const styleModification: StyleModification = {
+                        element,
+                        property: modification.property,
+                        value: modification.value,
+                        method: modification.method
+                    };
+                    
+                    // 应用修改
+                    const success = StyleModifier.applyModification(styleModification);
+                    if (!success) {
+                        throw new Error(`Failed to apply modification: ${modification.property}`);
+                    }
 
-                console.log('[content] PageEdit: Modification success:', success);
-                if (success) {
-                    // 保存修改历史
-                    await HistoryManager.saveModification({
-                        ...modification,
-                        location // 添加定位信息到历史记录
+                    // 添加到撤销栈
+                    this.undoStack.push({
+                        element,
+                        property: modification.property,
+                        originalValue,
+                        method: modification.method
                     });
-                    console.log('[content] PageEdit: Modification saved to history');
+                } catch (error) {
+                    console.error('Failed to apply modification:', error);
+                    throw error;
                 }
             }
         } catch (error) {
-            console.error('[content] PageEdit: Failed to modify page:', error);
+            console.error('Failed to handle page modification:', error);
             throw error;
         }
     }
@@ -280,46 +289,20 @@ class ContentManager {
      */
     private async handleUndo(): Promise<void> {
         try {
-            // 获取最后一次修改
-            const lastModification = await HistoryManager.undoLastModification();
-            if (!lastModification) {
-                console.log('[content] PageEdit: No modification to undo');
-                return;
-            }
-
-            // 使用保存的定位信息查找元素
-            const { element, location } = await this.findElement(
-                lastModification.target,
-                lastModification.location
-            );
-            
-            if (!element) {
-                console.error('[content] PageEdit: Target element not found for undo:', lastModification.target);
-                return;
-            }
-
-            // 根据修改类型撤销
-            let success = false;
-            switch (lastModification.type) {
-                case 'style':
-                    success = StyleModifier.restoreStyle(
-                        element,
-                        lastModification.property,
-                        lastModification.originalValue || ''
-                    );
-                    break;
-                case 'layout':
-                    success = this.undoLayoutModification(element, lastModification);
-                    break;
-            }
-
-            if (success) {
-                console.log('[content] PageEdit: Successfully undone modification with location:', location);
-            } else {
-                console.error('[content] PageEdit: Failed to undo modification');
+            const lastModification = this.undoStack.pop();
+            if (lastModification) {
+                const success = StyleModifier.restoreStyle(
+                    lastModification.element,
+                    lastModification.property,
+                    lastModification.originalValue,
+                    lastModification.method
+                );
+                if (!success) {
+                    throw new Error('Failed to restore style');
+                }
             }
         } catch (error) {
-            console.error('[content] PageEdit: Failed to undo modification:', error);
+            console.error('Failed to handle undo:', error);
             throw error;
         }
     }
@@ -364,6 +347,18 @@ class ContentManager {
         } catch (error) {
             console.error('[content] PageEdit: Failed to undo layout modification:', error);
             return false;
+        }
+    }
+
+    private undoLastModification(): void {
+        const lastModification = this.undoStack.pop();
+        if (lastModification) {
+            StyleModifier.restoreStyle(
+                lastModification.element,
+                lastModification.property,
+                lastModification.originalValue,
+                lastModification.method
+            );
         }
     }
 }
