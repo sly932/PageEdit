@@ -1,4 +1,4 @@
-import { Modification } from '../../types/index';
+import { Modification, ParseResult } from '../../types/index';
 import { LLMService, LLMProvider } from './llmService';
 
 /**
@@ -32,7 +32,7 @@ export class NLPProcessor {
      * 处理用户输入
      * @param text 用户输入的自然语言文本
      * @param options 处理选项
-     * @returns 修改操作对象
+     * @returns 解析结果
      */
     public static async processInput(
         text: string,
@@ -41,34 +41,41 @@ export class NLPProcessor {
             preferLLM?: boolean;    // 是否优先使用LLM
             minConfidence?: number; // 最小置信度
         } = {}
-    ): Promise<Modification | null> {
+    ): Promise<ParseResult> {
         try {
             const { preferLLM = true, minConfidence = 0.6 } = options;
-            let result: NLPResult | null = null;
+            let results: NLPResult[] = [];
 
-            // 1. 如果优先使用LLM或规则解析失败，尝试使用LLM
+            // 1. 如果优先使用LLM，尝试使用LLM
             if (preferLLM) {
-                result = await this.processWithLLM(text, htmlContext);
-            }
-
-            // 2. 如果LLM处理失败或未优先使用LLM，尝试规则解析
-            if (!result || result.confidence < minConfidence) {
-                const ruleResult = this.processWithRules(text);
-                if (ruleResult && ruleResult.confidence >= minConfidence) {
-                    result = ruleResult;
+                const llmResults = await this.processWithLLM(text, htmlContext);
+                if (llmResults.length > 0) {
+                    results = llmResults;
                 }
             }
 
-            // 3. 如果两种方式都失败，返回null
-            if (!result) {
-                return null;
+            // 2. 如果失败，返回空结果
+            if (results.length === 0) {
+                return {
+                    modifications: [],
+                    success: false,
+                    error: 'No valid modifications found'
+                };
             }
 
-            // 4. 创建修改对象
-            return this.createModification(result);
+            // 3. 创建修改对象列表
+            const modifications = results.map(result => this.createModification(result));
+            return {
+                modifications,
+                success: true
+            };
         } catch (error) {
             console.error('Failed to process input:', error);
-            return null;
+            return {
+                modifications: [],
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            };
         }
     }
 
@@ -99,9 +106,9 @@ export class NLPProcessor {
     /**
      * 使用LLM处理输入
      * @param text 用户输入文本
-     * @returns 处理结果
+     * @returns 处理结果数组
      */
-    private static async processWithLLM(text: string, htmlContext: string): Promise<NLPResult | null> {
+    private static async processWithLLM(text: string, htmlContext: string): Promise<NLPResult[]> {
         try {
             const provider = process.env.LLM_PROVIDER || 'openai';
             const openaiConfig = {
@@ -119,20 +126,30 @@ export class NLPProcessor {
             const config = provider === 'openai' ? openaiConfig : claudeConfig;
             const llmService = LLMService.getInstance(config);
             console.log('[nlpProcessor] LLM service:', llmService);
-            const result = await llmService.processInput(text, htmlContext);
-            if (result) {
-                return {
+            const results = await llmService.processInput(text, htmlContext);
+            console.log('[nlpProcessor] LLM results:', results);
+            // 解析LLM返回的JSON字符串
+            let parsedResults;
+            try {
+                parsedResults = typeof results === 'string' ? JSON.parse(results) : results;
+                console.log('[nlpProcessor] Parsed LLM results:', parsedResults);
+            } catch (error) {
+                console.error('[nlpProcessor] Failed to parse LLM results:', error);
+                return [];
+            }
+            if (parsedResults && Array.isArray(parsedResults)) {
+                return parsedResults.map(result => ({
                     target: result.target,
                     property: result.property,
                     value: result.value,
                     confidence: result.confidence,
                     source: 'llm'
-                };
+                }));
             }
-            return null;
+            return [];
         } catch (error) {
             console.error('Failed to process with LLM:', error);
-            return null;
+            return [];
         }
     }
 
@@ -146,19 +163,27 @@ export class NLPProcessor {
             请将以下自然语言指令转换为网页样式修改操作：
             输入: "${text}"
             
-            请以JSON格式返回，包含以下字段：
+            请以JSON数组格式返回，每个对象包含以下字段：
             - target: 目标元素选择器
             - property: CSS属性名
             - value: CSS属性值
             - confidence: 置信度(0-1)
             
             示例输出:
-            {
-                "target": "body",
-                "property": "background-color",
-                "value": "blue",
-                "confidence": 0.95
-            }
+            [
+                {
+                    "target": "body",
+                    "property": "background-color",
+                    "value": "blue",
+                    "confidence": 0.95
+                },
+                {
+                    "target": "h1",
+                    "property": "color",
+                    "value": "white",
+                    "confidence": 0.9
+                }
+            ]
         `;
     }
 

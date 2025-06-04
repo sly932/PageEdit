@@ -90,4 +90,16 @@ export interface ElementLocation {
   method: 'selector' | 'position' | 'text';
   // 定位的置信度（0-1）
   confidence: number;
+}
+
+/**
+ * 解析结果类型定义
+ */
+export interface ParseResult {
+  // 修改列表
+  modifications: Modification[];
+  // 解析是否成功
+  success: boolean;
+  // 错误信息（如果有）
+  error?: string;
 } 

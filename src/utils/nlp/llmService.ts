@@ -61,14 +61,14 @@ export class LLMService {
      * 处理自然语言输入
      * @param input 用户输入
      * @param htmlContext 当前页面的HTML内容
-     * @returns 处理结果
+     * @returns API响应内容
      */
-    public async processInput(input: string, htmlContext: string): Promise<NLPResult | null> {
+    public async processInput(input: string, htmlContext: string): Promise<string> {
         try {
             return await this.callAPI(input, htmlContext);
         } catch (error) {
             console.error('Error processing input:', error);
-            return null;
+            throw error;
         }
     }
 
@@ -76,9 +76,9 @@ export class LLMService {
      * 调用LLM API
      * @param input 用户输入
      * @param htmlContext 当前页面的HTML内容
-     * @returns API响应
+     * @returns API响应内容
      */
-    private async callAPI(input: string, htmlContext: string): Promise<NLPResult | null> {
+    private async callAPI(input: string, htmlContext: string): Promise<string> {
         switch (this.config.provider) {
             case 'openai':
                 return this.callOpenAI(input, htmlContext);
@@ -93,9 +93,9 @@ export class LLMService {
      * 调用OpenAI API
      * @param input 用户输入
      * @param htmlContext 当前页面的HTML内容
-     * @returns API响应
+     * @returns API响应内容
      */
-    private async callOpenAI(input: string, htmlContext: string): Promise<NLPResult | null> {
+    private async callOpenAI(input: string, htmlContext: string): Promise<string> {
         if (!this.config.apiKey) {
             throw new Error('OpenAI API key is required');
         }
@@ -109,24 +109,34 @@ export class LLMService {
 
             用户指令: "${input}"
             
-            请以 JSON 格式返回，包含以下字段：
+            请以 JSON 数组格式返回，每个对象包含以下字段：
             - target: 目标元素选择器（英文，如 'body', 'h1', 'p', '.class', '#id'）
             - property: CSS 属性名（英文，如 'background-color', 'font-size', 'color'）
             - value: CSS 属性值（英文，如 'blue', '16px', 'red'）
             - confidence: 置信度 (0-1)
             
             示例输出:
-            {
-                "target": "body",
-                "property": "background-color",
-                "value": "blue",
-                "confidence": 0.95
-            }
+            [
+                {
+                    "target": "body",
+                    "property": "background-color",
+                    "value": "blue",
+                    "confidence": 0.95
+                },
+                {
+                    "target": "h1",
+                    "property": "color",
+                    "value": "white",
+                    "confidence": 0.9
+                }
+            ]
             
             注意：
             1. 字体大小应该根据实际需求选择合适的值（如 '16px', '20px', '24px' 等）
             2. 选择器应该基于提供的HTML内容，选择最精确的目标元素
             3. 如果用户没有明确指定具体元素，应该根据上下文选择最合适的元素
+            4. 如果用户指令包含多个修改，请返回多个修改对象
+            5. 如果用户指令只包含一个修改，请返回只包含一个对象的数组
         `;
 
         const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -158,30 +168,16 @@ export class LLMService {
         const data = await response.json() as {
             choices: Array<{ message: { content: string } }>;
         };
-        const content = data.choices[0].message.content;
-        
-        try {
-            const result = JSON.parse(content);
-            return {
-                target: result.target,
-                property: result.property,
-                value: result.value,
-                confidence: result.confidence || 0.8,
-                explanation: result.explanation || 'Processed by OpenAI'
-            };
-        } catch (error) {
-            console.error('Error parsing OpenAI response:', error);
-            return null;
-        }
+        return data.choices[0].message.content;
     }
 
     /**
      * 调用Claude API
      * @param input 用户输入
      * @param htmlContext 当前页面的HTML内容
-     * @returns API响应
+     * @returns API响应内容
      */
-    private async callClaude(input: string, htmlContext: string): Promise<NLPResult | null> {
+    private async callClaude(input: string, htmlContext: string): Promise<string> {
         if (!this.config.apiKey) {
             throw new Error('Claude API key is required');
         }
@@ -198,25 +194,35 @@ export class LLMService {
             # 用户指令
             ${input}
             
-            请以 JSON 格式返回，包含以下字段：
+            请以 JSON 数组格式返回，每个对象包含以下字段：
             - target: 目标元素选择器（英文，如 'body', 'h1', 'p', '.class', '#id'）
             - property: CSS 属性名（英文，如 'background-color', 'font-size', 'color'）
             - value: CSS 属性值（英文，如 'blue', '16px', 'red'）
             - confidence: 置信度 (0-1)
             
             示例输出:
-            {
-                "target": "body",
-                "property": "background-color",
-                "value": "blue",
-                "confidence": 0.95
-            }
+            [
+                {
+                    "target": "body",
+                    "property": "background-color",
+                    "value": "blue",
+                    "confidence": 0.95
+                },
+                {
+                    "target": "h1",
+                    "property": "color",
+                    "value": "white",
+                    "confidence": 0.9
+                }
+            ]
             
             注意：
             1. 字体大小应该根据实际需求选择合适的值（如 '16px', '20px', '24px' 等）
             2. 选择器应该基于提供的HTML内容，选择最精确的目标元素
             3. 如果用户没有明确指定具体元素，应该根据上下文选择最合适的元素
-            4. 必须返回JSON格式，不要添加任何其他文本
+            4. 如果用户指令包含多个修改，请返回多个修改对象
+            5. 如果用户指令只包含一个修改，请返回只包含一个对象的数组
+            6. 必须返回JSON格式，不要添加任何其他文本
         `;
 
         const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -249,37 +255,9 @@ export class LLMService {
             throw new Error(`Claude API request failed: ${response.statusText}`);
         }
 
-        // const data = await response.json() as {
-        //     content: Array<{ text: string }>;
-        // };
-
-        
-        // const content = data.content[0].text;
         const data = await response.json() as {
             choices: Array<{ message: { content: string } }>;
         };
-        const content = data.choices[0].message.content;
-        // console.log('Claude response:', data);
-        // console.log('Claude content:', content);
-        
-        try {
-            // 尝试从响应中提取JSON部分
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) {
-                throw new Error('No JSON found in response');
-            }
-            
-            const result = JSON.parse(jsonMatch[0]);
-            return {
-                target: result.target,
-                property: result.property,
-                value: result.value,
-                confidence: result.confidence || 0.8,
-                explanation: result.explanation || 'Processed by Claude'
-            };
-        } catch (error) {
-            console.error('Error parsing Claude response:', error);
-            return null;
-        }
+        return data.choices[0].message.content;
     }
 } 

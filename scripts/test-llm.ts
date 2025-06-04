@@ -99,23 +99,32 @@ async function testLLM() {
         for (const testCase of testCases) {
             console.log(`\nTesting input: "${testCase.input}"`);
             try {
-                const result = await openaiService.processInput(testCase.input, testCase.htmlContext);
-                if (result) {
-                    console.log('Result:', {
-                        target: result.target,
-                        property: result.property,
-                        value: result.value,
-                        confidence: result.confidence,
-                        explanation: result.explanation
-                    });
-                    console.log('Expected:', testCase.expected);
-                    console.log('Match:', 
-                        result.target === testCase.expected.target &&
-                        result.property === testCase.expected.property &&
-                        result.value === testCase.expected.value
-                    );
-                } else {
-                    console.log('Failed: No result returned');
+                const response = await openaiService.processInput(testCase.input, testCase.htmlContext);
+                console.log('Raw response:', response);
+                
+                try {
+                    const results = JSON.parse(response);
+                    const result = Array.isArray(results) ? results[0] : results;
+                    
+                    if (result) {
+                        console.log('Parsed result:', {
+                            target: result.target,
+                            property: result.property,
+                            value: result.value,
+                            confidence: result.confidence,
+                            explanation: result.explanation
+                        });
+                        console.log('Expected:', testCase.expected);
+                        console.log('Match:', 
+                            result.target === testCase.expected.target &&
+                            result.property === testCase.expected.property &&
+                            result.value === testCase.expected.value
+                        );
+                    } else {
+                        console.log('Failed: No valid result in response');
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing response:', parseError);
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -131,23 +140,32 @@ async function testLLM() {
         for (const testCase of testCases) {
             console.log(`\nTesting input: "${testCase.input}"`);
             try {
-                const result = await claudeService.processInput(testCase.input, testCase.htmlContext);
-                if (result) {
-                    console.log('Result:', {
-                        target: result.target,
-                        property: result.property,
-                        value: result.value,
-                        confidence: result.confidence,
-                        explanation: result.explanation
-                    });
-                    console.log('Expected:', testCase.expected);
-                    console.log('Match:', 
-                        result.target === testCase.expected.target &&
-                        result.property === testCase.expected.property &&
-                        result.value === testCase.expected.value
-                    );
-                } else {
-                    console.log('Failed: No result returned');
+                const response = await claudeService.processInput(testCase.input, testCase.htmlContext);
+                console.log('Raw response:', response);
+                
+                try {
+                    const results = JSON.parse(response);
+                    const result = Array.isArray(results) ? results[0] : results;
+                    
+                    if (result) {
+                        console.log('Parsed result:', {
+                            target: result.target,
+                            property: result.property,
+                            value: result.value,
+                            confidence: result.confidence,
+                            explanation: result.explanation
+                        });
+                        console.log('Expected:', testCase.expected);
+                        console.log('Match:', 
+                            result.target === testCase.expected.target &&
+                            result.property === testCase.expected.property &&
+                            result.value === testCase.expected.value
+                        );
+                    } else {
+                        console.log('Failed: No valid result in response');
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing response:', parseError);
                 }
             } catch (error) {
                 console.error('Error:', error);
