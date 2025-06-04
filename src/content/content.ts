@@ -159,35 +159,52 @@ export class ContentManager {
             // 应用所有修改
             for (const modification of parseResult.modifications) {
                 try {
-                    // 获取所有匹配的元素
-                    const elements = Array.from(document.querySelectorAll(modification.target)) as HTMLElement[];
+                    // 检查是否是伪类或伪元素选择器
+                    const isPseudoSelector = modification.target.includes(':') || modification.target.includes('::');
                     
-                    if (elements.length === 0) {
-                        console.warn('No elements found for selector:', modification.target);
-                        continue;
-                    }
-
-                    // 应用修改
-                    const success = StyleModifier.applyModification({
-                        property: modification.property,
-                        value: modification.value,
-                        method: modification.method,
-                        target: modification.target
-                    });
-                    
-                    if (!success) {
-                        throw new Error(`Failed to apply modification: ${modification.property}`);
-                    }
-
-                    // 保存所有元素的原始值用于撤销
-                    elements.forEach(element => {
-                        this.undoStack.push({
-                            element,
+                    if (isPseudoSelector) {
+                        // 对于伪类/伪元素，直接应用样式规则
+                        const success = StyleModifier.applyModification({
                             property: modification.property,
-                            originalValue: element.style[modification.property as any] || '',
-                            method: modification.method
+                            value: modification.value,
+                            method: 'style',  // 强制使用 style 方法
+                            target: modification.target
                         });
-                    });
+                        
+                        if (!success) {
+                            throw new Error(`Failed to apply modification: ${modification.property}`);
+                        }
+                    } else {
+                        // 对于普通选择器，查找元素并应用修改
+                        const elements = Array.from(document.querySelectorAll(modification.target)) as HTMLElement[];
+                        
+                        if (elements.length === 0) {
+                            console.warn('No elements found for selector:', modification.target);
+                            continue;
+                        }
+
+                        // 应用修改
+                        const success = StyleModifier.applyModification({
+                            property: modification.property,
+                            value: modification.value,
+                            method: modification.method,
+                            target: modification.target
+                        });
+                        
+                        if (!success) {
+                            throw new Error(`Failed to apply modification: ${modification.property}`);
+                        }
+
+                        // 保存所有元素的原始值用于撤销
+                        elements.forEach(element => {
+                            this.undoStack.push({
+                                element,
+                                property: modification.property,
+                                originalValue: element.style[modification.property as any] || '',
+                                method: modification.method
+                            });
+                        });
+                    }
                 } catch (error) {
                     console.error('Failed to apply modification:', error);
                     throw error;
