@@ -5,191 +5,208 @@
     <title>PageEdit</title>
     <style>
         body {
-            width: 350px;
-            padding: 15px;
-            font-family: Arial, sans-serif;
+            width: 320px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
         }
+
         .input-container {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            position: relative;
         }
+
         #userInput {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 12px;
+            border: 2px solid #8b7355;
+            border-radius: 6px;
             font-size: 14px;
+            font-family: 'Courier New', monospace;
+            background-color: #fff;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
         }
+
+        #userInput:focus {
+            outline: none;
+            border-color: #6b4f3d;
+            box-shadow: 2px 2px 8px rgba(139,115,85,0.2);
+        }
+
         .button-container {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
+
         button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            background-color: #4CAF50;
-            color: white;
+            flex: 1;
+            padding: 10px 16px;
+            border: 2px solid #8b7355;
+            border-radius: 6px;
+            background-color: #fff;
+            color: #6b4f3d;
             cursor: pointer;
+            font-family: 'Courier New', monospace;
             font-size: 14px;
-            transition: background-color 0.3s;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
+
         button:hover {
-            background-color: #45a049;
+            background-color: #8b7355;
+            color: #fff;
+            transform: translateY(-1px);
         }
+
         button:disabled {
-            background-color: #cccccc;
+            background-color: #e0e0e0;
+            border-color: #ccc;
+            color: #999;
             cursor: not-allowed;
+            transform: none;
         }
+
         .tab-container {
-            margin-bottom: 15px;
+            background-color: #fff;
+            border: 2px solid #8b7355;
+            border-radius: 6px;
+            overflow: hidden;
         }
+
         .tab-buttons {
             display: flex;
-            gap: 5px;
-            margin-bottom: 10px;
+            background-color: #f0e6d2;
+            border-bottom: 2px solid #8b7355;
         }
+
         .tab-button {
-            padding: 8px 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px 4px 0 0;
-            background-color: #f8f8f8;
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            color: #6b4f3d;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
+
         .tab-button.active {
-            background-color: #4CAF50;
-            color: white;
-            border-color: #4CAF50;
+            background-color: #8b7355;
+            color: #fff;
         }
-        .tab-content {
-            display: none;
-            border: 1px solid #ccc;
-            border-radius: 0 4px 4px 4px;
-            padding: 15px;
-        }
-        .tab-content.active {
-            display: block;
-        }
+
         .history-container {
             max-height: 200px;
             overflow-y: auto;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 10px;
+            padding: 15px;
+            background-color: #fff;
         }
+
+        .history-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .history-container::-webkit-scrollbar-track {
+            background: #f0e6d2;
+        }
+
+        .history-container::-webkit-scrollbar-thumb {
+            background: #8b7355;
+            border-radius: 4px;
+        }
+
         .history-item {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
+            padding: 10px;
+            border-bottom: 1px solid #e0d6c2;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 13px;
         }
+
         .history-item:last-child {
             border-bottom: none;
         }
+
         .history-time {
-            color: #666;
+            color: #8b7355;
             font-size: 12px;
         }
+
         .history-action {
-            color: #4CAF50;
+            color: #6b4f3d;
             font-size: 12px;
             cursor: pointer;
+            text-decoration: underline;
         }
-        .settings-group {
-            margin-bottom: 15px;
-        }
-        .settings-group h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #333;
-        }
-        .settings-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .settings-item label {
-            font-size: 14px;
-        }
-        .settings-item select {
-            padding: 4px 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+
         .feedback {
             position: fixed;
             top: 10px;
             right: 10px;
-            padding: 10px 20px;
-            border-radius: 4px;
-            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            color: #fff;
             font-size: 14px;
             opacity: 0;
             transition: opacity 0.3s;
+            font-family: 'Courier New', monospace;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
         }
+
         .feedback.success {
-            background-color: #4CAF50;
+            background-color: #8b7355;
         }
+
         .feedback.error {
-            background-color: #f44336;
+            background-color: #c17f59;
         }
+
         .feedback.show {
             opacity: 1;
+        }
+
+        /* 复古装饰元素 */
+        .input-container::before {
+            content: ">";
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8b7355;
+            font-weight: bold;
+        }
+
+        #userInput {
+            padding-left: 24px;
         }
     </style>
 </head>
 <body>
     <div class="input-container">
-        <input type="text" id="userInput" placeholder="输入修改指令，例如：把背景改成蓝色">
+        <input type="text" id="userInput" placeholder="输入修改指令...">
     </div>
     <div class="button-container">
-        <button id="applyButton">应用修改</button>
+        <button id="applyButton">应用</button>
         <button id="undoButton">撤销</button>
     </div>
     
     <div class="tab-container">
         <div class="tab-buttons">
             <button class="tab-button active" data-tab="history">历史记录</button>
-            <button class="tab-button" data-tab="settings">设置</button>
         </div>
         
         <div id="historyTab" class="tab-content active">
             <div class="history-container" id="historyContainer">
                 <!-- 历史记录将在这里动态显示 -->
-            </div>
-        </div>
-        
-        <div id="settingsTab" class="tab-content">
-            <div class="settings-group">
-                <h3>LLM 设置</h3>
-                <div class="settings-item">
-                    <label for="llmProvider">LLM 提供商：</label>
-                    <select id="llmProvider">
-                        <option value="openai">OpenAI</option>
-                        <option value="claude">Claude</option>
-                    </select>
-                </div>
-                <div class="settings-item">
-                    <label for="llmModel">模型：</label>
-                    <select id="llmModel">
-                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                        <option value="gpt-4">GPT-4</option>
-                        <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="settings-group">
-                <h3>界面设置</h3>
-                <div class="settings-item">
-                    <label for="theme">主题：</label>
-                    <select id="theme">
-                        <option value="light">浅色</option>
-                        <option value="dark">深色</option>
-                    </select>
-                </div>
             </div>
         </div>
     </div>
