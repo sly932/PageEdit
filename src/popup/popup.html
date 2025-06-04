@@ -4,83 +4,203 @@
     <meta charset="UTF-8">
     <title>PageEdit</title>
     <style>
+        /* CSS Variables for Theme Colors - 主题颜色变量 */
+        :root {
+            --bg: #f8f6f1;          /* Background color - 背景色 */
+            --bg-card: #fff;        /* Card background - 卡片背景 */
+            --bg-top: #f3e9d2;      /* Top bar background - 顶部栏背景 */
+            --border: #bfa77a;      /* Border color - 边框颜色 */
+            --border-card: #e5d6b8; /* Card border - 卡片边框 */
+            --text: #4e3b23;        /* Text color - 文本颜色 */
+            --text-title: #7c5c2b;  /* Title text color - 标题文本颜色 */
+            --text-secondary: #bfa77a; /* Secondary text color - 次要文本颜色 */
+            --btn-bg: #fffbe6;      /* Button background - 按钮背景 */
+            --btn-bg-hover: #f3e9d2; /* Button hover background - 按钮悬停背景 */
+            --btn-text: #7c5c2b;    /* Button text color - 按钮文本颜色 */
+            --btn-border: #bfa77a;  /* Button border - 按钮边框 */
+            --btn-hover-border: #d7263d; /* Button hover border - 按钮悬停边框 */
+            --btn-hover-text: #d7263d;  /* Button hover text - 按钮悬停文本 */
+            --shadow: 0 2px 8px rgba(191,167,122,0.08); /* Shadow effect - 阴影效果 */
+        }
+
+        /* Night Theme - 夜间主题 */
+        body[data-theme="night"] {
+            --bg: #3a3a3a;
+            --bg-card: #444;
+            --bg-top: #393939;
+            --border: #666;
+            --border-card: #555;
+            --text: #fff;
+            --text-title: #fff;
+            --text-secondary: #bbb;
+            --btn-bg: #555;
+            --btn-bg-hover: #666;
+            --btn-text: #fff;
+            --btn-border: #888;
+            --btn-hover-border: #fff;
+            --btn-hover-text: #fff;
+            --shadow: 0 2px 8px rgba(0,0,0,0.18);
+        }
+
+        /* Day Theme - 白天主题 */
+        body[data-theme="day"] {
+            --bg: #fff;
+            --bg-card: #fff;
+            --bg-top: #f5f5f5;
+            --border: #ccc;
+            --border-card: #eee;
+            --text: #222;
+            --text-title: #222;
+            --text-secondary: #888;
+            --btn-bg: #fff;
+            --btn-bg-hover: #f0f0f0;
+            --btn-text: #222;
+            --btn-border: #bbb;
+            --btn-hover-border: #222;
+            --btn-hover-text: #222;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* Base Styles - 基础样式 */
         body {
             width: 340px;
             padding: 0;
             margin: 0;
             font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
-            background: linear-gradient(135deg, #f8f6f1 0%, #f3e9d2 100%);
-            color: #4e3b23;
+            background: var(--bg);
+            color: var(--text);
         }
+
+        /* Top Bar Styles - 顶部栏样式 */
         .top-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            height: 38px;
-            background: #f3e9d2;
-            border-bottom: 2px solid #bfa77a;
-            box-shadow: 0 2px 8px rgba(191,167,122,0.08);
+            height: 42px;
+            background: var(--bg-top);
+            border-bottom: 2px solid var(--border);
+            box-shadow: var(--shadow);
             padding: 0 10px;
             position: relative;
-            user-select: none;
         }
-        .drag-icon {
-            font-size: 20px;
-            color: #bfa77a;
-            cursor: move;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
+
+        /* Title Styles - 标题样式 */
         .top-title {
             flex: 1;
             text-align: center;
             font-weight: bold;
             font-size: 16px;
             letter-spacing: 1px;
-            color: #7c5c2b;
+            color: var(--text-title);
             pointer-events: none;
         }
-        .pin-btn {
+
+        /* Top Actions Container - 顶部操作容器 */
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Icon Button Styles - 图标按钮样式 */
+        .icon-btn {
             background: none;
             border: none;
             cursor: pointer;
-            padding: 0;
-            width: 24px;
-            height: 24px;
+            padding: 0 4px;
+            width: 28px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.2s;
+            border-radius: 50%;
+            transition: background 0.2s;
         }
-        .pin-btn svg {
+
+        /* Icon Button Hover State - 图标按钮悬停状态 */
+        .icon-btn:hover {
+            background: var(--btn-bg-hover);
+        }
+
+        /* Icon SVG Styles - 图标SVG样式 */
+        .icon-btn svg {
             width: 20px;
             height: 20px;
-            fill: #bfa77a;
+            fill: var(--text-secondary);
             transition: fill 0.2s, transform 0.2s;
         }
-        .pin-btn.pinned svg {
-            fill: #d7263d;
-            transform: rotate(-30deg) scale(1.1);
+
+        /* Theme-specific Icon Colors - 主题特定的图标颜色 */
+        .icon-btn.theme-day svg {
+            fill: #f7c948;
         }
+
+        .icon-btn.theme-night svg {
+            fill: #7ecfff;
+        }
+
+        /* Style Dropdown Container - 样式下拉容器 */
+        .style-dropdown {
+            position: relative;
+        }
+
+        /* Style Select Dropdown - 样式选择下拉框 */
+        .style-select {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-family: inherit;
+            cursor: pointer;
+            padding: 0 18px 0 4px;
+            border-radius: 6px;
+            height: 28px;
+            appearance: none;
+            outline: none;
+        }
+
+        /* Style Select Hover State - 样式选择悬停状态 */
+        .style-select:hover {
+            background: var(--btn-bg-hover);
+        }
+
+        /* Dropdown Arrow - 下拉箭头 */
+        .style-dropdown::after {
+            content: '▼';
+            position: absolute;
+            right: 6px;
+            top: 7px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        /* Main Container - 主容器 */
         .container {
             padding: 20px 18px 18px 18px;
         }
+
+        /* Input Card - 输入卡片 */
         .input-card {
-            background: #fff;
+            background: var(--bg-card);
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(191,167,122,0.10);
+            box-shadow: var(--shadow);
             padding: 16px 14px 10px 14px;
             margin-bottom: 18px;
-            border: 1.5px solid #e5d6b8;
+            border: 1.5px solid var(--border-card);
             display: flex;
             align-items: center;
         }
+
+        /* Input Prompt - 输入提示符 */
         .input-card .prompt {
-            color: #bfa77a;
+            color: var(--text-secondary);
             font-size: 18px;
             margin-right: 8px;
             font-weight: bold;
         }
+
+        /* User Input Field - 用户输入框 */
         #userInput {
             flex: 1;
             border: none;
@@ -88,20 +208,24 @@
             font-size: 15px;
             font-family: inherit;
             background: transparent;
-            color: #4e3b23;
+            color: var(--text);
         }
+
+        /* Button Row Container - 按钮行容器 */
         .button-row {
             display: flex;
             gap: 14px;
             margin-bottom: 18px;
         }
+
+        /* Main Button Styles - 主按钮样式 */
         .main-btn {
             flex: 1;
             padding: 10px 0;
             border-radius: 10px;
-            border: 2px solid #bfa77a;
-            background: linear-gradient(90deg, #fffbe6 0%, #f3e9d2 100%);
-            color: #7c5c2b;
+            border: 2px solid var(--btn-border);
+            background: var(--btn-bg);
+            color: var(--btn-text);
             font-size: 15px;
             font-family: inherit;
             font-weight: bold;
@@ -109,21 +233,29 @@
             box-shadow: 0 1px 4px rgba(191,167,122,0.08);
             transition: background 0.2s, color 0.2s, border 0.2s;
         }
+
+        /* Main Button Hover State - 主按钮悬停状态 */
         .main-btn:hover {
-            background: linear-gradient(90deg, #f3e9d2 0%, #fffbe6 100%);
-            color: #d7263d;
-            border-color: #d7263d;
+            background: var(--btn-bg-hover);
+            color: var(--btn-hover-text);
+            border-color: var(--btn-hover-border);
         }
+
+        /* History Section - 历史记录部分 */
         .history-section {
             margin-top: 8px;
         }
+
+        /* History Title - 历史记录标题 */
         .history-title {
             font-size: 16px;
             font-weight: bold;
-            color: #7c5c2b;
+            color: var(--text-title);
             margin-bottom: 10px;
             letter-spacing: 1px;
         }
+
+        /* History List Container - 历史记录列表容器 */
         .history-list {
             display: flex;
             flex-direction: column;
@@ -131,23 +263,29 @@
             max-height: 180px;
             overflow-y: auto;
         }
+
+        /* History Card - 历史记录卡片 */
         .history-card {
-            background: #f8f6f1;
+            background: var(--bg-card);
             border-radius: 8px;
             box-shadow: 0 1px 4px rgba(191,167,122,0.07);
             padding: 10px 12px;
             font-size: 13px;
-            color: #4e3b23;
-            border: 1px solid #e5d6b8;
+            color: var(--text);
+            border: 1px solid var(--border-card);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
+        /* History Time - 历史记录时间 */
         .history-time {
-            color: #bfa77a;
+            color: var(--text-secondary);
             font-size: 12px;
             margin-left: 10px;
         }
+
+        /* Feedback Message - 反馈消息 */
         .feedback {
             position: fixed;
             top: 12px;
@@ -162,100 +300,81 @@
             box-shadow: 2px 2px 8px rgba(0,0,0,0.12);
             z-index: 9999;
         }
+
+        /* Success Feedback - 成功反馈 */
         .feedback.success {
-            background-color: #bfa77a;
+            background-color: var(--btn-border);
         }
+
+        /* Error Feedback - 错误反馈 */
         .feedback.error {
             background-color: #d7263d;
         }
+
+        /* Show Feedback - 显示反馈 */
         .feedback.show {
             opacity: 1;
         }
     </style>
 </head>
 <body>
-    <div class="top-bar" id="dragHandle">
-        <span class="drag-icon" title="拖动">☰</span>
+    <!-- Top Bar - 顶部栏 -->
+    <div class="top-bar">
         <span class="top-title">PageEdit</span>
-        <button class="pin-btn" id="pinButton" title="固定/取消固定">
-            <svg viewBox="0 0 24 24">
-                <path d="M17.707 6.293a1 1 0 0 0-1.414 0l-1.086 1.086-4.586-4.586a1 1 0 0 0-1.414 1.414l4.586 4.586-7.086 7.086a1 1 0 1 0 1.414 1.414l7.086-7.086 4.586 4.586a1 1 0 0 0 1.414-1.414l-4.586-4.586 1.086-1.086a1 1 0 0 0 0-1.414z"/>
-            </svg>
-        </button>
+        <div class="top-actions">
+            <!-- Theme Toggle Button - 主题切换按钮 -->
+            <button class="icon-btn" id="themeToggleBtn" title="夜间/白天模式切换">
+                <svg id="themeIcon" viewBox="0 0 24 24">
+                    <!-- Sun Icon - 太阳图标 -->
+                    <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <g stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </g>
+                </svg>
+            </button>
+            <!-- Style Selection Dropdown - 样式选择下拉框 -->
+            <div class="style-dropdown">
+                <select class="style-select" id="styleSelect" title="选择样式">
+                    <option value="retro">复古模式</option>
+                    <option value="night">夜间模式</option>
+                    <option value="day">白天模式</option>
+                </select>
+            </div>
+        </div>
     </div>
+
+    <!-- Main Container - 主容器 -->
     <div class="container">
+        <!-- Input Card - 输入卡片 -->
         <div class="input-card">
             <span class="prompt">&gt;</span>
             <input type="text" id="userInput" placeholder="输入修改指令...">
         </div>
+        <!-- Action Buttons - 操作按钮 -->
         <div class="button-row">
             <button class="main-btn" id="applyButton">应用</button>
             <button class="main-btn" id="undoButton">撤销</button>
         </div>
+        <!-- History Section - 历史记录部分 -->
         <div class="history-section">
             <div class="history-title">历史记录</div>
             <div class="history-list" id="historyContainer">
-                <!-- 历史记录将在这里动态显示 -->
+                <!-- History items will be dynamically added here - 历史记录项将动态添加到这里 -->
             </div>
         </div>
     </div>
+
+    <!-- Feedback Message Container - 反馈消息容器 -->
     <div id="feedback" class="feedback"></div>
+
+    <!-- Scripts - 脚本 -->
     <script src="popup.js"></script>
-    <script>
-        // 拖动功能
-        const dragHandle = document.getElementById('dragHandle');
-        const popup = document.body;
-        let isDragging = false;
-        let currentX;
-        let currentY;
-        let initialX;
-        let initialY;
-        let xOffset = 0;
-        let yOffset = 0;
-        dragHandle.addEventListener('mousedown', dragStart);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', dragEnd);
-        function dragStart(e) {
-            if (e.target.closest('.pin-btn')) return;
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-            isDragging = true;
-        }
-        function drag(e) {
-            if (isDragging) {
-                e.preventDefault();
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
-                xOffset = currentX;
-                yOffset = currentY;
-                setTranslate(currentX, currentY, popup);
-            }
-        }
-        function dragEnd(e) {
-            initialX = currentX;
-            initialY = currentY;
-            isDragging = false;
-        }
-        function setTranslate(xPos, yPos, el) {
-            el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
-        }
-        // 固定功能
-        const pinButton = document.getElementById('pinButton');
-        let isPinned = false;
-        pinButton.addEventListener('click', () => {
-            isPinned = !isPinned;
-            pinButton.classList.toggle('pinned');
-            chrome.runtime.sendMessage({
-                type: 'TOGGLE_PIN',
-                isPinned: isPinned
-            });
-        });
-        chrome.runtime.sendMessage({ type: 'GET_PIN_STATE' }, (response) => {
-            if (response && response.isPinned) {
-                isPinned = true;
-                pinButton.classList.add('pinned');
-            }
-        });
-    </script>
 </body>
-</html> 
+</html>

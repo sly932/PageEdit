@@ -10,6 +10,9 @@ class PopupManager {
     private applyButton: HTMLButtonElement;
     private undoButton: HTMLButtonElement;
     private historyContainer: HTMLDivElement;
+    private themeToggleBtn: HTMLButtonElement;
+    private themeIcon: HTMLElement;
+    private styleSelect: HTMLSelectElement;
 
     constructor() {
         // 初始化DOM元素
@@ -17,12 +20,18 @@ class PopupManager {
         this.applyButton = document.getElementById('applyButton') as HTMLButtonElement;
         this.undoButton = document.getElementById('undoButton') as HTMLButtonElement;
         this.historyContainer = document.getElementById('historyContainer') as HTMLDivElement;
+        this.themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
+        this.themeIcon = document.getElementById('themeIcon') as HTMLElement;
+        this.styleSelect = document.getElementById('styleSelect') as HTMLSelectElement;
 
         // 绑定事件处理器
         this.bindEvents();
         
         // 初始化历史记录显示
         this.loadHistory();
+
+        // 初始化主题
+        this.initializeTheme();
 
         console.log('[popup] PageEdit: Popup loaded');
     }
@@ -44,7 +53,89 @@ class PopupManager {
             }
         });
 
+        // 主题切换按钮点击事件
+        this.themeToggleBtn.addEventListener('click', () => this.handleThemeToggle());
+
+        // 样式选择变更事件
+        this.styleSelect.addEventListener('change', (e) => {
+            const target = e.target as HTMLSelectElement;
+            this.setTheme(target.value);
+        });
+
         console.log('[popup] PageEdit: Popup events bound');
+    }
+
+    /**
+     * 初始化主题
+     */
+    private initializeTheme(): void {
+        const savedTheme = localStorage.getItem('pageedit-theme') || 'retro';
+        console.log('[Theme] Initializing with saved theme:', savedTheme);
+        this.setTheme(savedTheme);
+    }
+
+    /**
+     * 处理主题切换
+     */
+    private handleThemeToggle(): void {
+        const current = document.body.getAttribute('data-theme') || 'retro';
+        console.log('[Theme] Current theme:', current);
+        let newTheme;
+        if (current === 'night') {
+            newTheme = 'day';
+        } else if (current === 'day') {
+            newTheme = 'retro';
+        } else {
+            newTheme = 'night';
+        }
+        console.log('[Theme] Switching to new theme:', newTheme);
+        this.setTheme(newTheme);
+    }
+
+    /**
+     * 设置主题
+     */
+    private setTheme(theme: string): void {
+        console.log('[Theme] Setting theme to:', theme);
+        // Remove data-theme for retro mode - 复古模式时移除 data-theme
+        if (theme === 'retro') {
+            console.log('[Theme] Removing data-theme attribute');
+            document.body.removeAttribute('data-theme');
+        } else {
+            console.log('[Theme] Setting data-theme to:', theme);
+            document.body.setAttribute('data-theme', theme);
+        }
+        // Update icon based on theme - 根据主题更新图标
+        if (theme === 'night') {
+            console.log('[Theme] Updating icon to night mode');
+            this.themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 1 0 9.79 9.79z" stroke="currentColor" stroke-width="2" fill="none"/>';
+            this.themeToggleBtn.classList.remove('theme-day');
+            this.themeToggleBtn.classList.add('theme-night');
+        } else if (theme === 'day') {
+            console.log('[Theme] Updating icon to day mode');
+            this.themeIcon.innerHTML = '<circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/>' +
+                '<g stroke="currentColor" stroke-width="2">' +
+                '<line x1="12" y1="1" x2="12" y2="3"/>' +
+                '<line x1="12" y1="21" x2="12" y2="23"/>' +
+                '<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>' +
+                '<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>' +
+                '<line x1="1" y1="12" x2="3" y2="12"/>' +
+                '<line x1="21" y1="12" x2="23" y2="12"/>' +
+                '<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>' +
+                '<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>' +
+                '</g>';
+            this.themeToggleBtn.classList.remove('theme-night');
+            this.themeToggleBtn.classList.add('theme-day');
+        } else {
+            // Retro theme - 复古主题
+            console.log('[Theme] Updating icon to retro mode');
+            this.themeIcon.innerHTML = '<circle cx="12" cy="12" r="8" stroke="#bfa77a" stroke-width="2" fill="none"/>';
+            this.themeToggleBtn.classList.remove('theme-night', 'theme-day');
+        }
+        // Save theme to localStorage - 保存主题到localStorage
+        console.log('[Theme] Saving theme to localStorage:', theme);
+        localStorage.setItem('pageedit-theme', theme);
+        this.styleSelect.value = theme;
     }
 
     /**
