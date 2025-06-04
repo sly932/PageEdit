@@ -115,34 +115,6 @@ export class ContentManager {
     }
 
     /**
-     * 应用样式修改
-     * @param element 目标元素
-     * @param modification 修改对象
-     * @returns 是否修改成功
-     */
-    private async applyStyleModification(element: HTMLElement, modification: Modification): Promise<boolean> {
-        console.log('[content] PageEdit: Applying style modification:', modification);
-        
-        // 保存原始值
-        modification.originalValue = element.style[modification.property as any] || '';
-        
-        // 尝试多种样式修改方式
-        const success = StyleModifier.modifyStyle({
-            element,
-            property: modification.property,
-            value: modification.value,
-            method: modification.method
-        }) || StyleModifier.modifyByClass(element, modification.value) ||
-             StyleModifier.modifyByCSSRule(modification);
-
-        if (!success) {
-            console.error('[content] PageEdit: All style modification attempts failed');
-        }
-        
-        return success;
-    }
-
-    /**
      * 解析用户输入
      * @param text 用户输入的自然语言
      * @returns 解析结果
@@ -187,40 +159,34 @@ export class ContentManager {
             // 应用所有修改
             for (const modification of parseResult.modifications) {
                 try {
-                    // 查找目标元素
-                    const { element } = await this.findElement(
-                        modification.target,
-                        modification.location
-                    );
+                    // 获取所有匹配的元素
+                    const elements = Array.from(document.querySelectorAll(modification.target)) as HTMLElement[];
                     
-                    if (!element) {
-                        console.error('Target element not found:', modification.target);
+                    if (elements.length === 0) {
+                        console.warn('No elements found for selector:', modification.target);
                         continue;
                     }
 
-                    // 保存原始值用于撤销
-                    const originalValue = element.style[modification.property as any];
-                    
-                    // 创建样式修改对象
-                    const styleModification: StyleModification = {
-                        element,
+                    // 应用修改
+                    const success = StyleModifier.applyModification({
                         property: modification.property,
                         value: modification.value,
-                        method: modification.method
-                    };
+                        method: modification.method,
+                        target: modification.target
+                    });
                     
-                    // 应用修改
-                    const success = StyleModifier.applyModification(styleModification);
                     if (!success) {
                         throw new Error(`Failed to apply modification: ${modification.property}`);
                     }
 
-                    // 添加到撤销栈
-                    this.undoStack.push({
-                        element,
-                        property: modification.property,
-                        originalValue,
-                        method: modification.method
+                    // 保存所有元素的原始值用于撤销
+                    elements.forEach(element => {
+                        this.undoStack.push({
+                            element,
+                            property: modification.property,
+                            originalValue: element.style[modification.property as any] || '',
+                            method: modification.method
+                        });
                     });
                 } catch (error) {
                     console.error('Failed to apply modification:', error);

@@ -84,7 +84,10 @@ export interface StyleModification {
   property: string;
   // 新的样式值
   value: string;
+  // 修改方法
   method: ModificationMethod;
+  // 目标选择器
+  target: string;
 }
 
 /**

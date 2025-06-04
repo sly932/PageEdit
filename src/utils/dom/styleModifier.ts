@@ -10,20 +10,16 @@ export class StyleModifier {
    * @param modification 样式修改对象
    * @returns 是否修改成功
    */
-  static applyModification(modification: StyleModification): boolean {
+  static applyModification(modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>): boolean {
     try {
       switch (modification.method) {
         case 'style':
           // 使用 style 标签方式
-          return this.modifyByCSSRule({
-            target: modification.element.tagName.toLowerCase(),
-            property: modification.property,
-            value: modification.value,
-            method: modification.method
-          });
+          return this.modifyByCSSRule(modification);
         case 'DOM':
           // 使用直接 DOM 方式
-          return this.modifyStyle(modification);
+          const elements = Array.from(document.querySelectorAll(modification.target)) as HTMLElement[];
+          return elements.every(element => this.modifyStyle(element, modification.property, modification.value));
         default:
           console.warn('Unknown modification method:', modification.method);
           return false;
@@ -36,20 +32,21 @@ export class StyleModifier {
 
   /**
    * 直接修改元素样式
-   * @param modification 样式修改对象
+   * @param element 目标元素
+   * @param property 样式属性
+   * @param value 样式值
    * @returns 是否修改成功
    */
-  static modifyStyle(modification: StyleModification): boolean {
+  static modifyStyle(element: HTMLElement, property: string, value: string): boolean {
     try {
       // 保存原始样式
-      const property = modification.property;
       if (property === 'length' || property === 'parentRule') {
         console.warn(`不能修改只读属性: ${property}`);
         return false;
       }
       
       // 应用新样式
-      (modification.element.style as any)[property] = modification.value;
+      (element.style as any)[property] = value;
       
       // 返回修改是否成功
       return true;
