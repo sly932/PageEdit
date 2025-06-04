@@ -5,214 +5,257 @@
     <title>PageEdit</title>
     <style>
         body {
-            width: 320px;
-            padding: 20px;
-            font-family: 'Courier New', monospace;
-            background-color: #f5f5f5;
-            color: #333;
-            line-height: 1.6;
+            width: 340px;
+            padding: 0;
+            margin: 0;
+            font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+            background: linear-gradient(135deg, #f8f6f1 0%, #f3e9d2 100%);
+            color: #4e3b23;
         }
-
-        .input-container {
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        #userInput {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #8b7355;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: 'Courier New', monospace;
-            background-color: #fff;
-            box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
-
-        #userInput:focus {
-            outline: none;
-            border-color: #6b4f3d;
-            box-shadow: 2px 2px 8px rgba(139,115,85,0.2);
-        }
-
-        .button-container {
+        .top-bar {
             display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
+            align-items: center;
+            justify-content: space-between;
+            height: 38px;
+            background: #f3e9d2;
+            border-bottom: 2px solid #bfa77a;
+            box-shadow: 0 2px 8px rgba(191,167,122,0.08);
+            padding: 0 10px;
+            position: relative;
+            user-select: none;
         }
-
-        button {
+        .drag-icon {
+            font-size: 20px;
+            color: #bfa77a;
+            cursor: move;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .top-title {
             flex: 1;
-            padding: 10px 16px;
-            border: 2px solid #8b7355;
-            border-radius: 6px;
-            background-color: #fff;
-            color: #6b4f3d;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
+            text-align: center;
             font-weight: bold;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
+            font-size: 16px;
+            letter-spacing: 1px;
+            color: #7c5c2b;
+            pointer-events: none;
+        }
+        .pin-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        .pin-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #bfa77a;
+            transition: fill 0.2s, transform 0.2s;
+        }
+        .pin-btn.pinned svg {
+            fill: #d7263d;
+            transform: rotate(-30deg) scale(1.1);
+        }
+        .container {
+            padding: 20px 18px 18px 18px;
+        }
+        .input-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(191,167,122,0.10);
+            padding: 16px 14px 10px 14px;
+            margin-bottom: 18px;
+            border: 1.5px solid #e5d6b8;
+            display: flex;
+            align-items: center;
+        }
+        .input-card .prompt {
+            color: #bfa77a;
+            font-size: 18px;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+        #userInput {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            font-family: inherit;
+            background: transparent;
+            color: #4e3b23;
+        }
+        .button-row {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .main-btn {
+            flex: 1;
+            padding: 10px 0;
+            border-radius: 10px;
+            border: 2px solid #bfa77a;
+            background: linear-gradient(90deg, #fffbe6 0%, #f3e9d2 100%);
+            color: #7c5c2b;
+            font-size: 15px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(191,167,122,0.08);
+            transition: background 0.2s, color 0.2s, border 0.2s;
+        }
+        .main-btn:hover {
+            background: linear-gradient(90deg, #f3e9d2 0%, #fffbe6 100%);
+            color: #d7263d;
+            border-color: #d7263d;
+        }
+        .history-section {
+            margin-top: 8px;
+        }
+        .history-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #7c5c2b;
+            margin-bottom: 10px;
             letter-spacing: 1px;
         }
-
-        button:hover {
-            background-color: #8b7355;
-            color: #fff;
-            transform: translateY(-1px);
-        }
-
-        button:disabled {
-            background-color: #e0e0e0;
-            border-color: #ccc;
-            color: #999;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .tab-container {
-            background-color: #fff;
-            border: 2px solid #8b7355;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .tab-buttons {
+        .history-list {
             display: flex;
-            background-color: #f0e6d2;
-            border-bottom: 2px solid #8b7355;
-        }
-
-        .tab-button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            background: none;
-            color: #6b4f3d;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .tab-button.active {
-            background-color: #8b7355;
-            color: #fff;
-        }
-
-        .history-container {
-            max-height: 200px;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 180px;
             overflow-y: auto;
-            padding: 15px;
-            background-color: #fff;
         }
-
-        .history-container::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .history-container::-webkit-scrollbar-track {
-            background: #f0e6d2;
-        }
-
-        .history-container::-webkit-scrollbar-thumb {
-            background: #8b7355;
-            border-radius: 4px;
-        }
-
-        .history-item {
-            padding: 10px;
-            border-bottom: 1px solid #e0d6c2;
+        .history-card {
+            background: #f8f6f1;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(191,167,122,0.07);
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #4e3b23;
+            border: 1px solid #e5d6b8;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 13px;
         }
-
-        .history-item:last-child {
-            border-bottom: none;
-        }
-
         .history-time {
-            color: #8b7355;
+            color: #bfa77a;
             font-size: 12px;
+            margin-left: 10px;
         }
-
-        .history-action {
-            color: #6b4f3d;
-            font-size: 12px;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-
         .feedback {
             position: fixed;
-            top: 10px;
-            right: 10px;
+            top: 12px;
+            right: 18px;
             padding: 12px 24px;
-            border-radius: 6px;
+            border-radius: 8px;
             color: #fff;
             font-size: 14px;
             opacity: 0;
             transition: opacity 0.3s;
-            font-family: 'Courier New', monospace;
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+            font-family: inherit;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.12);
+            z-index: 9999;
         }
-
         .feedback.success {
-            background-color: #8b7355;
+            background-color: #bfa77a;
         }
-
         .feedback.error {
-            background-color: #c17f59;
+            background-color: #d7263d;
         }
-
         .feedback.show {
             opacity: 1;
-        }
-
-        /* 复古装饰元素 */
-        .input-container::before {
-            content: ">";
-            position: absolute;
-            left: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #8b7355;
-            font-weight: bold;
-        }
-
-        #userInput {
-            padding-left: 24px;
         }
     </style>
 </head>
 <body>
-    <div class="input-container">
-        <input type="text" id="userInput" placeholder="输入修改指令...">
+    <div class="top-bar" id="dragHandle">
+        <span class="drag-icon" title="拖动">☰</span>
+        <span class="top-title">PageEdit</span>
+        <button class="pin-btn" id="pinButton" title="固定/取消固定">
+            <svg viewBox="0 0 24 24">
+                <path d="M17.707 6.293a1 1 0 0 0-1.414 0l-1.086 1.086-4.586-4.586a1 1 0 0 0-1.414 1.414l4.586 4.586-7.086 7.086a1 1 0 1 0 1.414 1.414l7.086-7.086 4.586 4.586a1 1 0 0 0 1.414-1.414l-4.586-4.586 1.086-1.086a1 1 0 0 0 0-1.414z"/>
+            </svg>
+        </button>
     </div>
-    <div class="button-container">
-        <button id="applyButton">应用</button>
-        <button id="undoButton">撤销</button>
-    </div>
-    
-    <div class="tab-container">
-        <div class="tab-buttons">
-            <button class="tab-button active" data-tab="history">历史记录</button>
+    <div class="container">
+        <div class="input-card">
+            <span class="prompt">&gt;</span>
+            <input type="text" id="userInput" placeholder="输入修改指令...">
         </div>
-        
-        <div id="historyTab" class="tab-content active">
-            <div class="history-container" id="historyContainer">
+        <div class="button-row">
+            <button class="main-btn" id="applyButton">应用</button>
+            <button class="main-btn" id="undoButton">撤销</button>
+        </div>
+        <div class="history-section">
+            <div class="history-title">历史记录</div>
+            <div class="history-list" id="historyContainer">
                 <!-- 历史记录将在这里动态显示 -->
             </div>
         </div>
     </div>
-    
     <div id="feedback" class="feedback"></div>
-    
     <script src="popup.js"></script>
+    <script>
+        // 拖动功能
+        const dragHandle = document.getElementById('dragHandle');
+        const popup = document.body;
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+        dragHandle.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+        function dragStart(e) {
+            if (e.target.closest('.pin-btn')) return;
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+            isDragging = true;
+        }
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                setTranslate(currentX, currentY, popup);
+            }
+        }
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+        }
+        // 固定功能
+        const pinButton = document.getElementById('pinButton');
+        let isPinned = false;
+        pinButton.addEventListener('click', () => {
+            isPinned = !isPinned;
+            pinButton.classList.toggle('pinned');
+            chrome.runtime.sendMessage({
+                type: 'TOGGLE_PIN',
+                isPinned: isPinned
+            });
+        });
+        chrome.runtime.sendMessage({ type: 'GET_PIN_STATE' }, (response) => {
+            if (response && response.isPinned) {
+                isPinned = true;
+                pinButton.classList.add('pinned');
+            }
+        });
+    </script>
 </body>
 </html> 
