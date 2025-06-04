@@ -45,6 +45,7 @@ export interface Modification {
     originalValue?: string;
     options?: LayoutOptions;
     timestamp: number;
+    location?: ElementLocation;
 }
 
 /**

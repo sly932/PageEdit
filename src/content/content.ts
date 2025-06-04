@@ -1,4 +1,4 @@
-import { Message, Modification, UserInput } from '../types';
+import { Message, Modification, UserInput, ElementLocation } from '../types';
 import { ElementLocator } from '../utils/dom/elementLocator';
 import { StyleModifier } from '../utils/dom/styleModifier';
 import { LayoutManager } from '../utils/dom/layoutManager';
@@ -56,6 +56,87 @@ class ContentManager {
     }
 
     /**
+     * 查找目标元素
+     * @param target 目标元素标识
+     * @param savedLocation 保存的定位信息（可选）
+     * @returns 找到的元素和定位信息
+     */
+    private async findElement(target: string, savedLocation?: ElementLocation): Promise<{ element: HTMLElement | null; location: ElementLocation }> {
+        console.log('[content] PageEdit: Finding element:', target);
+        
+        // 1. 优先使用保存的定位信息
+        if (savedLocation) {
+            console.log('[content] PageEdit: Using saved location:', savedLocation);
+            const element = document.querySelector(savedLocation.selector) as HTMLElement;
+            if (element) {
+                return { element, location: savedLocation };
+            }
+        }
+
+        // 2. 尝试选择器定位
+        const selectorLocation = ElementLocator.findBySelector(target);
+        if (selectorLocation.confidence > 0) {
+            const element = document.querySelector(selectorLocation.selector) as HTMLElement;
+            if (element) {
+                return { element, location: selectorLocation };
+            }
+        }
+
+        // 3. 尝试文本定位
+        const textLocation = ElementLocator.findByText(target);
+        if (textLocation.confidence > 0) {
+            const element = document.querySelector(textLocation.selector) as HTMLElement;
+            if (element) {
+                return { element, location: textLocation };
+            }
+        }
+
+        // 4. 如果target看起来像坐标，尝试坐标定位
+        if (/^\d+,\d+$/.test(target)) {
+            const [x, y] = target.split(',').map(Number);
+            const positionLocation = ElementLocator.findByPosition(x, y);
+            if (positionLocation.confidence > 0) {
+                const element = document.querySelector(positionLocation.selector) as HTMLElement;
+                if (element) {
+                    return { element, location: positionLocation };
+                }
+            }
+        }
+
+        console.warn('[content] PageEdit: Failed to find element with any method');
+        return { element: null, location: { selector: '', method: 'selector', confidence: 0 } };
+    }
+
+    /**
+     * 应用样式修改
+     * @param element 目标元素
+     * @param modification 修改对象
+     * @returns 是否修改成功
+     */
+    private async applyStyleModification(element: HTMLElement, modification: Modification): Promise<boolean> {
+        console.log('[content] PageEdit: Applying style modification:', modification);
+        
+        // 保存原始值
+        modification.originalValue = element.style[modification.property as any] || '';
+        
+        // 尝试多种样式修改方式
+        const success = StyleModifier.modifyStyle({
+            element,
+            property: modification.property,
+            value: modification.value
+        }) || StyleModifier.modifyByClass(element, modification.value) ||
+             StyleModifier.modifyByCSSRule(modification.target, {
+                 [modification.property]: modification.value
+             });
+
+        if (!success) {
+            console.error('[content] PageEdit: All style modification attempts failed');
+        }
+        
+        return success;
+    }
+
+    /**
      * 处理页面修改请求
      * @param data 修改数据
      */
@@ -70,9 +151,8 @@ class ContentManager {
                 return;
             }
 
-            // 定位目标元素
-            const element = document.querySelector(modification.target) as HTMLElement;
-            console.log('[content] PageEdit: Target element:', element);
+            // 查找目标元素
+            const { element, location } = await this.findElement(modification.target);
             if (!element) {
                 console.error('[content] PageEdit: Target element not found:', modification.target);
                 return;
@@ -83,13 +163,7 @@ class ContentManager {
             switch (modification.type) {
                 case 'style':
                     console.log('[content] PageEdit: Applying style modification');
-                    // 保存原始值
-                    modification.originalValue = element.style[modification.property as any] || '';
-                    success = StyleModifier.modifyStyle({
-                        element,
-                        property: modification.property,
-                        value: modification.value
-                    });
+                    success = await this.applyStyleModification(element, modification);
                     break;
                 case 'layout':
                     console.log('[content] PageEdit: Applying layout modification');
@@ -100,12 +174,15 @@ class ContentManager {
             console.log('[content] PageEdit: Modification success:', success);
             if (success) {
                 // 保存修改历史
-                await HistoryManager.saveModification(modification);
+                await HistoryManager.saveModification({
+                    ...modification,
+                    location // 添加定位信息到历史记录
+                });
                 console.log('[content] PageEdit: Modification saved to history');
             }
         } catch (error) {
             console.error('[content] PageEdit: Failed to modify page:', error);
-            throw error; // 重新抛出错误，让调用者处理
+            throw error;
         }
     }
 
@@ -167,28 +244,45 @@ class ContentManager {
         try {
             // 获取最后一次修改
             const lastModification = await HistoryManager.undoLastModification();
-            if (!lastModification) return;
+            if (!lastModification) {
+                console.log('[content] PageEdit: No modification to undo');
+                return;
+            }
 
-            // 定位目标元素
-            const element = document.querySelector(lastModification.target) as HTMLElement;
-            if (!element) return;
+            // 使用保存的定位信息查找元素
+            const { element, location } = await this.findElement(
+                lastModification.target,
+                lastModification.location
+            );
+            
+            if (!element) {
+                console.error('[content] PageEdit: Target element not found for undo:', lastModification.target);
+                return;
+            }
 
             // 根据修改类型撤销
+            let success = false;
             switch (lastModification.type) {
                 case 'style':
-                    StyleModifier.restoreStyle(
+                    success = StyleModifier.restoreStyle(
                         element,
                         lastModification.property,
-                        lastModification.originalValue || '' // 使用保存的原始值
+                        lastModification.originalValue || ''
                     );
                     break;
                 case 'layout':
-                    // 撤销布局修改
-                    this.undoLayoutModification(element, lastModification);
+                    success = this.undoLayoutModification(element, lastModification);
                     break;
             }
+
+            if (success) {
+                console.log('[content] PageEdit: Successfully undone modification with location:', location);
+            } else {
+                console.error('[content] PageEdit: Failed to undo modification');
+            }
         } catch (error) {
-            console.error('Failed to undo modification:', error);
+            console.error('[content] PageEdit: Failed to undo modification:', error);
+            throw error;
         }
     }
 
@@ -196,8 +290,9 @@ class ContentManager {
      * 撤销布局修改
      * @param element 目标元素
      * @param modification 修改对象
+     * @returns 是否撤销成功
      */
-    private undoLayoutModification(element: HTMLElement, modification: Modification): void {
+    private undoLayoutModification(element: HTMLElement, modification: Modification): boolean {
         try {
             switch (modification.property) {
                 case 'flex':
@@ -207,27 +302,30 @@ class ContentManager {
                     element.style.justifyContent = '';
                     element.style.alignItems = '';
                     element.style.gap = '';
-                    break;
+                    return true;
                 case 'size':
                     element.style.width = '';
                     element.style.height = '';
                     element.style.minWidth = '';
                     element.style.maxWidth = '';
-                    break;
+                    return true;
                 case 'spacing':
                     element.style.margin = '';
                     element.style.padding = '';
                     element.style.gap = '';
-                    break;
+                    return true;
                 case 'position':
                     element.style.position = '';
                     element.style.top = '';
                     element.style.left = '';
                     element.style.zIndex = '';
-                    break;
+                    return true;
+                default:
+                    return false;
             }
         } catch (error) {
-            console.error('Failed to undo layout modification:', error);
+            console.error('[content] PageEdit: Failed to undo layout modification:', error);
+            return false;
         }
     }
 
