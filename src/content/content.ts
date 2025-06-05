@@ -63,58 +63,6 @@ export class ContentManager {
     }
 
     /**
-     * 查找目标元素
-     * @param target 目标元素标识
-     * @param savedLocation 保存的定位信息（可选）
-     * @returns 找到的元素和定位信息
-     */
-    private async findElement(target: string, savedLocation?: ElementLocation): Promise<{ element: HTMLElement | null; location: ElementLocation }> {
-        console.log('[content] PageEdit: Finding element:', target);
-        
-        // 1. 优先使用保存的定位信息
-        if (savedLocation) {
-            console.log('[content] PageEdit: Using saved location:', savedLocation);
-            const element = document.querySelector(savedLocation.selector) as HTMLElement;
-            if (element) {
-                return { element, location: savedLocation };
-            }
-        }
-
-        // 2. 尝试选择器定位
-        const selectorLocation = ElementLocator.findBySelector(target);
-        if (selectorLocation.confidence > 0) {
-            const element = document.querySelector(selectorLocation.selector) as HTMLElement;
-            if (element) {
-                return { element, location: selectorLocation };
-            }
-        }
-
-        // 3. 尝试文本定位
-        const textLocation = ElementLocator.findByText(target);
-        if (textLocation.confidence > 0) {
-            const element = document.querySelector(textLocation.selector) as HTMLElement;
-            if (element) {
-                return { element, location: textLocation };
-            }
-        }
-
-        // 4. 如果target看起来像坐标，尝试坐标定位
-        if (/^\d+,\d+$/.test(target)) {
-            const [x, y] = target.split(',').map(Number);
-            const positionLocation = ElementLocator.findByPosition(x, y);
-            if (positionLocation.confidence > 0) {
-                const element = document.querySelector(positionLocation.selector) as HTMLElement;
-                if (element) {
-                    return { element, location: positionLocation };
-                }
-            }
-        }
-
-        console.warn('[content] PageEdit: Failed to find element with any method');
-        return { element: null, location: { selector: '', method: 'selector', confidence: 0 } };
-    }
-
-    /**
      * 解析用户输入
      * @param text 用户输入的自然语言
      * @returns 解析结果
