@@ -1,6 +1,5 @@
 import { Message, Modification, UserInput, ElementLocation, ParseResult, ModificationMethod, StyleModification } from '../types';
 import { StyleService } from './services/styleService';
-import { LayoutService } from './services/layoutService';
 import { HistoryManager } from '../utils/storage/historyManager';
 import { NLPProcessor } from '../utils/nlp/nlpProcessor';
 
@@ -11,13 +10,6 @@ console.log('[content] PageEdit: Content script loaded at', new Date().toISOStri
  * 处理页面修改和与popup的通信
  */
 export class ContentManager {
-    private undoStack: Array<{
-        element: HTMLElement;
-        property: string;
-        originalValue: string;
-        method: ModificationMethod;
-    }> = [];
-
     constructor() {
         console.log('[content] PageEdit: ContentManager initialized');
         // 初始化消息监听
@@ -42,18 +34,6 @@ export class ContentManager {
                         })
                         .catch(error => {
                             console.error('[content] PageEdit: Error handling MODIFY_PAGE:', error);
-                            sendResponse({ success: false, error: error.message });
-                        });
-                    return true; // 保持消息通道开放
-                case 'UNDO':
-                    console.log('[content] PageEdit: Handling UNDO message');
-                    this.handleUndo()
-                        .then(() => {
-                            console.log('[content] PageEdit: Undo completed successfully');
-                            sendResponse({ success: true });
-                        })
-                        .catch(error => {
-                            console.error('[content] PageEdit: Error handling UNDO:', error);
                             sendResponse({ success: false, error: error.message });
                         });
                     return true; // 保持消息通道开放
@@ -141,16 +121,6 @@ export class ContentManager {
                         if (!success) {
                             throw new Error(`Failed to apply modification: ${modification.property}`);
                         }
-
-                        // 保存所有元素的原始值用于撤销
-                        elements.forEach(element => {
-                            this.undoStack.push({
-                                element,
-                                property: modification.property,
-                                originalValue: element.style[modification.property as any] || '',
-                                method: modification.method
-                            });
-                        });
                     }
                 } catch (error) {
                     console.error('Failed to apply modification:', error);
@@ -160,135 +130,6 @@ export class ContentManager {
         } catch (error) {
             console.error('Failed to handle page modification:', error);
             throw error;
-        }
-    }
-
-    /**
-     * 应用布局修改
-     * @param element 目标元素
-     * @param modification 修改对象
-     * @returns 是否修改成功
-     */
-    private applyLayoutModification(element: HTMLElement, modification: Modification): boolean {
-        try {
-            switch (modification.property) {
-                case 'flex':
-                    return LayoutService.createFlexContainer(`#${element.id}`, {
-                        direction: modification.value as 'row' | 'column',
-                        justify: modification.options?.justify as any,
-                        align: modification.options?.align as any,
-                        gap: modification.options?.gap
-                    });
-                case 'grid':
-                    return LayoutService.createGridContainer(`#${element.id}`, {
-                        columns: modification.options?.columns,
-                        rows: modification.options?.rows,
-                        gap: modification.options?.gap
-                    });
-                case 'size':
-                    return LayoutService.setElementSize(`#${element.id}`, {
-                        width: modification.options?.width,
-                        height: modification.options?.height,
-                        minWidth: modification.options?.minWidth,
-                        maxWidth: modification.options?.maxWidth
-                    });
-                case 'spacing':
-                    return LayoutService.setElementSpacing(`#${element.id}`, {
-                        margin: modification.options?.margin,
-                        padding: modification.options?.padding,
-                        gap: modification.options?.gap
-                    });
-                case 'position':
-                    return LayoutService.setElementPosition(`#${element.id}`, {
-                        position: modification.value as any,
-                        top: modification.options?.top,
-                        left: modification.options?.left,
-                        zIndex: modification.options?.zIndex
-                    });
-                default:
-                    return false;
-            }
-        } catch (error) {
-            console.error('Layout modification failed:', error);
-            return false;
-        }
-    }
-
-    /**
-     * 处理撤销请求
-     */
-    private async handleUndo(): Promise<void> {
-        try {
-            const lastModification = this.undoStack.pop();
-            if (lastModification) {
-                const success = StyleService.restoreStyle(
-                    lastModification.element,
-                    lastModification.property,
-                    lastModification.originalValue,
-                    lastModification.method
-                );
-                if (!success) {
-                    throw new Error('Failed to restore style');
-                }
-            }
-        } catch (error) {
-            console.error('Failed to handle undo:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 撤销布局修改
-     * @param element 目标元素
-     * @param modification 修改对象
-     * @returns 是否撤销成功
-     */
-    private undoLayoutModification(element: HTMLElement, modification: Modification): boolean {
-        try {
-            switch (modification.property) {
-                case 'flex':
-                case 'grid':
-                    element.style.display = '';
-                    element.style.flexDirection = '';
-                    element.style.justifyContent = '';
-                    element.style.alignItems = '';
-                    element.style.gap = '';
-                    return true;
-                case 'size':
-                    element.style.width = '';
-                    element.style.height = '';
-                    element.style.minWidth = '';
-                    element.style.maxWidth = '';
-                    return true;
-                case 'spacing':
-                    element.style.margin = '';
-                    element.style.padding = '';
-                    element.style.gap = '';
-                    return true;
-                case 'position':
-                    element.style.position = '';
-                    element.style.top = '';
-                    element.style.left = '';
-                    element.style.zIndex = '';
-                    return true;
-                default:
-                    return false;
-            }
-        } catch (error) {
-            console.error('[content] PageEdit: Failed to undo layout modification:', error);
-            return false;
-        }
-    }
-
-    private undoLastModification(): void {
-        const lastModification = this.undoStack.pop();
-        if (lastModification) {
-            StyleService.restoreStyle(
-                lastModification.element,
-                lastModification.property,
-                lastModification.originalValue,
-                lastModification.method
-            );
         }
     }
 }
