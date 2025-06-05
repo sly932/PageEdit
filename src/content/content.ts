@@ -1,7 +1,6 @@
 import { Message, Modification, UserInput, ElementLocation, ParseResult, ModificationMethod, StyleModification } from '../types';
-import { ElementLocator } from '../utils/dom/elementLocator';
-import { StyleModifier } from '../utils/dom/styleModifier';
-import { LayoutManager } from '../utils/dom/layoutManager';
+import { StyleService } from './services/styleService';
+import { LayoutService } from './services/layoutService';
 import { HistoryManager } from '../utils/storage/historyManager';
 import { NLPProcessor } from '../utils/nlp/nlpProcessor';
 
@@ -112,7 +111,7 @@ export class ContentManager {
                     
                     if (isPseudoSelector) {
                         // 对于伪类/伪元素，直接应用样式规则
-                        const success = StyleModifier.applyModification({
+                        const success = StyleService.applyModification({
                             property: modification.property,
                             value: modification.value,
                             method: 'style',  // 强制使用 style 方法
@@ -132,7 +131,7 @@ export class ContentManager {
                         }
 
                         // 应用修改
-                        const success = StyleModifier.applyModification({
+                        const success = StyleService.applyModification({
                             property: modification.property,
                             value: modification.value,
                             method: modification.method,
@@ -174,33 +173,33 @@ export class ContentManager {
         try {
             switch (modification.property) {
                 case 'flex':
-                    return LayoutManager.createFlexContainer(`#${element.id}`, {
+                    return LayoutService.createFlexContainer(`#${element.id}`, {
                         direction: modification.value as 'row' | 'column',
                         justify: modification.options?.justify as any,
                         align: modification.options?.align as any,
                         gap: modification.options?.gap
                     });
                 case 'grid':
-                    return LayoutManager.createGridContainer(`#${element.id}`, {
+                    return LayoutService.createGridContainer(`#${element.id}`, {
                         columns: modification.options?.columns,
                         rows: modification.options?.rows,
                         gap: modification.options?.gap
                     });
                 case 'size':
-                    return LayoutManager.setElementSize(`#${element.id}`, {
+                    return LayoutService.setElementSize(`#${element.id}`, {
                         width: modification.options?.width,
                         height: modification.options?.height,
                         minWidth: modification.options?.minWidth,
                         maxWidth: modification.options?.maxWidth
                     });
                 case 'spacing':
-                    return LayoutManager.setElementSpacing(`#${element.id}`, {
+                    return LayoutService.setElementSpacing(`#${element.id}`, {
                         margin: modification.options?.margin,
                         padding: modification.options?.padding,
                         gap: modification.options?.gap
                     });
                 case 'position':
-                    return LayoutManager.setElementPosition(`#${element.id}`, {
+                    return LayoutService.setElementPosition(`#${element.id}`, {
                         position: modification.value as any,
                         top: modification.options?.top,
                         left: modification.options?.left,
@@ -222,7 +221,7 @@ export class ContentManager {
         try {
             const lastModification = this.undoStack.pop();
             if (lastModification) {
-                const success = StyleModifier.restoreStyle(
+                const success = StyleService.restoreStyle(
                     lastModification.element,
                     lastModification.property,
                     lastModification.originalValue,
@@ -284,7 +283,7 @@ export class ContentManager {
     private undoLastModification(): void {
         const lastModification = this.undoStack.pop();
         if (lastModification) {
-            StyleModifier.restoreStyle(
+            StyleService.restoreStyle(
                 lastModification.element,
                 lastModification.property,
                 lastModification.originalValue,
