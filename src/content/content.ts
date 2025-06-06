@@ -1,6 +1,5 @@
 import { Message, Modification, UserInput, ElementLocation, ParseResult, ModificationMethod, StyleModification } from '../types';
 import { StyleService } from './services/styleService';
-import { HistoryManager } from '../utils/storage/historyManager';
 import { NLPProcessor } from '../utils/nlp/nlpProcessor';
 
 console.log('[content] PageEdit: Content script loaded at', new Date().toISOString());

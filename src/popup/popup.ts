@@ -1,5 +1,4 @@
 import { Message, Modification } from '../types';
-import { HistoryManager } from '../utils/storage/historyManager';
 
 /**
  * Popup页面的主要类
@@ -8,8 +7,6 @@ import { HistoryManager } from '../utils/storage/historyManager';
 class PopupManager {
     private userInput: HTMLInputElement;
     private applyButton: HTMLButtonElement;
-    private undoButton: HTMLButtonElement;
-    private historyContainer: HTMLDivElement;
     private themeToggleBtn: HTMLButtonElement;
     private themeIcon: HTMLElement;
     private styleSelect: HTMLSelectElement;
@@ -18,8 +15,6 @@ class PopupManager {
         // 初始化DOM元素
         this.userInput = document.getElementById('userInput') as HTMLInputElement;
         this.applyButton = document.getElementById('applyButton') as HTMLButtonElement;
-        this.undoButton = document.getElementById('undoButton') as HTMLButtonElement;
-        this.historyContainer = document.getElementById('historyContainer') as HTMLDivElement;
         this.themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
         this.themeIcon = document.getElementById('themeIcon') as HTMLElement;
         this.styleSelect = document.getElementById('styleSelect') as HTMLSelectElement;
@@ -27,9 +22,6 @@ class PopupManager {
         // 绑定事件处理器
         this.bindEvents();
         
-        // 初始化历史记录显示
-        this.loadHistory();
-
         // 初始化主题
         this.initializeTheme();
 
@@ -42,9 +34,6 @@ class PopupManager {
     private bindEvents(): void {
         // 应用修改按钮点击事件
         this.applyButton.addEventListener('click', () => this.handleApply());
-        
-        // 撤销按钮点击事件
-        this.undoButton.addEventListener('click', () => this.handleUndo());
         
         // 输入框回车事件
         this.userInput.addEventListener('keypress', (e) => {
@@ -187,8 +176,6 @@ class PopupManager {
             if (response?.success) {
                 // 清空输入框
                 this.userInput.value = '';
-                // 重新加载历史记录
-                await this.loadHistory();
             } else {
                 const errorMsg = response?.error || '未知错误';
                 console.error('[popup] PageEdit: Modification failed:', errorMsg);
@@ -199,75 +186,6 @@ class PopupManager {
             console.error('[popup] PageEdit: Failed to apply modification:', errorMsg);
             alert('应用修改失败：' + errorMsg);
         }
-    }
-
-    /**
-     * 处理撤销操作
-     */
-    private async handleUndo(): Promise<void> {
-        try {
-            // 获取当前标签页
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab.id) return;
-
-            // 发送撤销消息到content script（不再注入 content script）
-            const message: Message = {
-                type: 'UNDO'
-            };
-
-            await chrome.tabs.sendMessage(tab.id, message);
-            // 重新加载历史记录
-            await this.loadHistory();
-        } catch (error) {
-            console.error('[popup] Failed to undo modification:', error);
-        }
-    }
-
-    /**
-     * 加载并显示历史记录
-     */
-    private async loadHistory(): Promise<void> {
-        try {
-            const history = await HistoryManager.getHistory();
-            this.displayHistory(history);
-        } catch (error) {
-            console.error('[popup] Failed to load history:', error);
-        }
-    }
-
-    /**
-     * 显示历史记录
-     * @param history 修改历史记录数组
-     */
-    private displayHistory(history: Modification[]): void {
-        // 清空历史记录容器
-        this.historyContainer.innerHTML = '';
-
-        // 如果没有历史记录，显示提示信息
-        if (history.length === 0) {
-            this.historyContainer.innerHTML = '<p>暂无修改历史</p>';
-            return;
-        }
-
-        // 创建历史记录列表
-        const historyList = document.createElement('ul');
-        historyList.style.listStyle = 'none';
-        historyList.style.padding = '0';
-        historyList.style.margin = '0';
-
-        // 添加历史记录项
-        history.forEach((modification) => {
-            const item = document.createElement('li');
-            item.style.padding = '5px 0';
-            item.style.borderBottom = '1px solid #eee';
-            
-            const time = new Date(modification.timestamp).toLocaleTimeString();
-            item.textContent = `${time}: ${modification.property} = ${modification.value}`;
-            
-            historyList.appendChild(item);
-        });
-
-        this.historyContainer.appendChild(historyList);
     }
 }
 
