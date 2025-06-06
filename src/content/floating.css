@@ -1,0 +1,159 @@
+/* Floating Ball - 悬浮球 */
+#pageedit-floating-ball {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 48px;
+    height: 48px;
+    background: var(--bg-card);
+    border-radius: 50%;
+    box-shadow: var(--shadow);
+    cursor: move;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    transition: transform 0.2s;
+    user-select: none;
+    border: 2px solid var(--border);
+}
+
+#pageedit-floating-ball:hover {
+    transform: scale(1.05);
+}
+
+#pageedit-floating-ball svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--text);
+    fill: none;
+    stroke-width: 2;
+}
+
+/* Floating Panel - 悬浮面板 */
+#pageedit-floating-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 80px;
+    width: 300px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    z-index: 999999;
+    display: none;
+    font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+    border: 1.5px solid var(--border-card);
+}
+
+/* Panel Header - 面板头部 */
+.pageedit-panel-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-top);
+}
+
+.pageedit-panel-header span {
+    font-weight: bold;
+    color: var(--text-title);
+}
+
+.pageedit-close-btn {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    color: var(--text-secondary);
+}
+
+/* Panel Content - 面板内容 */
+.pageedit-panel-content {
+    padding: 16px 14px 10px 14px;
+}
+
+/* Input Card - 输入卡片 */
+.pageedit-input-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-card);
+    display: flex;
+    align-items: center;
+}
+
+.pageedit-input-card .prompt {
+    color: var(--text-secondary);
+    font-size: 18px;
+    margin-right: 8px;
+    font-weight: bold;
+}
+
+.pageedit-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text);
+}
+
+/* Button Row - 按钮行 */
+.pageedit-button-row {
+    display: flex;
+    gap: 14px;
+}
+
+/* Main Button - 主按钮 */
+.pageedit-main-btn {
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 10px;
+    border: 2px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(191,167,122,0.08);
+    transition: background 0.2s, color 0.2s, border 0.2s;
+}
+
+.pageedit-main-btn:hover {
+    background: var(--btn-bg-hover);
+    color: var(--btn-hover-text);
+    border-color: var(--btn-hover-border);
+}
+
+/* Feedback Message - 反馈消息 */
+.pageedit-feedback {
+    position: fixed;
+    top: 12px;
+    right: 18px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-family: inherit;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.12);
+    z-index: 9999;
+}
+
+.pageedit-feedback.success {
+    background-color: var(--btn-border);
+}
+
+.pageedit-feedback.error {
+    background-color: #d7263d;
+}
+
+.pageedit-feedback.show {
+    opacity: 1;
+} 

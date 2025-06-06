@@ -1,6 +1,7 @@
 import { Message, Modification, UserInput, ElementLocation, ParseResult, ModificationMethod, StyleModification } from '../types';
 import { StyleService } from './services/styleService';
 import { NLPProcessor } from '../utils/nlp/nlpProcessor';
+import { FloatingBall } from './floatingBall';
 
 console.log('[content] PageEdit: Content script loaded at', new Date().toISOString());
 
@@ -36,6 +37,10 @@ export class ContentManager {
                             sendResponse({ success: false, error: error.message });
                         });
                     return true; // 保持消息通道开放
+                case 'INITIALIZE_FLOATING_BALL':
+                    this.initializeFloatingBall();
+                    sendResponse({ success: true });
+                    return true;
             }
         });
     }
@@ -131,7 +136,28 @@ export class ContentManager {
             throw error;
         }
     }
+
+    // 初始化悬浮球
+    private initializeFloatingBall(): void {
+        if (!floatingBall) {
+            floatingBall = new FloatingBall();
+        }
+    }
 }
+
+let floatingBall: FloatingBall | null = null;
+
+// 初始化悬浮球
+function initializeFloatingBall() {
+    if (!floatingBall) {
+        floatingBall = new FloatingBall();
+    }
+}
+
+// 页面加载完成后初始化悬浮球
+window.addEventListener('load', () => {
+    initializeFloatingBall();
+});
 
 // 初始化ContentManager
 new ContentManager(); 
