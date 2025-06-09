@@ -31,6 +31,35 @@ export class StyleService {
     }
 
     /**
+     * 在Shadow DOM中应用样式修改
+     * @param modification 样式修改对象
+     * @param shadowRoot Shadow DOM根节点
+     * @returns 是否修改成功
+     */
+    static applyModificationInShadow(
+        modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>,
+        shadowRoot: ShadowRoot
+    ): boolean {
+        try {
+            switch (modification.method) {
+                case 'style':
+                    // 使用 style 标签方式
+                    return this.modifyByCSSRuleInShadow(modification, shadowRoot);
+                case 'DOM':
+                    // 使用直接 DOM 方式
+                    const elements = Array.from(shadowRoot.querySelectorAll(modification.target)) as HTMLElement[];
+                    return elements.every(element => this.modifyStyle(element, modification.property, modification.value));
+                default:
+                    console.warn('Unknown modification method:', modification.method);
+                    return false;
+            }
+        } catch (error) {
+            console.error('Shadow DOM modification failed:', error);
+            return false;
+        }
+    }
+
+    /**
      * 直接修改元素样式
      * @param element 目标元素
      * @param property 样式属性
@@ -118,6 +147,39 @@ export class StyleService {
     }
 
     /**
+     * 在Shadow DOM中通过CSS规则修改样式
+     * @param modification 修改对象
+     * @param shadowRoot Shadow DOM根节点
+     * @returns 是否修改成功
+     */
+    static modifyByCSSRuleInShadow(
+        modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>,
+        shadowRoot: ShadowRoot
+    ): boolean {
+        try {
+            // 创建样式规则
+            const styleText = `${modification.property}: ${modification.value}`;
+
+            // 创建新的样式元素
+            const styleElement = document.createElement('style');
+            styleElement.textContent = `${modification.target} { ${styleText} }`;
+
+            // 添加到Shadow DOM中
+            shadowRoot.appendChild(styleElement);
+
+            // 保存样式元素引用，用于后续撤销
+            const shadowStyleElements = (shadowRoot as any).__pageEditStyleElements =
+                (shadowRoot as any).__pageEditStyleElements || [];
+            shadowStyleElements.push(styleElement);
+
+            return true;
+        } catch (error) {
+            console.error('Shadow DOM CSS rule modification failed:', error);
+            return false;
+        }
+    }
+
+    /**
      * 恢复元素的原始样式
      * @param element 目标元素
      * @param property 样式属性
@@ -154,6 +216,44 @@ export class StyleService {
             }
         } catch (error) {
             console.error('Style restoration failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 在Shadow DOM中恢复元素的原始样式
+     * @param shadowRoot Shadow DOM根节点
+     * @param property 样式属性
+     * @returns 是否恢复成功
+     */
+    static restoreStyleInShadow(
+        shadowRoot: ShadowRoot,
+        property?: string
+    ): boolean {
+        try {
+            // 获取Shadow DOM中的样式元素
+            const shadowStyleElements = (shadowRoot as any).__pageEditStyleElements || [];
+
+            if (property) {
+                // 移除包含特定属性的样式元素
+                for (let i = shadowStyleElements.length - 1; i >= 0; i--) {
+                    const styleElement = shadowStyleElements[i];
+                    if (styleElement.textContent?.includes(property)) {
+                        styleElement.remove();
+                        shadowStyleElements.splice(i, 1);
+                    }
+                }
+            } else if (shadowStyleElements.length > 0) {
+                // 移除最后一个样式元素
+                const lastStyleElement = shadowStyleElements.pop();
+                lastStyleElement.remove();
+            } else {
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Shadow DOM style restoration failed:', error);
             return false;
         }
     }

@@ -1,4 +1,4 @@
-import { FloatingPanel } from './floatingPanel';
+import { FloatingPanel, PanelEvent } from './floatingPanel';
 
 export class FloatingBall {
     private ball: HTMLDivElement;
@@ -7,23 +7,65 @@ export class FloatingBall {
     private startX: number = 0;
     private startY: number = 0;
     private dragThreshold: number = 5; // 拖拽阈值，避免点击时误触发拖拽
+    private rootElement: HTMLDivElement; // 根元素
+    private shadowRoot: ShadowRoot; // Shadow DOM 根节点
+    private panelEventCallback: ((event: PanelEvent) => void) | null = null;
 
     constructor() {
+        // 创建根元素
+        this.rootElement = document.createElement('div');
+        this.rootElement.id = 'pageedit-root-element';
+        this.rootElement.className = 'pageedit-root-element';
+        this.rootElement.style.position = 'absolute';
+        this.rootElement.style.top = '0px';
+        this.rootElement.style.left = '0px';
+        this.rootElement.style.zIndex = '2147483647';
+
+        // 创建Shadow DOM
+        this.shadowRoot = this.rootElement.attachShadow({ mode: 'open' });
+
+        // 注入样式到Shadow DOM
         this.injectStyles();
+
+        // 创建悬浮球
         this.ball = this.createBall();
-        this.panel = new FloatingPanel();
+
+        // 创建面板
+        this.panel = new FloatingPanel(this.shadowRoot);
+
+        // 初始化
         this.initialize();
+
+        // 添加根元素到页面
+        document.body.appendChild(this.rootElement);
+    }
+
+    // 设置面板事件回调
+    public setPanelEventCallback(callback: (event: PanelEvent) => void): void {
+        this.panelEventCallback = callback;
+        this.panel.setEventCallback(callback);
+    }
+
+    // 显示反馈消息
+    public showFeedback(message: string, type: 'success' | 'error'): void {
+        this.panel.showFeedback(message, type);
+    }
+
+    // 重置应用按钮
+    public resetApplyButton(): void {
+        this.panel.resetApplyButton();
+    }
+
+    // 清空输入框
+    public clearInput(): void {
+        this.panel.clearInput();
     }
 
     private injectStyles(): void {
-        // 检查是否已经注入过样式
-        if (document.getElementById('pageedit-styles')) return;
-
         const style = document.createElement('style');
-        style.id = 'pageedit-styles';
         style.textContent = `
 /* CSS Variables - CSS变量定义 */
-:root {
+:host {
     --bg-card: #ffffff;
     --border: #e1e5e9;
     --border-card: #e1e5e9;
@@ -42,7 +84,7 @@ export class FloatingBall {
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :host {
         --bg-card: #0d1117;
         --border: #30363d;
         --border-card: #21262d;
@@ -62,191 +104,191 @@ export class FloatingBall {
 
 /* Floating Ball - 悬浮球 */
 #pageedit-floating-ball {
-    width: 48px !important;
-    height: 48px !important;
-    min-width: 48px !important;
-    min-height: 48px !important;
-    max-width: 48px !important;
-    max-height: 48px !important;
-    position: fixed !important;
-    right: 20px !important;
-    bottom: 20px !important;
-    background: var(--bg-card) !important;
-    border-radius: 50% !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.08) !important;
-    cursor: grab !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 999999 !important;
-    transition: transform 0.18s cubic-bezier(.4,1.3,.6,1), box-shadow 0.18s !important;
-    user-select: none !important;
-    border: 2px solid var(--border) !important;
-    overflow: hidden !important;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    background: var(--bg-card);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.08);
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    transition: transform 0.18s cubic-bezier(.4,1.3,.6,1), box-shadow 0.18s;
+    user-select: none;
+    border: 2px solid var(--border);
+    overflow: hidden;
 }
 
 #pageedit-floating-ball:active {
-    cursor: grabbing !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+    cursor: grabbing;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 #pageedit-floating-ball:hover {
-    transform: scale(1.12) !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.22) !important;
+    transform: scale(1.12);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.22);
 }
 
 #pageedit-floating-ball svg {
-    width: 28px !important;
-    height: 28px !important;
-    display: block !important;
-    margin: auto !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    stroke: var(--text) !important;
-    fill: none !important;
-    stroke-width: 2 !important;
+    width: 28px;
+    height: 28px;
+    display: block;
+    margin: auto;
+    max-width: 100%;
+    max-height: 100%;
+    stroke: var(--text);
+    fill: none;
+    stroke-width: 2;
 }
 
 /* Floating Panel - 悬浮面板 */
 #pageedit-floating-panel {
-    position: fixed !important;
-    right: 20px !important;
-    bottom: 80px !important;
-    width: 300px !important;
-    background: var(--bg-card) !important;
-    border-radius: 12px !important;
-    box-shadow: var(--shadow) !important;
-    z-index: 999999 !important;
-    display: none !important;
-    font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace !important;
-    border: 1.5px solid var(--border-card) !important;
+    position: fixed;
+    right: 20px;
+    bottom: 80px;
+    width: 300px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    z-index: 999999;
+    display: none;
+    font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+    border: 1.5px solid var(--border-card);
 }
 
 /* Panel Header - 面板头部 */
 .pageedit-panel-header {
-    padding: 12px !important;
-    border-bottom: 1px solid var(--border) !important;
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    background: var(--bg-top) !important;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-top);
 }
 
 .pageedit-panel-header span {
-    font-weight: bold !important;
-    color: var(--text-title) !important;
+    font-weight: bold;
+    color: var(--text-title);
 }
 
 .pageedit-close-btn {
-    border: none !important;
-    background: none !important;
-    font-size: 20px !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    color: var(--text-secondary) !important;
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    color: var(--text-secondary);
 }
 
 /* Panel Content - 面板内容 */
 .pageedit-panel-content {
-    padding: 16px 14px 10px 14px !important;
+    padding: 16px 14px 10px 14px;
 }
 
 /* Input Card - 输入卡片 */
 .pageedit-input-card {
-    background: var(--bg-card) !important;
-    border-radius: 8px !important;
-    padding: 12px !important;
-    margin-bottom: 12px !important;
-    border: 1px solid var(--border-card) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important;
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-card);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .pageedit-input-card .prompt {
-    color: var(--text-secondary) !important;
-    font-size: 18px !important;
-    margin-right: 8px !important;
-    font-weight: bold !important;
+    color: var(--text-secondary);
+    font-size: 18px;
+    margin-right: 8px;
+    font-weight: bold;
 }
 
 .pageedit-input {
-    flex: 1 !important;
-    border: none !important;
-    outline: none !important;
-    font-size: 15px !important;
-    font-family: inherit !important;
-    background: transparent !important;
-    color: var(--text) !important;
-    resize: vertical !important;
-    min-height: 60px !important;
-    padding: 8px !important;
-    border-radius: 6px !important;
-    border: 1px solid var(--border) !important;
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text);
+    resize: vertical;
+    min-height: 60px;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
 }
 
 /* Button Row - 按钮行 */
 .pageedit-button-row {
-    display: flex !important;
-    gap: 14px !important;
+    display: flex;
+    gap: 14px;
 }
 
 /* Main Button - 主按钮 */
 .pageedit-main-btn {
-    flex: 1 !important;
-    padding: 10px 0 !important;
-    border-radius: 10px !important;
-    border: 2px solid var(--btn-border) !important;
-    background: var(--btn-bg) !important;
-    color: var(--btn-text) !important;
-    font-size: 15px !important;
-    font-family: inherit !important;
-    font-weight: bold !important;
-    cursor: pointer !important;
-    box-shadow: 0 1px 4px rgba(191,167,122,0.08) !important;
-    transition: background 0.2s, color 0.2s, border 0.2s !important;
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 10px;
+    border: 2px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(191,167,122,0.08);
+    transition: background 0.2s, color 0.2s, border 0.2s;
 }
 
 .pageedit-main-btn:hover {
-    background: var(--btn-bg-hover) !important;
-    color: var(--btn-hover-text) !important;
-    border-color: var(--btn-hover-border) !important;
+    background: var(--btn-bg-hover);
+    color: var(--btn-hover-text);
+    border-color: var(--btn-hover-border);
 }
 
 .pageedit-main-btn:disabled {
-    opacity: 0.6 !important;
-    cursor: not-allowed !important;
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* Feedback Message - 反馈消息 */
 .pageedit-feedback {
-    position: fixed !important;
-    top: 12px !important;
-    right: 18px !important;
-    padding: 12px 24px !important;
-    border-radius: 8px !important;
-    color: #fff !important;
-    font-size: 14px !important;
-    opacity: 0 !important;
-    transition: opacity 0.3s !important;
-    font-family: inherit !important;
-    box-shadow: 2px 2px 8px rgba(0,0,0,0.12) !important;
-    z-index: 9999 !important;
+    position: fixed;
+    top: 12px;
+    right: 18px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-family: inherit;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.12);
+    z-index: 9999;
 }
 
 .pageedit-feedback.success {
-    background-color: #28a745 !important;
+    background-color: #28a745;
 }
 
 .pageedit-feedback.error {
-    background-color: #d7263d !important;
+    background-color: #d7263d;
 }
 
 .pageedit-feedback.show {
-    opacity: 1 !important;
+    opacity: 1;
 }
         `;
-        document.head.appendChild(style);
+        this.shadowRoot.appendChild(style);
     }
 
     private createBall(): HTMLDivElement {
@@ -265,8 +307,8 @@ export class FloatingBall {
         this.ball.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.ball.addEventListener('click', this.handleClick.bind(this));
 
-        // 添加到页面
-        document.body.appendChild(this.ball);
+        // 添加到Shadow DOM
+        this.shadowRoot.appendChild(this.ball);
     }
 
     private handleMouseDown(e: MouseEvent): void {
@@ -329,7 +371,7 @@ export class FloatingBall {
     }
 
     public destroy(): void {
-        this.ball.remove();
+        this.rootElement.remove();
         this.panel.destroy();
     }
 }

@@ -2,6 +2,7 @@ import { Message, Modification, UserInput, ElementLocation, ParseResult, Modific
 import { StyleService } from './services/styleService';
 import { NLPProcessor } from '../utils/nlp/nlpProcessor';
 import { FloatingBall } from './floatingBall';
+import { PanelEvent } from './floatingPanel';
 
 console.log('[content] PageEdit: Content script loaded at', new Date().toISOString());
 
@@ -143,18 +144,104 @@ export class ContentManager {
         }
     }
 
+    /**
+     * 处理面板事件
+     * @param event 面板事件
+     */
+    public async handlePanelEvent(event: PanelEvent): Promise<void> {
+        console.log('[content] PageEdit: Handling panel event:', event);
+
+        if (!floatingBall) {
+            console.error('[content] PageEdit: FloatingBall not initialized');
+            return;
+        }
+
+        try {
+            switch (event.type) {
+                case 'apply':
+                    if (event.data?.text) {
+                        // 创建一个类似于消息的对象
+                        const message: Message = {
+                            type: 'MODIFY_PAGE',
+                            data: { text: event.data.text }
+                        };
+
+                        // 处理修改
+                        await this.handleModifyPage(message);
+
+                        // 显示成功反馈
+                        floatingBall.showFeedback('修改已应用', 'success');
+                        floatingBall.clearInput();
+                    }
+                    break;
+
+                case 'undo':
+                    // 撤销最后一次修改
+                    const success = this.undoLastModification();
+
+                    if (success) {
+                        floatingBall.showFeedback('已撤销上次修改', 'success');
+                    } else {
+                        floatingBall.showFeedback('没有可撤销的修改', 'error');
+                    }
+                    break;
+
+                default:
+                    console.warn('[content] PageEdit: Unknown panel event type:', event.type);
+            }
+        } catch (error) {
+            console.error('[content] PageEdit: Error handling panel event:', error);
+            floatingBall.showFeedback('处理指令时出错', 'error');
+        } finally {
+            // 重置按钮状态
+            floatingBall.resetApplyButton();
+        }
+    }
+
+    /**
+     * 撤销最后一次修改
+     * @returns 是否成功撤销
+     */
+    private undoLastModification(): boolean {
+        try {
+            // 获取最后一个样式元素
+            const styleElements = (window as any).__pageEditStyleElements || [];
+            if (styleElements.length > 0) {
+                // 移除最后一个样式元素
+                const lastStyleElement = styleElements.pop();
+                lastStyleElement.remove();
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('[content] PageEdit: Error undoing modification:', error);
+            return false;
+        }
+    }
+
     // 初始化悬浮球
     private initializeFloatingBall(): void {
         if (!floatingBall) {
+            const contentManager = new ContentManager();
             floatingBall = new FloatingBall();
+
+            // 设置面板事件回调
+            floatingBall.setPanelEventCallback(
+                contentManager.handlePanelEvent.bind(contentManager)
+            );
         }
     }
 }
-
 // 初始化悬浮球
 function initializeFloatingBall() {
     if (!floatingBall) {
+        const contentManager = new ContentManager();
         floatingBall = new FloatingBall();
+
+        // 设置面板事件回调
+        floatingBall.setPanelEventCallback(
+            contentManager.handlePanelEvent.bind(contentManager)
+        );
     }
 }
 

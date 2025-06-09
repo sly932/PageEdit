@@ -1,5 +1,15 @@
-import { NLPProcessor } from '../utils/nlp/nlpProcessor';
 import { StyleService } from './services/styleService';
+
+// 定义自定义事件类型
+export interface PanelEvent {
+    type: 'apply' | 'undo';
+    data?: {
+        text?: string;
+    };
+}
+
+// 定义事件回调类型
+export type PanelEventCallback = (event: PanelEvent) => void;
 
 export class FloatingPanel {
     private panel: HTMLDivElement;
@@ -7,13 +17,12 @@ export class FloatingPanel {
     private applyButton!: HTMLButtonElement;
     private undoButton!: HTMLButtonElement;
     private feedback!: HTMLDivElement;
-    private nlpProcessor: NLPProcessor;
-    private styleService: StyleService;
+    private shadowRoot: ShadowRoot;
+    private eventCallback: PanelEventCallback | null = null;
 
-    constructor() {
+    constructor(shadowRoot: ShadowRoot) {
+        this.shadowRoot = shadowRoot;
         this.panel = this.createPanel();
-        this.nlpProcessor = new NLPProcessor();
-        this.styleService = new StyleService();
         this.initialize();
     }
 
@@ -60,11 +69,16 @@ export class FloatingPanel {
             }
         });
 
-        // 添加到页面
-        document.body.appendChild(this.panel);
+        // 添加到Shadow DOM
+        this.shadowRoot.appendChild(this.panel);
     }
 
-    private async handleApply(): Promise<void> {
+    // 设置事件回调
+    public setEventCallback(callback: PanelEventCallback): void {
+        this.eventCallback = callback;
+    }
+
+    private handleApply(): void {
         const userInput = this.input.value.trim();
         if (!userInput) {
             this.showFeedback('请输入修改指令', 'error');
@@ -75,58 +89,34 @@ export class FloatingPanel {
         this.applyButton.disabled = true;
         this.applyButton.textContent = '处理中...';
 
-        try {
-            const parseResult = await NLPProcessor.processInput(userInput, document.documentElement.outerHTML, {
-                preferLLM: true,
-                minConfidence: 0.6
+        // 触发应用事件
+        if (this.eventCallback) {
+            this.eventCallback({
+                type: 'apply',
+                data: { text: userInput }
             });
-            if (!parseResult.success) {
-                throw new Error(parseResult.error || 'Failed to parse user input');
-            }
-
-            // 应用所有修改
-            for (const modification of parseResult.modifications) {
-                const success = StyleService.applyModification({
-                    property: modification.property,
-                    value: modification.value,
-                    method: modification.method,
-                    target: modification.target
-                });
-                if (!success) {
-                    throw new Error(`Failed to apply modification: ${modification.property}`);
-                }
-            }
-            this.showFeedback('修改已应用', 'success');
-            this.input.value = '';
-        } catch (error) {
-            this.showFeedback('处理指令时出错', 'error');
-            console.error('Error applying modifications:', error);
-        } finally {
-            // 恢复按钮状态
-            this.applyButton.disabled = false;
-            this.applyButton.textContent = '应用';
         }
     }
 
     private handleUndo(): void {
-        try {
-            // 获取最后一个样式元素
-            const styleElements = (window as any).__pageEditStyleElements || [];
-            if (styleElements.length > 0) {
-                // 移除最后一个样式元素
-                const lastStyleElement = styleElements.pop();
-                lastStyleElement.remove();
-                this.showFeedback('已撤销上次修改', 'success');
-            } else {
-                this.showFeedback('没有可撤销的修改', 'error');
-            }
-        } catch (error) {
-            this.showFeedback('撤销操作时出错', 'error');
-            console.error('Error undoing modification:', error);
+        // 触发撤销事件
+        if (this.eventCallback) {
+            this.eventCallback({ type: 'undo' });
         }
     }
 
-    private showFeedback(message: string, type: 'success' | 'error'): void {
+    // 重置按钮状态
+    public resetApplyButton(): void {
+        this.applyButton.disabled = false;
+        this.applyButton.textContent = '应用';
+    }
+
+    // 清空输入框
+    public clearInput(): void {
+        this.input.value = '';
+    }
+
+    public showFeedback(message: string, type: 'success' | 'error'): void {
         this.feedback.textContent = message;
         this.feedback.className = `pageedit-feedback ${type} show`;
 
