@@ -5,6 +5,8 @@ import { FloatingBall } from './floatingBall';
 
 console.log('[content] PageEdit: Content script loaded at', new Date().toISOString());
 
+let floatingBall: FloatingBall | null = null;
+
 /**
  * Content Script的主要类
  * 处理页面修改和与popup的通信
@@ -40,6 +42,10 @@ export class ContentManager {
                 case 'INITIALIZE_FLOATING_BALL':
                     this.initializeFloatingBall();
                     sendResponse({ success: true });
+                    return true;
+                default:
+                    console.warn('[content] PageEdit: Unknown message type:', message.type);
+                    sendResponse({ success: false, error: 'Unknown message type' });
                     return true;
             }
         });
@@ -144,8 +150,6 @@ export class ContentManager {
         }
     }
 }
-
-let floatingBall: FloatingBall | null = null;
 
 // 初始化悬浮球
 function initializeFloatingBall() {

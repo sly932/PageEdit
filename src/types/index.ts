@@ -69,7 +69,7 @@ export interface UserInput {
  */
 export interface Message {
   // 消息类型
-  type: 'MODIFY_PAGE' | 'UNDO' | 'REDO' | 'GET_HISTORY';
+  type: 'MODIFY_PAGE' | 'UNDO' | 'REDO' | 'GET_HISTORY' | 'INITIALIZE_FLOATING_BALL';
   // 消息数据
   data?: any;
 }
