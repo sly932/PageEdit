@@ -11,10 +11,12 @@
     "dev": "webpack --watch --config webpack.config.cjs"
   },
   "dependencies": {
+    "@types/uuid": "^10.0.0",
     "dotenv": "^16.5.0",
     "node-fetch": "^2.7.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.17.0",

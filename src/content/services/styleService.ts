@@ -1,4 +1,5 @@
 import { StyleModification, ModificationMethod, Modification } from '../../types';
+import { Eddy } from '../../types/eddy';
 
 /**
  * 样式修改服务
@@ -254,6 +255,30 @@ export class StyleService {
             return true;
         } catch (error) {
             console.error('Shadow DOM style restoration failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 应用 Eddy 中的所有修改
+     * @param eddy Eddy 对象
+     * @returns 是否全部修改成功
+     */
+    static async applyEddy(eddy: Eddy): Promise<boolean> {
+        try {
+            let allSuccess = true;
+            
+            for (const modification of eddy.modifications) {
+                const success = this.applyModification(modification);
+                if (!success) {
+                    allSuccess = false;
+                    console.warn(`Failed to apply modification: ${JSON.stringify(modification)}`);
+                }
+            }
+            
+            return allSuccess;
+        } catch (error) {
+            console.error('Failed to apply eddy:', error);
             return false;
         }
     }
