@@ -1,38 +1,39 @@
-import { Eddy, Modification } from '../types/eddy';
+import { Eddy } from '../types/eddy';
+import { Modification } from '../types/index';
 import { v4 as uuidv4 } from 'uuid';
 
 export class StorageService {
-    private static readonly STORAGE_KEY = 'edith_eddies';
+    private static readonly STORAGE_KEY = 'eddy_eddys';
 
     // 保存所有 Eddy
-    static async saveEddies(eddies: Eddy[]): Promise<void> {
-        await chrome.storage.local.set({ [this.STORAGE_KEY]: eddies });
+    static async saveEddys(eddys: Eddy[]): Promise<void> {
+        await chrome.storage.local.set({ [this.STORAGE_KEY]: eddys });
     }
 
     // 获取所有 Eddy
-    static async getEddies(): Promise<Eddy[]> {
+    static async getEddys(): Promise<Eddy[]> {
         const result = await chrome.storage.local.get(this.STORAGE_KEY);
         return result[this.STORAGE_KEY] || [];
     }
 
     // 获取特定域名的 Eddy
-    static async getEddiesByDomain(domain: string): Promise<Eddy[]> {
-        const eddies = await this.getEddies();
-        return eddies.filter(eddy => eddy.domain === domain);
+    static async getEddysByDomain(domain: string): Promise<Eddy[]> {
+        const eddys = await this.getEddys();
+        return eddys.filter(eddy => eddy.domain === domain);
     }
 
     // 获取特定域名的最近使用的 Eddy
     static async getLastUsedEddy(domain: string): Promise<Eddy | null> {
-        const eddies = await this.getEddiesByDomain(domain);
-        return eddies.find(eddy => eddy.lastUsed) || null;
+        const eddys = await this.getEddysByDomain(domain);
+        return eddys.find(eddy => eddy.lastUsed) || null;
     }
 
     // 创建新的 Eddy
     static async createEddy(name: string, domain: string, modifications: Modification[]): Promise<Eddy> {
-        const eddies = await this.getEddies();
+        const eddys = await this.getEddys();
         
         // 如果新 Eddy 是最近使用的，将同一域名的其他 Eddy 的 lastUsed 设为 false
-        eddies.forEach(eddy => {
+        eddys.forEach(eddy => {
             if (eddy.domain === domain) {
                 eddy.lastUsed = false;
             }
@@ -48,39 +49,39 @@ export class StorageService {
             updatedAt: Date.now()
         };
 
-        eddies.push(newEddy);
-        await this.saveEddies(eddies);
+        eddys.push(newEddy);
+        await this.saveEddys(eddys);
         
         return newEddy;
     }
 
     // 更新 Eddy
     static async updateEddy(updatedEddy: Eddy): Promise<void> {
-        const eddies = await this.getEddies();
-        const index = eddies.findIndex(e => e.id === updatedEddy.id);
+        const eddys = await this.getEddys();
+        const index = eddys.findIndex(e => e.id === updatedEddy.id);
         
         if (index !== -1) {
             // 如果更新为最近使用，将同一域名的其他 Eddy 的 lastUsed 设为 false
             if (updatedEddy.lastUsed) {
-                eddies.forEach(eddy => {
+                eddys.forEach(eddy => {
                     if (eddy.domain === updatedEddy.domain && eddy.id !== updatedEddy.id) {
                         eddy.lastUsed = false;
                     }
                 });
             }
             
-            eddies[index] = {
+            eddys[index] = {
                 ...updatedEddy,
                 updatedAt: Date.now()
             };
-            await this.saveEddies(eddies);
+            await this.saveEddys(eddys);
         }
     }
 
     // 删除 Eddy
     static async deleteEddy(eddyId: string): Promise<void> {
-        const eddies = await this.getEddies();
-        const filteredEddies = eddies.filter(e => e.id !== eddyId);
-        await this.saveEddies(filteredEddies);
+        const eddys = await this.getEddys();
+        const filteredEddys = eddys.filter(e => e.id !== eddyId);
+        await this.saveEddys(filteredEddys);
     }
 } 
