@@ -1,9 +1,16 @@
 {
+  "manifest_version": 3,
+  "name": "PageEdit",
+  "version": "1.0",
+  "description": "A Chrome extension for editing web pages",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["content.css", "floating.css"]
+      "js": ["content.js"]
     }
-  ]
+  ],
+  "web_accessible_resources": [{
+    "resources": ["styles/*"],
+    "matches": ["<all_urls>"]
+  }]
 } 

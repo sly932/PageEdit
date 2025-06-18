@@ -1,6 +1,7 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 require('dotenv').config();
 
 module.exports = {
@@ -9,7 +10,8 @@ module.exports = {
   entry: {
     popup: './src/popup/popup.ts',
     content: './src/content/content.ts',
-    background: './src/background/background.ts'
+    background: './src/background/background.ts',
+    styles: './src/styles/main.css'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -22,11 +24,19 @@ module.exports = {
         test: /\.ts$/,
         use: 'ts-loader',
         exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          'postcss-loader'
+        ]
       }
     ]
   },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.ts', '.js', '.css'],
     fallback: {
       "buffer": require.resolve("buffer/"),
       "stream": require.resolve("stream-browserify"),
@@ -46,6 +56,9 @@ module.exports = {
     minimize: false
   },
   plugins: [
+    new MiniCssExtractPlugin({
+      filename: 'styles/[name].css'
+    }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/manifest.json', to: 'manifest.json' },
