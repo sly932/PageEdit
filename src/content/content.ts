@@ -62,7 +62,7 @@ export class ContentManager {
         try {
             // 获取当前页面的HTML内容
             const htmlContext = document.documentElement.outerHTML;
-            console.log('[content] PageEdit: HTML context:', htmlContext);
+            // console.log('[content] PageEdit: HTML context:', htmlContext);
 
             // 使用 NLPProcessor 处理用户输入
             const result = await NLPProcessor.processInput(text, htmlContext, {
