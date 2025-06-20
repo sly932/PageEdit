@@ -62,23 +62,32 @@ export class FloatingPanel {
                 box-sizing: border-box;
             }
 
+            .input-wrapper {
+                position: relative;
+                display: flex;
+                align-items: center;
+            }
+
             /* 文本区域 */
             .panel-textarea {
                 width: 100%;
-                min-height: 96px !important;
+                min-height: 54px !important;
                 max-height: 200px !important;
-                padding: 12px;
-                border: 1px solid rgba(209, 213, 219, 0.5);
-                border-radius: 8px;
-                background: rgba(255, 255, 255, 0.5);
+                padding: 16px 54px 16px 20px;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                border-radius: 27px;
+                background: rgba(255, 255, 255, 0.8);
                 color: rgb(17, 24, 39);
                 font-size: 14px;
                 line-height: 1.5;
                 resize: vertical;
                 transition: all 0.2s;
-                margin-bottom: 12px;
                 box-sizing: border-box;
                 font-family: inherit;
+            }
+
+            .panel-textarea::placeholder {
+                color: #A0A0A0;
             }
 
             /* 深色模式 */
@@ -210,8 +219,7 @@ export class FloatingPanel {
 
             /* 按钮行 */
             .button-row {
-                display: flex;
-                gap: 8px;
+                display: none;
             }
 
             /* 按钮样式 */
@@ -228,30 +236,51 @@ export class FloatingPanel {
             }
 
             .apply-button {
-                background: rgb(59, 130, 246);
+                position: absolute;
+                right: 8px; /* position inside the textarea wrapper */
+                top: 50%;
+                transform: translateY(-50%);
+                width: 38px;
+                height: 38px;
+                border: none;
+                border-radius: 50%;
+                background: #F0F0F0;
                 color: white;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background-color 0.2s;
+                padding: 0;
             }
 
             .apply-button:hover {
-                background: rgb(37, 99, 235);
+                background: #E0E0E0;
+            }
+
+            .apply-button svg {
+                width: 20px;
+                height: 20px;
+                color: #333; /* Arrow color */
             }
 
             .undo-button {
-                background: rgb(243, 244, 246);
-                color: rgb(55, 65, 81);
+                background: transparent;
+                color: rgb(156, 163, 175);
             }
 
             .undo-button:hover {
-                background: rgb(229, 231, 235);
+                background: rgba(0, 0, 0, 0.05);
+                color: rgb(75, 85, 99);
             }
 
             #pageedit-floating-panel.dark-mode .undo-button {
-                background: rgb(55, 65, 81);
-                color: rgb(229, 231, 235);
+                background: transparent;
+                color: rgb(209, 213, 219);
             }
 
             #pageedit-floating-panel.dark-mode .undo-button:hover {
-                background: rgb(75, 85, 99);
+                background: rgba(255, 255, 255, 0.1);
             }
 
             /* 反馈信息 */
@@ -312,159 +341,193 @@ export class FloatingPanel {
                 width: 20px;
                 height: 20px;
             }
+
+            /* 头部按钮 (Undo) */
+            .header-button {
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+                color: rgb(156, 163, 175);
+                padding: 0;
+                margin-left: 4px;
+            }
+
+            .header-button:hover {
+                background: rgba(0, 0, 0, 0.05);
+                color: rgb(75, 85, 99);
+            }
+
+            #pageedit-floating-panel.dark-mode .header-button:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: rgb(209, 213, 219);
+            }
+
+            .header-button svg {
+                width: 20px;
+                height: 20px;
+            }
         `;
         this.shadowRoot.appendChild(style);
         console.log('[PageEdit][FloatingPanel] Styles injected');
     }
 
     private createPanel(): HTMLDivElement {
-        console.log('[PageEdit][FloatingPanel] Creating panel...');
         const panel = document.createElement('div');
         panel.id = 'pageedit-floating-panel';
-        
-        // 检查系统主题
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            panel.classList.add('dark-mode');
-        }
-        
-        panel.innerHTML = `
-            <div class="panel-header">
-                <span>PageEdit</span>
-                <button class="theme-toggle" aria-label="切换主题">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                    </svg>
-                </button>
-                <div class="close-button-container">
-                    <button class="close-button" aria-label="关闭">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 6L6 18M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div class="panel-content">
-                <textarea 
-                    class="panel-textarea"
-                    placeholder="输入你的修改指令..."></textarea>
-                <div class="button-row">
-                    <button class="panel-button apply-button">应用</button>
-                    <button class="panel-button undo-button">撤销</button>
-                </div>
-            </div>
-            <div class="pageedit-feedback"></div>
-        `;
 
-        // 添加拖动功能
-        const header = panel.querySelector('.panel-header') as HTMLElement;
+        // 创建面板头部
+        const header = document.createElement('div');
+        header.className = 'panel-header';
+
+        const title = document.createElement('span');
+        title.textContent = 'PageEdit';
+
+        const controlsContainer = document.createElement('div');
+        controlsContainer.style.display = 'flex';
+        controlsContainer.style.alignItems = 'center';
+
+        this.undoButton = document.createElement('button');
+        this.undoButton.className = 'header-button undo-button'; // Use header-button style
+        this.undoButton.title = '撤销';
+        this.undoButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+        </svg>`;
+
+        const closeButtonContainer = document.createElement('div');
+        closeButtonContainer.className = 'close-button-container';
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'close-button';
+        closeButton.title = '关闭';
+        closeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>`;
+        
+        closeButtonContainer.appendChild(closeButton);
+
+        controlsContainer.appendChild(this.undoButton);
+        controlsContainer.appendChild(closeButtonContainer);
+
+        header.appendChild(title);
+        header.appendChild(controlsContainer);
+
+        // 创建面板内容
+        const content = document.createElement('div');
+        content.className = 'panel-content';
+
+        const inputWrapper = document.createElement('div');
+        inputWrapper.className = 'input-wrapper';
+
+        // 创建文本区域
+        this.input = document.createElement('textarea');
+        this.input.className = 'panel-textarea';
+        this.input.placeholder = '继续提问 (请勿输入C3/C4数据)';
+        this.input.rows = 1;
+
+        // 创建应用按钮
+        this.applyButton = document.createElement('button');
+        this.applyButton.className = 'apply-button';
+        this.applyButton.title = '应用';
+        this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+
+        inputWrapper.appendChild(this.input);
+        inputWrapper.appendChild(this.applyButton);
+
+        content.appendChild(inputWrapper);
+
+        // 创建反馈消息区域
+        this.feedback = document.createElement('div');
+        this.feedback.className = 'feedback-message';
+        content.appendChild(this.feedback);
+
+        panel.appendChild(header);
+        panel.appendChild(content);
+
+        // Drag functionality
+        let isDragging = false;
+        let startX: number, startY: number, initialX: number, initialY: number;
+
         const onMouseDown = (e: MouseEvent) => {
-            if (e.target instanceof HTMLElement &&
-                (e.target.closest('.close-button') || e.target.closest('.theme-toggle'))) {
-                return;
-            }
-
+            // 只在头部触发拖动
+            if (e.target !== header) return;
+            
+            isDragging = true;
             header.classList.add('dragging');
-
-            let startX = e.clientX;
-            let startY = e.clientY;
             
+            startX = e.clientX;
+            startY = e.clientY;
+
             const rect = panel.getBoundingClientRect();
-            
-            const onMouseMove = (e: MouseEvent) => {
-                const deltaX = e.clientX - startX;
-                const deltaY = e.clientY - startY;
-
-                panel.style.left = `${rect.left + deltaX}px`;
-                panel.style.top = `${rect.top + deltaY}px`;
-                panel.style.right = 'auto';
-                panel.style.bottom = 'auto';
-            };
-
-            const onMouseUp = () => {
-                header.classList.remove('dragging');
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-            };
+            initialX = rect.left;
+            initialY = rect.top;
 
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         };
 
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isDragging) return;
+            
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            panel.style.left = `${initialX + dx}px`;
+            panel.style.top = `${initialY + dy}px`;
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+            header.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
         header.addEventListener('mousedown', onMouseDown);
 
-        // 添加主题切换功能
-        const themeToggle = panel.querySelector('.theme-toggle') as HTMLButtonElement;
-        themeToggle.addEventListener('click', () => {
-            panel.classList.toggle('dark-mode');
-        });
-
+        // Close button functionality
+        closeButton.addEventListener('click', () => this.hide());
+        
+        this.shadowRoot.appendChild(panel);
         return panel;
     }
 
     private initialize(): void {
-        console.log('[PageEdit][FloatingPanel] Initializing panel...');
-        try {
-            // 获取元素引用
-            const textarea = this.panel.querySelector('textarea') as HTMLTextAreaElement;
-            const applyButton = this.panel.querySelector('.apply-button') as HTMLButtonElement;
-            const undoButton = this.panel.querySelector('.undo-button') as HTMLButtonElement;
-            const closeButton = this.panel.querySelector('.close-button') as HTMLButtonElement;
-            const feedback = this.panel.querySelector('.pageedit-feedback') as HTMLDivElement;
+        console.log('[PageEdit][FloatingPanel] Initializing panel');
+        // We already have direct references from createPanel, so no need to querySelector
+        
+        if (!this.input || !this.applyButton || !this.undoButton) {
+            console.error('[PageEdit][FloatingPanel] Panel elements not found');
+            return;
+        }
 
-            console.log('[PageEdit][FloatingPanel] Found elements:', {
-                textarea: !!textarea,
-                applyButton: !!applyButton,
-                undoButton: !!undoButton,
-                closeButton: !!closeButton,
-                feedback: !!feedback
-            });
+        // Add event listeners
+        this.applyButton.addEventListener('click', () => this.handleApply());
+        this.undoButton.addEventListener('click', () => this.handleUndo());
 
-            if (!textarea || !applyButton || !undoButton || !closeButton || !feedback) {
-                throw new Error('Failed to find required elements');
-            }
+        // Auto-resize textarea
+        this.input.addEventListener('input', () => {
+            this.input.style.height = 'auto';
+            this.input.style.height = `${this.input.scrollHeight}px`;
+        });
 
-            this.input = textarea;
-            this.applyButton = applyButton;
-            this.undoButton = undoButton;
-            this.feedback = feedback;
-
-            // 添加事件监听
-            closeButton.addEventListener('click', (e) => {
-                console.log('[PageEdit][FloatingPanel] Close button clicked');
+        // Apply on Enter
+        this.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                e.stopPropagation();
-                this.hide();
-            });
-
-            this.applyButton.addEventListener('click', () => {
-                console.log('[PageEdit][FloatingPanel] Apply button clicked');
                 this.handleApply();
-            });
+            }
+        });
 
-            this.undoButton.addEventListener('click', () => {
-                console.log('[PageEdit][FloatingPanel] Undo button clicked');
-                this.handleUndo();
-            });
-
-            // 添加键盘快捷键支持
-            this.input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    console.log('[PageEdit][FloatingPanel] Ctrl/Cmd + Enter pressed');
-                    e.preventDefault();
-                    this.handleApply();
-                }
-                if (e.key === 'Escape') {
-                    console.log('[PageEdit][FloatingPanel] Escape pressed');
-                    this.hide();
-                }
-            });
-
-            // 添加到Shadow DOM
-            this.shadowRoot.appendChild(this.panel);
-            console.log('[PageEdit][FloatingPanel] Panel initialized successfully');
-        } catch (error) {
-            console.error('[PageEdit][FloatingPanel] Error initializing panel:', error);
-            throw error;
+        // Detect dark mode from the page and apply it to the panel
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            this.panel.classList.add('dark-mode');
         }
     }
 
