@@ -2,7 +2,7 @@ import { StyleService } from './services/styleService';
 
 // 定义自定义事件类型
 export interface PanelEvent {
-    type: 'apply' | 'undo';
+    type: 'apply' | 'undo' | 'cancel';
     data?: {
         text?: string;
     };
@@ -19,6 +19,7 @@ export class FloatingPanel {
     private feedback!: HTMLDivElement;
     private shadowRoot: ShadowRoot;
     private eventCallback: PanelEventCallback | null = null;
+    private isProcessing: boolean = false; // 添加处理状态标记
 
     constructor(shadowRoot: ShadowRoot) {
         console.log('[PageEdit][FloatingPanel] Constructor called');
@@ -49,7 +50,7 @@ export class FloatingPanel {
                 pointer-events: auto;
                 display: none;
                 z-index: 2147483647;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
                 user-select: none;
                 box-sizing: border-box;
             }
@@ -73,14 +74,15 @@ export class FloatingPanel {
                 width: 100%;
                 min-height: 54px !important;
                 max-height: 200px !important;
-                padding: 16px 54px 16px 20px;
+                padding: 16px 20px 48px 20px;
                 border: 1px solid rgba(0, 0, 0, 0.1);
                 border-radius: 27px;
                 background: rgba(255, 255, 255, 0.8);
                 color: rgb(17, 24, 39);
                 font-size: 14px;
                 line-height: 1.5;
-                resize: vertical;
+                resize: none;
+                overflow: hidden;
                 transition: all 0.2s;
                 box-sizing: border-box;
                 font-family: inherit;
@@ -237,25 +239,37 @@ export class FloatingPanel {
 
             .apply-button {
                 position: absolute;
-                right: 8px; /* position inside the textarea wrapper */
-                top: 50%;
-                transform: translateY(-50%);
-                width: 38px;
-                height: 38px;
+                right: 8px;
+                bottom: 8px;
+                width: 34px;
+                height: 34px;
                 border: none;
                 border-radius: 50%;
-                background: #F0F0F0;
-                color: white;
+                background: #f3f4f6;
+                color: #9ca3af;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: background-color 0.2s;
+                transition: all 0.2s ease;
                 padding: 0;
+                z-index: 10;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
             }
 
             .apply-button:hover {
-                background: #E0E0E0;
+                background: #e5e7eb;
+            }
+
+            /* 应用状态下的圆环效果 */
+            .apply-button.active {
+                background: #1f2937;
+                color: white;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+
+            .apply-button.active:hover {
+                background: #111827;
             }
 
             .apply-button svg {
@@ -426,7 +440,7 @@ export class FloatingPanel {
         // 创建文本区域
         this.input = document.createElement('textarea');
         this.input.className = 'panel-textarea';
-        this.input.placeholder = '继续提问 (请勿输入C3/C4数据)';
+        this.input.placeholder = 'Make your edit...';
         this.input.rows = 1;
 
         // 创建应用按钮
@@ -565,7 +579,6 @@ export class FloatingPanel {
 
     private initialize(): void {
         console.log('[PageEdit][FloatingPanel] Initializing panel');
-        // We already have direct references from createPanel, so no need to querySelector
         
         if (!this.input || !this.applyButton || !this.undoButton) {
             console.error('[PageEdit][FloatingPanel] Panel elements not found');
@@ -580,6 +593,9 @@ export class FloatingPanel {
         this.input.addEventListener('input', () => {
             this.input.style.height = 'auto';
             this.input.style.height = `${this.input.scrollHeight}px`;
+            
+            // 检查输入内容，启用/禁用按钮
+            this.updateButtonState();
         });
 
         // Apply on Enter
@@ -588,11 +604,88 @@ export class FloatingPanel {
                 e.preventDefault();
                 this.handleApply();
             }
+            // Shift+Enter 允许换行，不需要特殊处理
         });
+
+        // 初始化按钮状态
+        this.updateButtonState();
 
         // Detect dark mode from the page and apply it to the panel
         if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
             this.panel.classList.add('dark-mode');
+        }
+    }
+
+    // 更新按钮状态
+    private updateButtonState(): void {
+        const hasContent = this.input.value.trim().length > 0;
+        
+        // 如果正在处理中，不改变按钮状态
+        if (this.isProcessing) {
+            return;
+        }
+        
+        if (hasContent) {
+            // 有内容时，启用按钮并显示提示
+            this.applyButton.disabled = false;
+            this.applyButton.style.opacity = '1';
+            this.applyButton.style.cursor = 'pointer';
+            this.applyButton.style.transform = 'scale(1.1)';
+            this.applyButton.style.transition = 'all 0.2s ease';
+            this.applyButton.classList.add('active');
+            
+            // 显示提示文字
+            this.showHint();
+        } else {
+            // 无内容时，禁用按钮并隐藏提示
+            this.applyButton.disabled = true;
+            this.applyButton.style.opacity = '0.5';
+            this.applyButton.style.cursor = 'default';
+            this.applyButton.style.transform = 'scale(1)';
+            this.applyButton.classList.remove('active');
+            
+            // 隐藏提示文字
+            this.hideHint();
+        }
+    }
+
+    // 显示提示文字
+    private showHint(): void {
+        // 检查是否已经有提示元素
+        let hintElement = this.shadowRoot.querySelector('.input-hint') as HTMLDivElement;
+        
+        if (!hintElement) {
+            // 创建提示元素
+            hintElement = document.createElement('div');
+            hintElement.className = 'input-hint';
+            hintElement.textContent = 'Shift + Enter to new line';
+            hintElement.style.cssText = `
+                position: absolute;
+                bottom: 8px;
+                left: 20px;
+                font-size: 11px;
+                color: #999;
+                pointer-events: none;
+                z-index: 5;
+                font-family: inherit;
+            `;
+            
+            // 将提示元素添加到输入框容器中
+            const inputWrapper = this.shadowRoot.querySelector('.input-wrapper');
+            if (inputWrapper) {
+                inputWrapper.appendChild(hintElement);
+            }
+        }
+        
+        // 显示提示
+        hintElement.style.opacity = '1';
+    }
+
+    // 隐藏提示文字
+    private hideHint(): void {
+        const hintElement = this.shadowRoot.querySelector('.input-hint') as HTMLDivElement;
+        if (hintElement) {
+            hintElement.style.opacity = '0';
         }
     }
 
@@ -602,21 +695,57 @@ export class FloatingPanel {
     }
 
     private handleApply(): void {
+        if (this.isProcessing) {
+            // 如果正在处理，点击按钮表示终止
+            this.cancelProcessing();
+            return;
+        }
+
         const userInput = this.input.value.trim();
         if (!userInput) {
             this.showFeedback('请输入修改指令', 'error');
             return;
         }
 
-        // 显示加载状态
-        this.applyButton.disabled = true;
-        this.applyButton.textContent = '处理中...';
+        // 开始处理状态
+        this.isProcessing = true;
+        this.applyButton.title = '终止';
+        this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <rect x="8" y="8" width="8" height="8" rx="1"/>
+        </svg>`;
+        
+        // 禁用输入框
+        this.input.disabled = true;
+        this.input.style.opacity = '0.7';
+        this.input.style.cursor = 'default';
 
         // 触发应用事件
         if (this.eventCallback) {
             this.eventCallback({
                 type: 'apply',
                 data: { text: userInput }
+            });
+        }
+    }
+
+    // 取消处理
+    private cancelProcessing(): void {
+        this.isProcessing = false;
+        this.applyButton.title = '应用';
+        this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+        
+        // 重新启用输入框
+        this.input.disabled = false;
+        this.input.style.opacity = '1';
+        this.input.style.cursor = 'text';
+        
+        // 重新检查按钮状态
+        this.updateButtonState();
+        
+        // 触发取消事件
+        if (this.eventCallback) {
+            this.eventCallback({
+                type: 'cancel'
             });
         }
     }
@@ -630,13 +759,25 @@ export class FloatingPanel {
 
     // 重置按钮状态
     public resetApplyButton(): void {
+        this.isProcessing = false;
         this.applyButton.disabled = false;
-        this.applyButton.textContent = '应用';
+        this.applyButton.style.opacity = '1';
+        this.applyButton.style.cursor = 'pointer';
+        this.applyButton.style.transform = 'scale(1)';
+        this.applyButton.title = '应用';
+        this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+        this.applyButton.classList.remove('active');
+        this.input.disabled = false;
+        this.input.style.opacity = '1';
+        this.input.style.cursor = 'text';
+        this.updateButtonState(); // 重新检查输入内容状态，会处理提示文字
     }
 
     // 清空输入框
     public clearInput(): void {
         this.input.value = '';
+        this.hideHint();
+        this.updateButtonState();
     }
 
     public showFeedback(message: string, type: 'success' | 'error'): void {
