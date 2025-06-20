@@ -110,7 +110,7 @@ export class FloatingBall {
                 max-height: 48px !important;
                 background: rgba(255, 255, 255, 0.8);
                 backdrop-filter: blur(8px);
-                border-radius: 9999px;
+                border-radius: 14px;
                 box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
                 cursor: grab;
                 display: flex;
