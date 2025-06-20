@@ -29,48 +29,56 @@ export class FloatingPanel {
     }
 
     private injectStyles(): void {
-        console.log('[PageEdit][FloatingPanel] Injecting styles...');
         const style = document.createElement('style');
         style.textContent = `
-            /* 重置样式 */
-            #pageedit-floating-panel * {
-                box-sizing: border-box !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                font-size: 16px !important;
-                line-height: 1.5 !important;
-                transform-origin: center center !important;
-                transform: scale(1) !important;
-                zoom: 1 !important;
-            }
-
             /* Panel 基础样式 */
             #pageedit-floating-panel {
-                all: initial;
-                position: fixed !important;
-                right: 6rem !important;
-                bottom: 6rem !important;
+                position: fixed;
+                right: 96px;
+                bottom: 96px;
                 width: 320px !important;
                 max-width: 320px !important;
                 min-width: 320px !important;
-                height: auto !important;
-                max-height: 80vh !important;
-                background: rgba(255, 255, 255, 0.9) !important;
-                border-radius: 0.75rem !important;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-                backdrop-filter: blur(8px) !important;
-                border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                overflow: hidden !important;
-                transition: all 0.2s ease-out !important;
-                pointer-events: auto !important;
-                display: none !important;
-                z-index: 2147483647 !important;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-                user-select: none !important;
-                box-sizing: border-box !important;
-                transform: scale(1) !important;
-                zoom: 1 !important;
-                -webkit-text-size-adjust: 100% !important;
+                background: rgba(255, 255, 255, 0.9);
+                border-radius: 12px;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                overflow: hidden;
+                transition: all 0.2s ease-out;
+                pointer-events: auto;
+                display: none;
+                z-index: 2147483647;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                user-select: none;
+                box-sizing: border-box;
+            }
+
+            /* 面板内容 */
+            .panel-content {
+                padding: 16px;
+                position: relative;
+                z-index: 1;
+                box-sizing: border-box;
+            }
+
+            /* 文本区域 */
+            .panel-textarea {
+                width: 100%;
+                min-height: 96px !important;
+                max-height: 200px !important;
+                padding: 12px;
+                border: 1px solid rgba(209, 213, 219, 0.5);
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.5);
+                color: rgb(17, 24, 39);
+                font-size: 14px;
+                line-height: 1.5;
+                resize: vertical;
+                transition: all 0.2s;
+                margin-bottom: 12px;
+                box-sizing: border-box;
+                font-family: inherit;
             }
 
             /* 深色模式 */
@@ -84,7 +92,7 @@ export class FloatingPanel {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 0.75rem 1rem;
+                padding: 12px 16px;
                 background: rgba(243, 244, 246, 0.5);
                 border-bottom: 1px solid rgba(229, 231, 235, 0.5);
                 position: relative;
@@ -145,7 +153,7 @@ export class FloatingPanel {
             .panel-header span {
                 color: rgb(55, 65, 81);
                 font-weight: 500;
-                font-size: 0.9375rem;
+                font-size: 15px;
                 position: relative;
                 z-index: 1;
             }
@@ -200,75 +208,19 @@ export class FloatingPanel {
                 pointer-events: none;
             }
 
-            /* 面板内容 */
-            .panel-content {
-                padding: 1rem !important;
-                position: relative !important;
-                z-index: 1 !important;
-                box-sizing: border-box !important;
-                width: 100% !important;
-                max-width: 100% !important;
-            }
-
-            /* 文本区域 */
-            .panel-textarea {
-                width: 100% !important;
-                min-height: 96px !important;
-                max-height: 200px !important;
-                padding: 0.75rem !important;
-                border: 1px solid rgba(209, 213, 219, 0.5) !important;
-                border-radius: 0.5rem !important;
-                background: rgba(255, 255, 255, 0.5) !important;
-                color: rgb(17, 24, 39) !important;
-                font-size: 0.875rem !important;
-                line-height: 1.5 !important;
-                resize: vertical !important;
-                transition: all 0.2s !important;
-                margin-bottom: 0.75rem !important;
-                box-sizing: border-box !important;
-                font-family: inherit !important;
-                transform: scale(1) !important;
-                zoom: 1 !important;
-            }
-
-            .panel-textarea:focus {
-                outline: none;
-                border-color: rgb(59, 130, 246);
-                box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-            }
-
-            .panel-textarea::placeholder {
-                color: rgb(156, 163, 175);
-            }
-
-            #pageedit-floating-panel.dark-mode .panel-textarea {
-                background: rgba(31, 41, 55, 0.5);
-                border-color: rgba(75, 85, 99, 0.5);
-                color: rgb(229, 231, 235);
-            }
-
-            #pageedit-floating-panel.dark-mode .panel-textarea:focus {
-                border-color: rgb(96, 165, 250);
-                box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-            }
-
-            #pageedit-floating-panel.dark-mode .panel-textarea::placeholder {
-                color: rgb(107, 114, 128);
-            }
-
             /* 按钮行 */
             .button-row {
                 display: flex;
-                gap: 0.5rem;
+                gap: 8px;
             }
 
             /* 按钮样式 */
             .panel-button {
                 flex: 1;
-                padding: 0.5rem 1rem;
+                padding: 8px 16px;
                 border: none;
-                border-radius: 0.375rem;
-                font-size: 0.875rem;
+                border-radius: 6px;
+                font-size: 14px;
                 font-weight: 500;
                 cursor: pointer;
                 transition: all 0.2s;
@@ -335,8 +287,8 @@ export class FloatingPanel {
             /* 主题切换按钮 */
             .theme-toggle {
                 position: absolute;
-                right: 3rem;
-                top: 0.75rem;
+                right: 48px;
+                top: 12px;
                 width: 24px;
                 height: 24px;
                 padding: 0;
@@ -374,18 +326,6 @@ export class FloatingPanel {
         if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
             panel.classList.add('dark-mode');
         }
-
-        // 添加调试代码
-        const observer = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                console.log('[PageEdit][FloatingPanel] Panel size:', {
-                    width: entry.contentRect.width,
-                    height: entry.contentRect.height,
-                    devicePixelRatio: window.devicePixelRatio,
-                    zoom: window.visualViewport?.scale || 1
-                });
-            }
-        });
         
         panel.innerHTML = `
             <div class="panel-header">
@@ -417,57 +357,37 @@ export class FloatingPanel {
 
         // 添加拖动功能
         const header = panel.querySelector('.panel-header') as HTMLElement;
-        let isDragging = false;
-        let startX = 0;
-        let startY = 0;
-        let initialX = 0;
-        let initialY = 0;
-
         const onMouseDown = (e: MouseEvent) => {
-            if (e.target instanceof HTMLElement && 
+            if (e.target instanceof HTMLElement &&
                 (e.target.closest('.close-button') || e.target.closest('.theme-toggle'))) {
                 return;
             }
-            isDragging = true;
+
             header.classList.add('dragging');
-            startX = e.clientX;
-            startY = e.clientY;
+
+            let startX = e.clientX;
+            let startY = e.clientY;
             
             const rect = panel.getBoundingClientRect();
-            initialX = rect.left;
-            initialY = rect.top;
             
+            const onMouseMove = (e: MouseEvent) => {
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+
+                panel.style.left = `${rect.left + deltaX}px`;
+                panel.style.top = `${rect.top + deltaY}px`;
+                panel.style.right = 'auto';
+                panel.style.bottom = 'auto';
+            };
+
+            const onMouseUp = () => {
+                header.classList.remove('dragging');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
-        };
-
-        const onMouseMove = (e: MouseEvent) => {
-            if (!isDragging) return;
-            
-            const deltaX = e.clientX - startX;
-            const deltaY = e.clientY - startY;
-            
-            panel.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-        };
-
-        const onMouseUp = () => {
-            if (!isDragging) return;
-            
-            isDragging = false;
-            header.classList.remove('dragging');
-            
-            const rect = panel.getBoundingClientRect();
-            const finalX = rect.left;
-            const finalY = rect.top;
-            
-            panel.style.right = 'auto';
-            panel.style.bottom = 'auto';
-            panel.style.left = `${finalX}px`;
-            panel.style.top = `${finalY}px`;
-            panel.style.transform = 'none';
-            
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
         };
 
         header.addEventListener('mousedown', onMouseDown);
@@ -476,16 +396,6 @@ export class FloatingPanel {
         const themeToggle = panel.querySelector('.theme-toggle') as HTMLButtonElement;
         themeToggle.addEventListener('click', () => {
             panel.classList.toggle('dark-mode');
-        });
-
-        // 在返回 panel 之前添加以下代码
-        requestAnimationFrame(() => {
-            // 强制设置尺寸
-            panel.style.setProperty('width', '320px', 'important');
-            panel.style.setProperty('max-width', '320px', 'important');
-            panel.style.setProperty('min-width', '320px', 'important');
-            // 启动观察
-            observer.observe(panel);
         });
 
         return panel;
