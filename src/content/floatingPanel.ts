@@ -451,6 +451,8 @@ export class FloatingPanel {
         // Drag functionality
         let isDragging = false;
         let startX: number, startY: number, initialX: number, initialY: number;
+        let panelWidth: number, panelHeight: number; // 存储面板尺寸
+        let lastMoveTime = 0; // 用于节流
 
         const onMouseDown = (e: MouseEvent) => {
             // 只在头部触发拖动
@@ -465,26 +467,89 @@ export class FloatingPanel {
             const rect = panel.getBoundingClientRect();
             initialX = rect.left;
             initialY = rect.top;
+            
+            // 在拖动开始时获取面板尺寸
+            panelWidth = rect.width;
+            panelHeight = rect.height;
 
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+            // 将面板从右下角定位改为绝对定位，并启用GPU加速
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            panel.style.left = `${initialX}px`;
+            panel.style.top = `${initialY}px`;
+            panel.style.transform = 'translate3d(0, 0, 0)'; // 启用GPU加速
+
+            // 使用 passive: false 来确保可以调用 preventDefault
+            document.addEventListener('mousemove', onMouseMove, { passive: false });
+            document.addEventListener('mouseup', onMouseUp, { passive: false });
+            
+            // 防止文本选择
+            e.preventDefault();
         };
 
         const onMouseMove = (e: MouseEvent) => {
             if (!isDragging) return;
             
+            // 节流：限制更新频率
+            const now = Date.now();
+            if (now - lastMoveTime < 16) return; // 约60fps
+            lastMoveTime = now;
+            
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
 
-            panel.style.left = `${initialX + dx}px`;
-            panel.style.top = `${initialY + dy}px`;
-            panel.style.right = 'auto';
-            panel.style.bottom = 'auto';
+            // 计算新位置
+            let newX = initialX + dx;
+            let newY = initialY + dy;
+
+            // 获取窗口尺寸（缓存，避免频繁获取）
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // 边界检查 - 确保面板不会完全移出窗口
+            const minX = 0;
+            const maxX = windowWidth - panelWidth;
+            const minY = 0;
+            const maxY = windowHeight - panelHeight;
+
+            newX = Math.max(minX, Math.min(maxX, newX));
+            newY = Math.max(minY, Math.min(maxY, newY));
+
+            // 计算相对于初始位置的偏移量
+            const offsetX = newX - initialX;
+            const offsetY = newY - initialY;
+
+            // 使用 transform3d 来利用GPU加速
+            panel.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
+            
+            // 防止默认行为
+            e.preventDefault();
         };
 
         const onMouseUp = () => {
+            if (!isDragging) return;
+            
             isDragging = false;
             header.classList.remove('dragging');
+            
+            // 获取最终位置并应用
+            const transform = panel.style.transform;
+            const match = transform.match(/translate3d\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+            if (match) {
+                const offsetX = parseFloat(match[1]);
+                const offsetY = parseFloat(match[2]);
+                const finalX = initialX + offsetX;
+                const finalY = initialY + offsetY;
+                
+                // 使用 requestAnimationFrame 确保平滑过渡
+                requestAnimationFrame(() => {
+                    // 设置最终位置，保持GPU加速
+                    panel.style.left = `${finalX}px`;
+                    panel.style.top = `${finalY}px`;
+                    panel.style.transform = 'translate3d(0, 0, 0)'; // 保持GPU加速层
+                });
+            }
+            
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
