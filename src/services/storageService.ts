@@ -151,4 +151,23 @@ export class StorageService {
             console.warn('[StorageService] Eddy not found for deletion:', eddyId);
         }
     }
+
+    // 保存 Eddy 草稿内容
+    static async saveEddyDraft(eddyId: string, draftContent: string): Promise<void> {
+        console.log('[StorageService] Saving draft for eddy:', eddyId);
+        const eddys = await this.getEddys();
+        const index = eddys.findIndex(e => e.id === eddyId);
+        
+        if (index !== -1) {
+            eddys[index] = {
+                ...eddys[index],
+                draftContent,
+                updatedAt: Date.now()
+            };
+            await this.saveEddys(eddys);
+            console.log('[StorageService] Draft saved successfully for eddy:', eddyId);
+        } else {
+            console.warn('[StorageService] Eddy not found for draft save:', eddyId);
+        }
+    }
 } 

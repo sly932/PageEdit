@@ -8,4 +8,5 @@ export interface Eddy {
     lastUsed: boolean;
     createdAt: number;
     updatedAt: number;
+    draftContent?: string;
 } 

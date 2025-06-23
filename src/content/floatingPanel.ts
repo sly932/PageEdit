@@ -36,6 +36,10 @@ export class FloatingPanel {
     private dropdownMenu!: HTMLDivElement;
     private isDropdownOpen: boolean = false;
 
+    // 草稿相关属性
+    private draftSaveTimeout: NodeJS.Timeout | null = null; // 防抖定时器
+    private readonly DRAFT_SAVE_DELAY = 1000; // 草稿保存延迟（毫秒）
+
     constructor(shadowRoot: ShadowRoot) {
         console.log('[FloatingPanel] Constructor called');
         this.shadowRoot = shadowRoot;
@@ -153,7 +157,6 @@ export class FloatingPanel {
                 border-bottom: 1px solid rgba(229, 231, 235, 0.5);
                 position: relative;
                 z-index: 2;
-                cursor: move;
                 gap: 8px;
             }
 
@@ -210,7 +213,7 @@ export class FloatingPanel {
             }
 
             .panel-header.dragging {
-                cursor: grabbing;
+                /* cursor: grabbing; */
             }
 
             .panel-header.dragging::before {
@@ -855,6 +858,7 @@ export class FloatingPanel {
         let panelWidth: number, panelHeight: number; // 存储面板尺寸
         let lastMoveTime = 0; // 用于节流
 
+        // 将拖拽事件绑定到整个 panel
         const onMouseDown = (e: MouseEvent) => {
             // 检查是否点击的是按钮，如果是则不启动拖动
             const target = e.target as HTMLElement;
@@ -862,85 +866,59 @@ export class FloatingPanel {
                 return;
             }
             
-            // 只在头部触发拖动
-            if (!header.contains(target)) return;
+            // 检查是否点击的是输入框，如果是则不启动拖动
+            if (target.closest('textarea') || target.closest('input') || target.contentEditable === 'true') {
+                return;
+            }
             
+            // 允许整个面板拖拽，不再判断 header 区域
             isDragging = true;
-            header.classList.add('dragging');
-            
+            this.panel.classList.add('dragging');
             startX = e.clientX;
             startY = e.clientY;
-
             const rect = panel.getBoundingClientRect();
             initialX = rect.left;
             initialY = rect.top;
-            
-            // 在拖动开始时获取面板尺寸
             panelWidth = rect.width;
             panelHeight = rect.height;
-
-            // 将面板从右下角定位改为绝对定位，并启用GPU加速
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
             panel.style.left = `${initialX}px`;
             panel.style.top = `${initialY}px`;
-            panel.style.transform = 'translate3d(0, 0, 0)'; // 启用GPU加速
-
-            // 使用 passive: false 来确保可以调用 preventDefault
+            panel.style.transform = 'translate3d(0, 0, 0)';
             document.addEventListener('mousemove', onMouseMove, { passive: false });
             document.addEventListener('mouseup', onMouseUp, { passive: false });
-            
-            // 防止文本选择
             e.preventDefault();
         };
 
         const onMouseMove = (e: MouseEvent) => {
             if (!isDragging) return;
-            
-            // 节流：限制更新频率
             const now = Date.now();
-            if (now - lastMoveTime < 16) return; // 约60fps
+            if (now - lastMoveTime < 16) return;
             lastMoveTime = now;
-            
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-
-            // 计算新位置
             let newX = initialX + dx;
             let newY = initialY + dy;
-
-            // 获取可视区域的实际尺寸
             const visualViewport = window.visualViewport;
             const viewportWidth = visualViewport ? visualViewport.width : window.innerWidth;
             const viewportHeight = visualViewport ? visualViewport.height : window.innerHeight;
-
-            // 边界检查 - 确保面板不会完全移出可视区域
             const minX = 0;
             const maxX = viewportWidth - panelWidth;
             const minY = 0;
             const maxY = viewportHeight - panelHeight;
-
             newX = Math.max(minX, Math.min(maxX, newX));
             newY = Math.max(minY, Math.min(maxY, newY));
-
-            // 计算相对于初始位置的偏移量
             const offsetX = newX - initialX;
             const offsetY = newY - initialY;
-
-            // 使用 transform3d 来利用GPU加速
             panel.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
-            
-            // 防止默认行为
             e.preventDefault();
         };
 
         const onMouseUp = () => {
             if (!isDragging) return;
-            
             isDragging = false;
-            header.classList.remove('dragging');
-            
-            // 获取最终位置并应用
+            this.panel.classList.remove('dragging');
             const transform = panel.style.transform;
             const match = transform.match(/translate3d\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
             if (match) {
@@ -948,24 +926,19 @@ export class FloatingPanel {
                 const offsetY = parseFloat(match[2]);
                 const finalX = initialX + offsetX;
                 const finalY = initialY + offsetY;
-                
-                // 使用 requestAnimationFrame 确保平滑过渡
                 requestAnimationFrame(() => {
-                    // 设置最终位置，保持GPU加速
                     panel.style.left = `${finalX}px`;
                     panel.style.top = `${finalY}px`;
-                    panel.style.transform = 'translate3d(0, 0, 0)'; // 保持GPU加速层
-                    
-                    // 标记面板已被拖动过
+                    panel.style.transform = 'translate3d(0, 0, 0)';
                     this.hasBeenDragged = true;
                 });
             }
-            
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
 
-        header.addEventListener('mousedown', onMouseDown);
+        // 绑定到整个 panel
+        panel.addEventListener('mousedown', onMouseDown);
 
         // Close button functionality
         closeButton.addEventListener('click', () => this.hide());
@@ -1023,6 +996,9 @@ export class FloatingPanel {
             
             // 检查输入内容，启用/禁用按钮
             this.updateButtonState();
+            
+            // 自动保存草稿
+            this.saveDraftDebounced();
         });
 
         // Apply on Enter
@@ -1160,6 +1136,13 @@ export class FloatingPanel {
             this.showFeedback('Please enter your edit instruction', 'error');
             return;
         }
+
+        // 立即保存草稿（清除防抖定时器并立即保存）
+        if (this.draftSaveTimeout) {
+            clearTimeout(this.draftSaveTimeout);
+            this.draftSaveTimeout = null;
+        }
+        this.saveDraft();
 
         // 标记有未保存更改
         this.hasUnsavedChanges = true;
@@ -1300,6 +1283,14 @@ export class FloatingPanel {
 
     public hide(): void {
         console.log('[FloatingPanel] Hiding panel');
+        
+        // 保存草稿
+        if (this.draftSaveTimeout) {
+            clearTimeout(this.draftSaveTimeout);
+            this.draftSaveTimeout = null;
+        }
+        this.saveDraft();
+        
         this.panel.style.display = 'none';
     }
 
@@ -1315,6 +1306,12 @@ export class FloatingPanel {
     }
 
     public destroy(): void {
+        // 清理草稿保存定时器
+        if (this.draftSaveTimeout) {
+            clearTimeout(this.draftSaveTimeout);
+            this.draftSaveTimeout = null;
+        }
+        
         this.panel.remove();
     }
 
@@ -1470,6 +1467,7 @@ export class FloatingPanel {
     // Eddy 相关方法
     public setCurrentEddy(eddy: Eddy, isNew: boolean = false): void {
         console.log('[FloatingPanel] Setting current eddy:', eddy.name, '(ID:', eddy.id, ')', 'isNew:', isNew);
+        
         this.currentEddy = eddy;
         this.isNewEddy = isNew;
         this.hasUnsavedChanges = false; // 重置未保存更改标记
@@ -1477,13 +1475,13 @@ export class FloatingPanel {
         // 更新标题
         this.updateTitle();
         
-        // 如果是编辑现有 Eddy，加载其修改内容
+        // 如果是编辑现有 Eddy，加载其修改内容和草稿
         if (!isNew && eddy.modifications.length > 0) {
             this.loadEddyModifications(eddy);
-        } else {
-            // 清空输入框
-            this.clearInput();
         }
+        
+        // 加载草稿内容（如果有的话）
+        this.loadDraftContent(eddy);
         
         // 如果不是临时Eddy，将其设置为最近使用的Eddy（后台异步执行）
         if (!isNew && !eddy.id.startsWith('temp_')) {
@@ -1503,13 +1501,32 @@ export class FloatingPanel {
 
     private loadEddyModifications(eddy: Eddy): void {
         // 这里可以根据需要加载 Eddy 的修改内容
-        // 目前先清空输入框，后续可以扩展
-        this.clearInput();
+        // 目前保持输入内容不变，后续可以扩展
         console.log('[FloatingPanel] Loaded eddy modifications:', eddy.modifications.length, 'items');
+    }
+
+    private loadDraftContent(eddy: Eddy): void {
+        // 加载草稿内容
+        if (eddy.draftContent && eddy.draftContent.trim()) {
+            console.log('[FloatingPanel] Loading draft content for eddy:', eddy.name);
+            this.input.value = eddy.draftContent;
+            this.input.style.height = 'auto';
+            this.input.style.height = `${this.input.scrollHeight}px`;
+            this.updateButtonState();
+        } else {
+            // 如果没有草稿内容，清空输入框
+            console.log('[FloatingPanel] No draft content found, clearing input');
+            this.clearInput();
+        }
     }
 
     private async createNewEddy(): Promise<void> {
         try {
+            // 保存当前 Eddy 的草稿（如果有的话）
+            if (this.currentEddy && !this.currentEddy.id.startsWith('temp_')) {
+                await this.saveDraft();
+            }
+            
             // 保存当前 Eddy（如果有未保存更改）
             if (this.currentEddy && this.hasUnsavedChanges) {
                 await this.saveCurrentEddy();
@@ -1536,8 +1553,7 @@ export class FloatingPanel {
             // 设置新的 Eddy
             this.setCurrentEddy(newEddy, true);
             
-            // 清空输入框
-            this.clearInput();
+            // 新建 Eddy 时会自动清空输入框（通过 loadDraftContent 方法）
         } catch (error) {
             console.error('[FloatingPanel] Error creating new eddy:', error);
         }
@@ -1750,6 +1766,11 @@ export class FloatingPanel {
             
             console.log('[FloatingPanel] Switching to eddy:', eddy.name, '(ID:', eddy.id, ')');
             
+            // 保存当前 Eddy 的草稿（如果有的话）
+            if (this.currentEddy && !this.currentEddy.id.startsWith('temp_')) {
+                await this.saveDraft();
+            }
+            
             // 保存当前 Eddy（如果有未保存更改）
             if (this.currentEddy && this.hasUnsavedChanges) {
                 await this.saveCurrentEddy();
@@ -1790,6 +1811,35 @@ export class FloatingPanel {
             console.log('[FloatingPanel] Eddy set as last used successfully');
         } catch (error) {
             console.error('[FloatingPanel] Error setting eddy as last used:', error);
+        }
+    }
+
+    // 草稿保存相关方法
+    private saveDraftDebounced(): void {
+        // 清除之前的定时器
+        if (this.draftSaveTimeout) {
+            clearTimeout(this.draftSaveTimeout);
+        }
+        
+        // 设置新的定时器
+        this.draftSaveTimeout = setTimeout(() => {
+            this.saveDraft();
+        }, this.DRAFT_SAVE_DELAY);
+    }
+
+    private async saveDraft(): Promise<void> {
+        if (!this.currentEddy || this.currentEddy.id.startsWith('temp_')) {
+            // 如果是临时 Eddy，不保存草稿
+            return;
+        }
+        
+        const draftContent = this.input.value.trim();
+        
+        try {
+            await StorageService.saveEddyDraft(this.currentEddy.id, draftContent);
+            console.log('[FloatingPanel] Draft saved for eddy:', this.currentEddy.name);
+        } catch (error) {
+            console.error('[FloatingPanel] Error saving draft:', error);
         }
     }
 }

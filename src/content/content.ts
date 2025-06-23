@@ -194,7 +194,6 @@ export class ContentManager {
 
                         // 显示成功反馈
                         floatingBall.showFeedback('修改已应用', 'success');
-                        floatingBall.clearInput();
                     }
                     break;
 

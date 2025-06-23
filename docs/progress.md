@@ -2,7 +2,7 @@
 
 ## 最新更新 (2024-01-15)
 
-### ✅ 已完成：Eddy 管理系统核心功能
+### ✅ 已完成：Eddy 管理系统核心功能 + 草稿功能
 
 #### 1. Panel 与 Eddy 概念绑定 ✅
 - **实现状态**: 已完成
@@ -79,6 +79,27 @@
   - 增强错误恢复能力，避免数据不一致问题
   - 更详细的日志记录，便于调试
 
+#### 8. Eddy 草稿功能 ✅
+- **实现状态**: 已完成
+- **功能特性**:
+  - 自动保存用户输入内容到 Eddy 的草稿中
+  - 切换 Eddy 时自动加载对应的草稿内容
+  - 防抖机制避免频繁保存（1秒延迟）
+  - 在关键操作时立即保存草稿（应用修改、关闭面板、切换 Eddy）
+- **技术实现**:
+  - `src/types/eddy.ts` - 添加 `draftContent` 字段
+  - `src/services/storageService.ts` - 添加 `saveEddyDraft` 方法
+  - `src/content/floatingPanel.ts` - 实现草稿保存和加载逻辑
+- **核心方法**:
+  - `saveDraftDebounced()` - 防抖保存草稿
+  - `saveDraft()` - 立即保存草稿
+  - `loadDraftContent()` - 加载草稿内容
+- **用户体验**:
+  - 输入内容自动保存，避免意外丢失
+  - 切换 Eddy 时自动恢复草稿内容
+  - 新建 Eddy 时清空输入框
+  - 临时 Eddy 不保存草稿，节省存储空间
+
 ### 🔧 技术实现细节
 
 #### 数据结构
@@ -93,6 +114,10 @@ private newEddyButton!: HTMLButtonElement;
 private dropdownButton!: HTMLButtonElement;
 private dropdownMenu!: HTMLDivElement;
 private isDropdownOpen: boolean = false;
+
+// 草稿相关属性
+private draftSaveTimeout: NodeJS.Timeout | null = null; // 防抖定时器
+private readonly DRAFT_SAVE_DELAY = 1000; // 草稿保存延迟（毫秒）
 ```
 
 #### 核心方法
@@ -105,6 +130,9 @@ private isDropdownOpen: boolean = false;
 - `openDropdown()` - 打开下拉菜单并加载 Eddy 列表
 - `closeDropdown()` - 关闭下拉菜单
 - `createDropdownItem(eddy: Eddy)` - 创建下拉菜单项
+- `saveDraftDebounced()` - 防抖保存草稿
+- `saveDraft()` - 立即保存草稿
+- `loadDraftContent(eddy: Eddy)` - 加载草稿内容
 
 #### 用户体验流程
 ```
@@ -112,19 +140,19 @@ private isDropdownOpen: boolean = false;
     ↓
 检查 lastUsedEddy
     ↓
-有 Eddy? → 显示现有 Eddy 内容
+有 Eddy? → 显示现有 Eddy 内容和草稿
     ↓
 无 Eddy? → 创建 "New Eddy" 并显示空白界面
     ↓
-用户输入修改指令
+用户输入修改指令 → 自动保存草稿
     ↓
-应用修改（实时）
+应用修改（实时） → 立即保存草稿
     ↓
-用户点击 "+" → 保存当前 Eddy，创建新 Eddy
+用户点击 "+" → 保存当前 Eddy 和草稿，创建新 Eddy
     ↓
 用户点击下拉按钮 → 显示所有 Eddy 列表
     ↓
-用户选择 Eddy → 切换到选中的 Eddy
+用户选择 Eddy → 保存当前草稿，切换到选中的 Eddy，加载对应草稿
 ```
 
 ### 🎨 UI/UX 改进
@@ -150,6 +178,11 @@ private isDropdownOpen: boolean = false;
 - 所有新组件都支持深色模式
 - 颜色和对比度优化
 
+#### 草稿功能
+- 无感知的自动保存
+- 智能的草稿加载
+- 防抖机制优化性能
+
 ### 📊 测试状态
 
 #### 编译测试 ✅
@@ -165,6 +198,8 @@ private isDropdownOpen: boolean = false;
 - [ ] 下拉菜单功能测试
 - [ ] Eddy 切换功能测试
 - [ ] 深色模式适配测试
+- [ ] 草稿保存和加载测试
+- [ ] 防抖机制测试
 
 ### 🚀 下一步计划
 
@@ -177,15 +212,24 @@ private isDropdownOpen: boolean = false;
 1. **Eddy 修改内容保存** - 实现修改内容的持久化
 2. **Eddy 列表管理** - 添加 Eddy 列表查看和管理功能
 3. **导入/导出功能** - 支持 Eddy 的导入和导出
+4. **草稿功能优化** - 添加草稿内容大小限制和清理机制
 
 #### 长期目标
 1. **样式模板系统** - 预定义样式模板
 2. **样式版本控制** - Eddy 的版本管理
 3. **样式冲突检测** - 智能检测样式冲突
+4. **草稿版本管理** - 支持草稿的历史版本
 
 ---
 
 ## 历史进度
+
+### 2024-01-15
+- ✅ 实现 Eddy 草稿功能
+  - 添加 `draftContent` 字段到 Eddy 类型
+  - 实现自动草稿保存和加载
+  - 添加防抖机制优化性能
+  - 在关键操作时保存草稿
 
 ### 2024-01-14
 - ✅ 重构内容管理器，移除冗余的日志前缀
