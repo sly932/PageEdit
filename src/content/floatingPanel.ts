@@ -33,6 +33,8 @@ export class FloatingPanel {
     private injectStyles(): void {
         const style = document.createElement('style');
         style.textContent = `
+            @import url('https://fonts.googleapis.com/css2?family=PT+Mono:ital,wght@0,400;1,400&display=swap');
+            
             /* Panel 基础样式 */
             #pageedit-floating-panel {
                 position: fixed;
@@ -91,6 +93,14 @@ export class FloatingPanel {
 
             .panel-textarea::placeholder {
                 color: #A0A0A0;
+                font-family: 'PT Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+                font-weight: 400;
+                font-style: italic;
+                letter-spacing: 0.2px;
+            }
+
+            #pageedit-floating-panel.dark-mode .panel-textarea::placeholder {
+                color: #9CA3AF;
             }
 
             /* 深色模式 */
@@ -225,7 +235,7 @@ export class FloatingPanel {
 
             /* 应用状态下的圆环效果 */
             .apply-button.active {
-                background: #1f2937;
+                background: #000000;
                 color: white;
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             }
@@ -238,6 +248,20 @@ export class FloatingPanel {
                 width: 20px;
                 height: 20px;
                 color: #333; /* Arrow color */
+            }
+
+            .apply-button.active svg {
+                color: white; /* White arrow when active */
+            }
+
+            /* 处理状态下的取消按钮样式 */
+            .apply-button.processing {
+                background: #000000;
+                color: white;
+            }
+
+            .apply-button.processing svg {
+                color: white;
             }
 
             /* 反馈信息 */
@@ -307,8 +331,8 @@ export class FloatingPanel {
             /* 自定义 Tooltip 样式 */
             .custom-tooltip {
                 position: absolute;
-                background: rgba(0, 0, 0, 0.8);
-                color: white;
+                background: rgba(255, 255, 255, 0.95);
+                color: rgb(17, 24, 39);
                 padding: 6px 10px;
                 border-radius: 6px;
                 font-size: 11px;
@@ -321,7 +345,7 @@ export class FloatingPanel {
                 z-index: 2147483647;
                 font-family: inherit;
                 backdrop-filter: blur(4px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.1);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             }
@@ -333,22 +357,66 @@ export class FloatingPanel {
 
             /* 深色模式下的 Tooltip */
             #pageedit-floating-panel.dark-mode .custom-tooltip {
-                background: rgba(255, 255, 255, 0.9);
-                color: rgb(17, 24, 39);
-                border-color: rgba(0, 0, 0, 0.1);
+                background: rgba(31, 41, 55, 0.95);
+                color: rgb(229, 231, 235);
+                border-color: rgba(75, 85, 99, 0.3);
             }
 
             /* 系统主题适配 */
             @media (prefers-color-scheme: dark) {
                 .custom-tooltip {
-                    background: rgba(255, 255, 255, 0.9);
-                    color: rgb(17, 24, 39);
-                    border-color: rgba(0, 0, 0, 0.1);
+                    background: rgba(31, 41, 55, 0.95);
+                    color: rgb(229, 231, 235);
+                    border-color: rgba(75, 85, 99, 0.3);
                 }
             }
         `;
         this.shadowRoot.appendChild(style);
         console.log('[PageEdit][FloatingPanel] Styles injected');
+        
+        // 检测PT Mono字体是否加载成功
+        this.checkAndApplyPTMonoFont();
+    }
+
+    // 检测并应用PT Mono字体
+    private checkAndApplyPTMonoFont(): void {
+        // 创建测试元素来检测字体是否可用
+        const testElement = document.createElement('span');
+        testElement.style.fontFamily = 'PT Mono, monospace';
+        testElement.style.fontSize = '20px';
+        testElement.style.position = 'absolute';
+        testElement.style.visibility = 'hidden';
+        testElement.style.whiteSpace = 'nowrap';
+        testElement.textContent = 'abcdefghijklmnopqrstuvwxyz';
+        
+        document.body.appendChild(testElement);
+        
+        // 获取使用PT Mono的宽度
+        const ptMonoWidth = testElement.offsetWidth;
+        
+        // 修改字体为系统等宽字体
+        testElement.style.fontFamily = 'monospace';
+        
+        // 获取使用系统等宽字体的宽度
+        const systemMonoWidth = testElement.offsetWidth;
+        
+        // 清理测试元素
+        document.body.removeChild(testElement);
+        
+        // 如果宽度不同，说明PT Mono字体加载成功
+        if (Math.abs(ptMonoWidth - systemMonoWidth) > 1) {
+            console.log('[PageEdit][FloatingPanel] PT Mono font loaded successfully');
+            // 动态添加PT Mono到placeholder样式
+            const ptMonoStyle = document.createElement('style');
+            ptMonoStyle.textContent = `
+                .panel-textarea::placeholder {
+                    font-family: 'PT Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+                }
+            `;
+            this.shadowRoot.appendChild(ptMonoStyle);
+        } else {
+            console.warn('[PageEdit][FloatingPanel] PT Mono font failed to load, using system monospace fonts as fallback');
+        }
     }
 
     private createPanel(): HTMLDivElement {
@@ -409,7 +477,7 @@ export class FloatingPanel {
         // 创建文本区域
         this.input = document.createElement('textarea');
         this.input.className = 'panel-textarea';
-        this.input.placeholder = 'Make your edit...';
+        this.input.placeholder = 'Enjoy your edit...';
         this.input.rows = 1;
 
         // 创建应用按钮
@@ -597,7 +665,7 @@ export class FloatingPanel {
 
         // Apply on Enter
         this.input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
                 e.preventDefault();
                 this.handleApply();
             }
@@ -734,8 +802,9 @@ export class FloatingPanel {
         // 开始处理状态
         this.isProcessing = true;
         this.applyButton.title = 'Cancel';
+        this.applyButton.classList.add('processing');
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-            <rect x="8" y="8" width="8" height="8" rx="1"/>
+            <rect x="6" y="6" width="12" height="12" rx="1" fill="white"/>
         </svg>`;
         
         // 禁用输入框
@@ -756,6 +825,7 @@ export class FloatingPanel {
     private cancelProcessing(): void {
         this.isProcessing = false;
         this.applyButton.title = 'Apply';
+        this.applyButton.classList.remove('processing');
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
         
         // 重新启用输入框
@@ -794,6 +864,7 @@ export class FloatingPanel {
         this.applyButton.style.cursor = 'pointer';
         this.applyButton.style.transform = 'scale(1)';
         this.applyButton.title = 'Apply';
+        this.applyButton.classList.remove('processing');
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
         this.applyButton.classList.remove('active');
         this.input.disabled = false;
@@ -934,13 +1005,13 @@ export class FloatingPanel {
         // 根据当前主题状态设置样式
         const isDarkMode = this.panel.classList.contains('dark-mode');
         if (isDarkMode) {
-            tooltip.style.background = 'rgba(255, 255, 255, 0.9)';
+            tooltip.style.background = 'rgba(31, 41, 55, 0.95)';
+            tooltip.style.color = 'rgb(229, 231, 235)';
+            tooltip.style.borderColor = 'rgba(75, 85, 99, 0.3)';
+        } else {
+            tooltip.style.background = 'rgba(255, 255, 255, 0.95)';
             tooltip.style.color = 'rgb(17, 24, 39)';
             tooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-        } else {
-            tooltip.style.background = 'rgba(0, 0, 0, 0.8)';
-            tooltip.style.color = 'white';
-            tooltip.style.borderColor = 'rgba(255, 255, 255, 0.1)';
         }
         
         this.shadowRoot.appendChild(tooltip);
@@ -1010,13 +1081,13 @@ export class FloatingPanel {
         if (currentTooltip) {
             const newIsDarkMode = this.panel.classList.contains('dark-mode');
             if (newIsDarkMode) {
-                currentTooltip.style.background = 'rgba(255, 255, 255, 0.9)';
+                currentTooltip.style.background = 'rgba(31, 41, 55, 0.95)';
+                currentTooltip.style.color = 'rgb(229, 231, 235)';
+                currentTooltip.style.borderColor = 'rgba(75, 85, 99, 0.3)';
+            } else {
+                currentTooltip.style.background = 'rgba(255, 255, 255, 0.95)';
                 currentTooltip.style.color = 'rgb(17, 24, 39)';
                 currentTooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-            } else {
-                currentTooltip.style.background = 'rgba(0, 0, 0, 0.8)';
-                currentTooltip.style.color = 'white';
-                currentTooltip.style.borderColor = 'rgba(255, 255, 255, 0.1)';
             }
         }
     }

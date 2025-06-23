@@ -153,8 +153,8 @@ export class FloatingBall {
             /* 自定义 Tooltip 样式 */
             .custom-tooltip {
                 position: absolute;
-                background: rgba(0, 0, 0, 0.8);
-                color: white;
+                background: rgba(255, 255, 255, 0.95);
+                color: rgb(17, 24, 39);
                 padding: 6px 10px;
                 border-radius: 6px;
                 font-size: 11px;
@@ -167,7 +167,7 @@ export class FloatingBall {
                 z-index: 2147483647;
                 font-family: inherit;
                 backdrop-filter: blur(4px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.1);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             }
@@ -180,9 +180,9 @@ export class FloatingBall {
             /* 深色模式下的 Tooltip */
             @media (prefers-color-scheme: dark) {
                 .custom-tooltip {
-                    background: rgba(255, 255, 255, 0.9);
-                    color: rgb(17, 24, 39);
-                    border-color: rgba(0, 0, 0, 0.1);
+                    background: rgba(31, 41, 55, 0.95);
+                    color: rgb(229, 231, 235);
+                    border-color: rgba(75, 85, 99, 0.3);
                 }
             }
         `;
@@ -234,13 +234,13 @@ export class FloatingBall {
             const currentTooltip = (this as any).currentTooltip;
             if (currentTooltip) {
                 if (e.matches) {
-                    currentTooltip.style.background = 'rgba(255, 255, 255, 0.9)';
+                    currentTooltip.style.background = 'rgba(31, 41, 55, 0.95)';
+                    currentTooltip.style.color = 'rgb(229, 231, 235)';
+                    currentTooltip.style.borderColor = 'rgba(75, 85, 99, 0.3)';
+                } else {
+                    currentTooltip.style.background = 'rgba(255, 255, 255, 0.95)';
                     currentTooltip.style.color = 'rgb(17, 24, 39)';
                     currentTooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-                } else {
-                    currentTooltip.style.background = 'rgba(0, 0, 0, 0.8)';
-                    currentTooltip.style.color = 'white';
-                    currentTooltip.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                 }
             }
         });
@@ -388,13 +388,13 @@ export class FloatingBall {
         // 根据系统主题状态设置样式
         const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (isDarkMode) {
-            tooltip.style.background = 'rgba(255, 255, 255, 0.9)';
+            tooltip.style.background = 'rgba(31, 41, 55, 0.95)';
+            tooltip.style.color = 'rgb(229, 231, 235)';
+            tooltip.style.borderColor = 'rgba(75, 85, 99, 0.3)';
+        } else {
+            tooltip.style.background = 'rgba(255, 255, 255, 0.95)';
             tooltip.style.color = 'rgb(17, 24, 39)';
             tooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-        } else {
-            tooltip.style.background = 'rgba(0, 0, 0, 0.8)';
-            tooltip.style.color = 'white';
-            tooltip.style.borderColor = 'rgba(255, 255, 255, 0.1)';
         }
         
         this.shadowRoot.appendChild(tooltip);
