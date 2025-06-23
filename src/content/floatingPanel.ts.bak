@@ -48,9 +48,6 @@ export class FloatingPanel {
 
     constructor(shadowRoot: ShadowRoot) {
         this.shadowRoot = shadowRoot;
-
-        // 先初始化 Tooltip
-        PanelTooltip.initialize(this.shadowRoot);
         
         // 初始化各个模块
         PanelRenderer.initialize(shadowRoot);
@@ -81,14 +78,12 @@ export class FloatingPanel {
             this.dropdownButton,
             this.dropdownMenu,
             this.newEddyButton,
-            this.deleteButton,
             {
                 onNewEddy: () => this.createNewEddy(),
                 onSaveEddy: () => this.saveCurrentEddy(),
                 onSwitchEddy: (eddy: Eddy) => this.setCurrentEddy(eddy),
                 onDeleteEddy: () => this.deleteCurrentEddy()
-            },
-            this // 传递 FloatingPanel 的引用
+            }
         );
         
         // 初始化主题
@@ -117,25 +112,6 @@ export class FloatingPanel {
         PanelTooltip.addTooltipEvents(this.undoButton, 'UNDO');
         PanelTooltip.addTooltipEvents(this.newEddyButton, 'CREATE NEW EDDY');
         PanelTooltip.addTooltipEvents(this.dropdownButton, 'SWITCH EDDY');
-        
-        // 为删除按钮添加 Tooltip
-        PanelTooltip.addTooltipEvents(this.deleteButton, 'DELETE');
-        
-        // 为主题切换按钮添加 Tooltip
-        const themeToggleButton = this.shadowRoot.querySelector('.theme-toggle') as HTMLButtonElement;
-        if (themeToggleButton) {
-            PanelTooltip.addTooltipEvents(themeToggleButton, 'THEME');
-            // 添加主题切换事件
-            themeToggleButton.addEventListener('click', () => PanelTheme.toggleTheme());
-        }
-        
-        // 为关闭按钮添加 Tooltip（从 PanelRenderer 获取）
-        const closeButton = this.shadowRoot.querySelector('.close-button') as HTMLButtonElement;
-        if (closeButton) {
-            PanelTooltip.addTooltipEvents(closeButton, 'CLOSE');
-            // 添加关闭事件
-            closeButton.addEventListener('click', () => this.hide());
-        }
         
         // 为标题添加动态 tooltip，显示完整标题
         this.titleElement.addEventListener('mouseenter', () => {
@@ -550,29 +526,12 @@ export class FloatingPanel {
     }
 
     private async saveCurrentEddy(): Promise<void> {
-        console.log('[FloatingPanel] saveCurrentEddy called, hasUnsavedChanges:', this.hasUnsavedChanges, 'currentEddy:', this.currentEddy?.name);
-        
-        if (!this.currentEddy) {
-            console.log('[FloatingPanel] No current eddy, skipping save');
-            return;
-        }
-        
-        // 检查是否有未保存的更改（包括标题修改）
-        const newName = this.titleElement.textContent?.trim() || this.currentEddy.name;
-        const hasTitleChanges = newName !== this.currentEddy.name;
-        const hasContentChanges = this.hasUnsavedChanges;
-        
-        console.log('[FloatingPanel] Changes check - hasTitleChanges:', hasTitleChanges, 'hasContentChanges:', hasContentChanges, 'newName:', newName, 'currentName:', this.currentEddy.name);
-        
-        if (!hasTitleChanges && !hasContentChanges) {
-            console.log('[FloatingPanel] No changes detected, skipping save');
-            return;
-        }
+        if (!this.currentEddy || !this.hasUnsavedChanges) return;
         
         try {
             // 更新 Eddy 名称（如果用户编辑了标题）
-            if (hasTitleChanges) {
-                console.log('[FloatingPanel] Updating eddy name from', this.currentEddy.name, 'to', newName);
+            const newName = this.titleElement.textContent?.trim() || this.currentEddy.name;
+            if (newName !== this.currentEddy.name) {
                 this.currentEddy.name = newName;
             }
             
@@ -590,8 +549,6 @@ export class FloatingPanel {
                 this.currentEddy = realEddy;
                 this.isNewEddy = false;
                 console.log('[FloatingPanel] Temporary eddy converted to real eddy:', realEddy.id);
-                // 同步 UI 层 currentEddy
-                PanelEvents.setCurrentEddy(this.currentEddy, false);
             } else {
                 // 更新现有的Eddy
                 await StorageService.updateEddy(this.currentEddy);
@@ -601,7 +558,7 @@ export class FloatingPanel {
             this.hasUnsavedChanges = false;
             PanelEvents.setHasUnsavedChanges(false);
             
-            console.log('[FloatingPanel] Current eddy saved successfully:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
+            console.log('[FloatingPanel] Current eddy saved:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
         } catch (error) {
             console.error('[FloatingPanel] Error saving current eddy:', error);
         }
@@ -677,37 +634,17 @@ export class FloatingPanel {
         
         try {
             console.log('[FloatingPanel] Deleting eddy:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
-            const domain = this.currentEddy.domain;
+            
             // 删除Eddy
             await StorageService.deleteEddy(this.currentEddy.id);
-
-            // 获取当前域名下所有 Eddy
-            const eddys = await StorageService.getEddysByDomain(domain);
-            if (eddys.length > 0) {
-                // 按修改时间倒序，选择最近的
-                eddys.sort((a, b) => b.updatedAt - a.updatedAt);
-                const latestEddy = eddys[0];
-                // 设置为 lastUsed
-                latestEddy.lastUsed = true;
-                await StorageService.updateEddy(latestEddy);
-                // 切换到该 Eddy
-                this.setCurrentEddy(latestEddy, false);
-                console.log('[FloatingPanel] Switched to latest eddy:', latestEddy.name, '(ID:', latestEddy.id, ')');
-            } else {
-                // 没有 Eddy，新建
-                await this.createNewEddy();
-                console.log('[FloatingPanel] No eddy left, created new eddy');
-            }
+            
+            // 创建新的Eddy
+            await this.createNewEddy();
             
             console.log('[FloatingPanel] Eddy deleted successfully');
         } catch (error) {
             console.error('[FloatingPanel] Error deleting eddy:', error);
             this.showFeedback('Failed to delete eddy', 'error');
         }
-    }
-
-    public setHasUnsavedChanges(hasChanges: boolean): void {
-        this.hasUnsavedChanges = hasChanges;
-        console.log('[FloatingPanel] hasUnsavedChanges set to:', hasChanges);
     }
 }
