@@ -34,8 +34,42 @@ export class StorageService {
     static async getLastUsedEddy(domain: string): Promise<Eddy | null> {
         console.log('[StorageService] Getting last used eddy for domain:', domain);
         const eddys = await this.getEddysByDomain(domain);
-        const lastUsedEddy = eddys.find(eddy => eddy.lastUsed) || null;
-        console.log('[StorageService] Last used eddy for domain:', domain, ':', lastUsedEddy ? lastUsedEddy.name : 'none');
+        
+        // 如果该域名没有任何 Eddy，直接返回 null
+        if (eddys.length === 0) {
+            console.log('[StorageService] No eddys found for domain:', domain);
+            return null;
+        }
+        
+        // 查找 lastUsed 为 true 的 Eddy
+        let lastUsedEddy = eddys.find(eddy => eddy.lastUsed);
+        
+        // 如果没有找到 lastUsed 为 true 的 Eddy（可能是代码错误），
+        // 则将最近更新的 Eddy 设置为 lastUsed
+        if (!lastUsedEddy) {
+            console.log('[StorageService] No lastUsed eddy found, setting most recently updated eddy as lastUsed');
+            
+            // 按 updatedAt 排序，找到最近更新的 Eddy
+            const sortedEddys = [...eddys].sort((a, b) => b.updatedAt - a.updatedAt);
+            lastUsedEddy = sortedEddys[0];
+            
+            // 将该 Eddy 设置为 lastUsed
+            lastUsedEddy.lastUsed = true;
+            
+            // 将同一域名的其他 Eddy 的 lastUsed 设为 false
+            eddys.forEach(eddy => {
+                if (eddy.id !== lastUsedEddy!.id) {
+                    eddy.lastUsed = false;
+                }
+            });
+            
+            // 保存更新后的 Eddy 列表
+            await this.saveEddys(await this.getEddys());
+            
+            console.log('[StorageService] Set eddy as lastUsed:', lastUsedEddy.name, '(ID:', lastUsedEddy.id, ')');
+        }
+        
+        console.log('[StorageService] Last used eddy for domain:', domain, ':', lastUsedEddy.name, '(ID:', lastUsedEddy.id, ')');
         return lastUsedEddy;
     }
 

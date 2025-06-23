@@ -1,4 +1,5 @@
 import { FloatingPanel, PanelEvent } from './floatingPanel';
+import { StorageService } from '../services/storageService';
 
 export class FloatingBall {
     private ball: HTMLDivElement;
@@ -327,7 +328,57 @@ export class FloatingBall {
             e.stopPropagation();
             return;
         }
-        this.panel.toggle();
+        
+        // 检查当前域名的 lastUsedEddy
+        this.checkAndInitializeEddy();
+    }
+
+    private async checkAndInitializeEddy(): Promise<void> {
+        try {
+            const currentDomain = window.location.hostname;
+            console.log('[FloatingBall] Checking lastUsedEddy for domain:', currentDomain);
+            
+            const lastUsedEddy = await StorageService.getLastUsedEddy(currentDomain);
+            
+            if (lastUsedEddy) {
+                console.log('[FloatingBall] Found lastUsedEddy:', lastUsedEddy.name, '(ID:', lastUsedEddy.id, ')');
+                // 如果有 lastUsedEddy，设置面板为编辑模式
+                this.panel.setCurrentEddy(lastUsedEddy);
+            } else {
+                console.log('[FloatingBall] No lastUsedEddy found, creating new eddy');
+                // 如果没有 lastUsedEddy，创建新的 Eddy
+                await this.createNewEddy();
+            }
+            
+            // 展开面板
+            this.panel.toggle();
+        } catch (error) {
+            console.error('[FloatingBall] Error checking/initializing eddy:', error);
+            // 出错时仍然展开面板
+            this.panel.toggle();
+        }
+    }
+
+    private async createNewEddy(): Promise<void> {
+        try {
+            const currentDomain = window.location.hostname;
+            const newEddyName = 'New Eddy';
+            
+            console.log('[FloatingBall] Creating new eddy with name:', newEddyName);
+            
+            const newEddy = await StorageService.createEddy(
+                newEddyName,
+                currentDomain,
+                []
+            );
+            
+            console.log('[FloatingBall] New eddy created:', newEddy.name, '(ID:', newEddy.id, ')');
+            
+            // 设置面板为新建模式
+            this.panel.setCurrentEddy(newEddy, true);
+        } catch (error) {
+            console.error('[FloatingBall] Error creating new eddy:', error);
+        }
     }
 
     // 计算安全的初始位置，考虑开发者工具栏

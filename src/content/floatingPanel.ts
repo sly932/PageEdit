@@ -1,4 +1,6 @@
 import { StyleService } from './services/styleService';
+import { Eddy } from '../types/eddy';
+import { StorageService } from '../services/storageService';
 
 // 定义自定义事件类型
 export interface PanelEvent {
@@ -21,6 +23,17 @@ export class FloatingPanel {
     private eventCallback: PanelEventCallback | null = null;
     private isProcessing: boolean = false; // 添加处理状态标记
     private hasBeenDragged: boolean = false; // 跟踪面板是否已被拖动过
+    
+    // Eddy 相关属性
+    private currentEddy: Eddy | null = null;
+    private isNewEddy: boolean = false;
+    private titleElement!: HTMLSpanElement;
+    private newEddyButton!: HTMLButtonElement;
+    
+    // 下拉菜单相关属性
+    private dropdownButton!: HTMLButtonElement;
+    private dropdownMenu!: HTMLDivElement;
+    private isDropdownOpen: boolean = false;
 
     constructor(shadowRoot: ShadowRoot) {
         console.log('[FloatingPanel] Constructor called');
@@ -339,6 +352,65 @@ export class FloatingPanel {
                 height: 20px;
             }
 
+            /* Eddy 标题编辑样式 */
+            .eddy-title {
+                color: rgb(55, 65, 81);
+                font-weight: 500;
+                font-size: 15px;
+                position: relative;
+                z-index: 1;
+                cursor: pointer;
+                min-width: 60px;
+                outline: none;
+                border-radius: 4px;
+                padding: 2px 4px;
+                transition: background-color 0.2s;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .eddy-title:hover {
+                background-color: rgba(59, 130, 246, 0.05);
+            }
+
+            .eddy-title:focus {
+                background-color: rgba(59, 130, 246, 0.1);
+                box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            }
+
+            #pageedit-floating-panel.dark-mode .eddy-title {
+                color: rgb(229, 231, 235);
+            }
+
+            #pageedit-floating-panel.dark-mode .eddy-title:hover {
+                background-color: rgba(96, 165, 250, 0.1);
+            }
+
+            #pageedit-floating-panel.dark-mode .eddy-title:focus {
+                background-color: rgba(96, 165, 250, 0.15);
+                box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+            }
+
+            /* 新建 Eddy 按钮特殊样式 */
+            .new-eddy-button {
+                color: rgb(34, 197, 94) !important;
+            }
+
+            .new-eddy-button:hover {
+                background: rgba(34, 197, 94, 0.1) !important;
+                color: rgb(22, 163, 74) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .new-eddy-button {
+                color: rgb(74, 222, 128) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .new-eddy-button:hover {
+                background: rgba(74, 222, 128, 0.1) !important;
+                color: rgb(34, 197, 94) !important;
+            }
+
             /* 自定义 Tooltip 样式 */
             .custom-tooltip {
                 position: absolute;
@@ -392,6 +464,118 @@ export class FloatingPanel {
 
             #pageedit-floating-panel.dark-mode .apply-button svg {
                 color: #e8eaed; /* Light gray for icon */
+            }
+
+            /* 标题容器样式 */
+            .title-container {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                position: relative;
+            }
+
+            /* 下拉按钮样式 */
+            .dropdown-button {
+                color: rgb(156, 163, 175) !important;
+                transition: transform 0.2s ease;
+            }
+
+            .dropdown-button:hover {
+                background: rgba(0, 0, 0, 0.05) !important;
+                color: rgb(75, 85, 99) !important;
+            }
+
+            .dropdown-button.open {
+                transform: rotate(180deg);
+            }
+
+            #pageedit-floating-panel.dark-mode .dropdown-button {
+                color: rgb(156, 163, 175) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .dropdown-button:hover {
+                background: rgba(255, 255, 255, 0.1) !important;
+                color: rgb(209, 213, 219) !important;
+            }
+
+            /* 下拉菜单样式 */
+            .dropdown-menu {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(255, 255, 255, 0.95);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+                backdrop-filter: blur(8px);
+                z-index: 2147483648;
+                max-height: 200px;
+                overflow-y: auto;
+                margin-top: 4px;
+            }
+
+            #pageedit-floating-panel.dark-mode .dropdown-menu {
+                background: rgba(31, 41, 55, 0.95);
+                border-color: rgba(75, 85, 99, 0.3);
+            }
+
+            .dropdown-item {
+                padding: 8px 12px;
+                cursor: pointer;
+                font-size: 14px;
+                color: rgb(55, 65, 81);
+                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+                transition: background-color 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .dropdown-item:last-child {
+                border-bottom: none;
+            }
+
+            .dropdown-item:hover {
+                background-color: rgba(59, 130, 246, 0.1);
+            }
+
+            .dropdown-item.current {
+                background-color: rgba(59, 130, 246, 0.15);
+                color: rgb(59, 130, 246);
+                font-weight: 500;
+            }
+
+            #pageedit-floating-panel.dark-mode .dropdown-item {
+                color: rgb(229, 231, 235);
+                border-bottom-color: rgba(75, 85, 99, 0.3);
+            }
+
+            #pageedit-floating-panel.dark-mode .dropdown-item:hover {
+                background-color: rgba(96, 165, 250, 0.1);
+            }
+
+            #pageedit-floating-panel.dark-mode .dropdown-item.current {
+                background-color: rgba(96, 165, 250, 0.15);
+                color: rgb(96, 165, 250);
+            }
+
+            .dropdown-item-name {
+                flex: 1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .dropdown-item-id {
+                font-size: 11px;
+                color: rgb(156, 163, 175);
+                margin-left: 8px;
+                font-family: 'PT Mono', monospace;
+            }
+
+            #pageedit-floating-panel.dark-mode .dropdown-item-id {
+                color: rgb(107, 114, 128);
             }
         `;
         this.shadowRoot.appendChild(style);
@@ -450,12 +634,45 @@ export class FloatingPanel {
         const header = document.createElement('div');
         header.className = 'panel-header';
 
-        const title = document.createElement('span');
-        title.textContent = 'PageEdit';
+        this.titleElement = document.createElement('span');
+        this.titleElement.textContent = 'PageEdit';
+        this.titleElement.className = 'eddy-title';
+        this.titleElement.contentEditable = 'true';
+        this.titleElement.style.cursor = 'pointer';
+        this.titleElement.style.minWidth = '60px';
+        this.titleElement.style.outline = 'none';
+        this.titleElement.style.borderRadius = '4px';
+        this.titleElement.style.padding = '2px 4px';
+        this.titleElement.style.transition = 'background-color 0.2s';
+
+        // 创建标题容器
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'title-container';
+        titleContainer.style.display = 'flex';
+        titleContainer.style.alignItems = 'center';
+        titleContainer.style.gap = '4px';
+
+        // 创建下拉按钮
+        this.dropdownButton = document.createElement('button');
+        this.dropdownButton.className = 'header-button dropdown-button';
+        this.dropdownButton.title = 'Switch eddy';
+        this.dropdownButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>`;
+
+        // 创建下拉菜单
+        this.dropdownMenu = document.createElement('div');
+        this.dropdownMenu.className = 'dropdown-menu';
+        this.dropdownMenu.style.display = 'none';
+
+        titleContainer.appendChild(this.titleElement);
+        titleContainer.appendChild(this.dropdownButton);
+        titleContainer.appendChild(this.dropdownMenu);
 
         const controlsContainer = document.createElement('div');
         controlsContainer.style.display = 'flex';
         controlsContainer.style.alignItems = 'center';
+        controlsContainer.style.gap = '4px';
 
         this.undoButton = document.createElement('button');
         this.undoButton.className = 'header-button';
@@ -473,6 +690,14 @@ export class FloatingPanel {
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M3 12h2.25m4.227 4.773L5.636 18.364" />
         </svg>`;
 
+        // 创建新建 Eddy 按钮
+        this.newEddyButton = document.createElement('button');
+        this.newEddyButton.className = 'header-button new-eddy-button';
+        this.newEddyButton.title = 'Create new eddy';
+        this.newEddyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>`;
+
         const closeButtonContainer = document.createElement('div');
         closeButtonContainer.className = 'close-button-container';
         
@@ -485,9 +710,10 @@ export class FloatingPanel {
 
         controlsContainer.appendChild(this.undoButton);
         controlsContainer.appendChild(themeToggleButton);
+        controlsContainer.appendChild(this.newEddyButton);
         controlsContainer.appendChild(closeButtonContainer);
 
-        header.appendChild(title);
+        header.appendChild(titleContainer);
         header.appendChild(controlsContainer);
 
         // 创建面板内容
@@ -669,6 +895,11 @@ export class FloatingPanel {
 
         // 添加 Tooltip 事件监听器
         this.addTooltipEvents(this.undoButton, 'UNDO');
+        this.addTooltipEvents(this.newEddyButton, 'CREATE NEW EDDY');
+        this.addTooltipEvents(this.dropdownButton, 'SWITCH EDDY');
+        
+        // 设置 Eddy 相关事件处理器
+        this.setupEddyEventHandlers();
         
         // 为应用按钮添加动态 tooltip
         this.applyButton.addEventListener('mouseenter', () => {
@@ -1113,5 +1344,237 @@ export class FloatingPanel {
                 currentTooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
             }
         }
+    }
+
+    // Eddy 相关方法
+    public setCurrentEddy(eddy: Eddy, isNew: boolean = false): void {
+        console.log('[FloatingPanel] Setting current eddy:', eddy.name, '(ID:', eddy.id, ')', 'isNew:', isNew);
+        this.currentEddy = eddy;
+        this.isNewEddy = isNew;
+        
+        // 更新标题
+        this.updateTitle();
+        
+        // 如果是编辑现有 Eddy，加载其修改内容
+        if (!isNew && eddy.modifications.length > 0) {
+            this.loadEddyModifications(eddy);
+        } else {
+            // 清空输入框
+            this.clearInput();
+        }
+    }
+
+    private updateTitle(): void {
+        if (this.currentEddy) {
+            this.titleElement.textContent = this.currentEddy.name;
+        } else {
+            this.titleElement.textContent = 'PageEdit';
+        }
+    }
+
+    private loadEddyModifications(eddy: Eddy): void {
+        // 这里可以根据需要加载 Eddy 的修改内容
+        // 目前先清空输入框，后续可以扩展
+        this.clearInput();
+        console.log('[FloatingPanel] Loaded eddy modifications:', eddy.modifications.length, 'items');
+    }
+
+    private async createNewEddy(): Promise<void> {
+        try {
+            // 保存当前 Eddy（如果有修改）
+            if (this.currentEddy && this.input.value.trim()) {
+                await this.saveCurrentEddy();
+            }
+
+            const currentDomain = window.location.hostname;
+            const newEddyName = 'New Eddy';
+            
+            console.log('[FloatingPanel] Creating new eddy with name:', newEddyName);
+            
+            const newEddy = await StorageService.createEddy(
+                newEddyName,
+                currentDomain,
+                []
+            );
+            
+            console.log('[FloatingPanel] New eddy created:', newEddy.name, '(ID:', newEddy.id, ')');
+            
+            // 设置新的 Eddy
+            this.setCurrentEddy(newEddy, true);
+            
+            // 清空输入框
+            this.clearInput();
+        } catch (error) {
+            console.error('[FloatingPanel] Error creating new eddy:', error);
+        }
+    }
+
+    private async saveCurrentEddy(): Promise<void> {
+        if (!this.currentEddy) return;
+        
+        try {
+            // 更新 Eddy 名称（如果用户编辑了标题）
+            const newName = this.titleElement.textContent?.trim() || this.currentEddy.name;
+            if (newName !== this.currentEddy.name) {
+                this.currentEddy.name = newName;
+            }
+            
+            // 这里可以添加保存修改的逻辑
+            // 目前先更新 Eddy
+            await StorageService.updateEddy(this.currentEddy);
+            console.log('[FloatingPanel] Current eddy saved:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
+        } catch (error) {
+            console.error('[FloatingPanel] Error saving current eddy:', error);
+        }
+    }
+
+    private setupEddyEventHandlers(): void {
+        // 新建 Eddy 按钮事件
+        this.newEddyButton.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await this.createNewEddy();
+        });
+
+        // 下拉按钮事件
+        this.dropdownButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDropdown();
+        });
+
+        // 标题编辑事件
+        this.titleElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        this.titleElement.addEventListener('focus', () => {
+            this.titleElement.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+        });
+
+        this.titleElement.addEventListener('blur', async () => {
+            this.titleElement.style.backgroundColor = 'transparent';
+            // 保存 Eddy 名称
+            if (this.currentEddy) {
+                await this.saveCurrentEddy();
+            }
+        });
+
+        this.titleElement.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.titleElement.blur();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.updateTitle(); // 恢复原名称
+                this.titleElement.blur();
+            }
+        });
+
+        // 点击外部关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            if (!this.dropdownMenu.contains(e.target as Node) && 
+                !this.dropdownButton.contains(e.target as Node)) {
+                this.closeDropdown();
+            }
+        });
+    }
+
+    // 下拉菜单相关方法
+    private async toggleDropdown(): Promise<void> {
+        if (this.isDropdownOpen) {
+            this.closeDropdown();
+        } else {
+            await this.openDropdown();
+        }
+    }
+
+    private async openDropdown(): Promise<void> {
+        try {
+            // 加载当前域名的所有 Eddy
+            const currentDomain = window.location.hostname;
+            const eddys = await StorageService.getEddysByDomain(currentDomain);
+            
+            console.log('[FloatingPanel] Loading eddys for dropdown:', eddys.length, 'items');
+            
+            // 清空下拉菜单
+            this.dropdownMenu.innerHTML = '';
+            
+            if (eddys.length === 0) {
+                // 如果没有 Eddy，显示提示
+                const noEddyItem = document.createElement('div');
+                noEddyItem.className = 'dropdown-item';
+                noEddyItem.style.cursor = 'default';
+                noEddyItem.style.color = 'rgb(156, 163, 175)';
+                noEddyItem.textContent = 'No eddys found';
+                this.dropdownMenu.appendChild(noEddyItem);
+            } else {
+                // 添加所有 Eddy 到下拉菜单
+                eddys.forEach(eddy => {
+                    const item = this.createDropdownItem(eddy);
+                    this.dropdownMenu.appendChild(item);
+                });
+            }
+            
+            // 显示下拉菜单
+            this.dropdownMenu.style.display = 'block';
+            this.dropdownButton.classList.add('open');
+            this.isDropdownOpen = true;
+            
+            console.log('[FloatingPanel] Dropdown opened with', eddys.length, 'eddys');
+        } catch (error) {
+            console.error('[FloatingPanel] Error opening dropdown:', error);
+        }
+    }
+
+    private createDropdownItem(eddy: Eddy): HTMLDivElement {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        
+        // 如果是当前 Eddy，添加 current 类
+        if (this.currentEddy && this.currentEddy.id === eddy.id) {
+            item.classList.add('current');
+        }
+        
+        // 创建名称元素
+        const nameElement = document.createElement('span');
+        nameElement.className = 'dropdown-item-name';
+        nameElement.textContent = eddy.name;
+        
+        // 创建 ID 元素
+        const idElement = document.createElement('span');
+        idElement.className = 'dropdown-item-id';
+        idElement.textContent = eddy.id.substring(0, 8); // 只显示前8位
+        
+        item.appendChild(nameElement);
+        item.appendChild(idElement);
+        
+        // 添加点击事件
+        item.addEventListener('click', async () => {
+            if (this.currentEddy && this.currentEddy.id === eddy.id) {
+                // 如果点击的是当前 Eddy，只关闭下拉菜单
+                this.closeDropdown();
+                return;
+            }
+            
+            console.log('[FloatingPanel] Switching to eddy:', eddy.name, '(ID:', eddy.id, ')');
+            
+            // 保存当前 Eddy（如果有修改）
+            if (this.currentEddy && this.input.value.trim()) {
+                await this.saveCurrentEddy();
+            }
+            
+            // 切换到选中的 Eddy
+            this.setCurrentEddy(eddy);
+            
+            // 关闭下拉菜单
+            this.closeDropdown();
+        });
+        
+        return item;
+    }
+
+    private closeDropdown(): void {
+        this.dropdownMenu.style.display = 'none';
+        this.dropdownButton.classList.remove('open');
+        this.isDropdownOpen = false;
     }
 }
