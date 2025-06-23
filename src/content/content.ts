@@ -1,10 +1,11 @@
 import { Message, Modification, UserInput, ElementLocation, ParseResult, ModificationMethod, StyleModification } from '../types';
 import { StyleService } from './services/styleService';
+import { StorageService } from '../services/storageService';
 import { NLPProcessor } from '../utils/nlp/nlpProcessor';
 import { FloatingBall } from './floatingBall';
 import { PanelEvent } from './floatingPanel';
 
-console.log('[content] PageEdit: Content script loaded at', new Date().toISOString());
+console.log('[content] Content script loaded at', new Date().toISOString());
 
 let floatingBall: FloatingBall | null = null;
 
@@ -14,38 +15,60 @@ let floatingBall: FloatingBall | null = null;
  */
 export class ContentManager {
     constructor() {
-        console.log('[content] PageEdit: ContentManager initialized');
+        console.log('[content] ContentManager initialized');
         // 初始化消息监听
         this.initializeMessageListener();
+        // 初始化页面（应用保存的 Eddy）
+        this.initializePage();
+    }
+
+    /**
+     * 初始化页面，应用保存的 Eddy
+     */
+    private async initializePage(): Promise<void> {
+        try {
+            const domain = window.location.hostname;
+            console.log('[content] Initializing page for domain:', domain);
+            
+            // 获取最近使用的 Eddy
+            const lastUsedEddy = await StorageService.getLastUsedEddy(domain);
+            
+            if (lastUsedEddy) {
+                console.log('[content] Found last used Eddy:', lastUsedEddy.name);
+                // 应用 Eddy
+                await StyleService.applyEddy(lastUsedEddy);
+                console.log('[content] Successfully applied Eddy:', lastUsedEddy.name);
+            } else {
+                console.log('[content] No saved Eddy found for domain:', domain);
+            }
+        } catch (error) {
+            console.error('[content] Error initializing page:', error);
+        }
     }
 
     /**
      * 初始化消息监听器
      */
     private initializeMessageListener(): void {
-        console.log('[content] PageEdit: Initializing message listener');
+        console.log('[content] Initializing message listener');
         chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
-            console.log('[content] PageEdit: Received message:', message, 'from:', sender);
+            console.log('[content] Received message:', message, 'from:', sender);
             // 不再立即 sendResponse
             switch (message.type) {
                 case 'MODIFY_PAGE':
-                    console.log('[content] PageEdit: Handling MODIFY_PAGE message');
+                    console.log('[content] Handling MODIFY_PAGE message');
                     this.handleModifyPage(message)
                         .then(() => {
-                            console.log('[content] PageEdit: Modification completed successfully');
+                            console.log('[content] Modification completed successfully');
                             sendResponse({ success: true });
                         })
                         .catch(error => {
-                            console.error('[content] PageEdit: Error handling MODIFY_PAGE:', error);
+                            console.error('[content] Error handling MODIFY_PAGE:', error);
                             sendResponse({ success: false, error: error.message });
                         });
                     return true; // 保持消息通道开放
-                case 'INITIALIZE_FLOATING_BALL':
-                    this.initializeFloatingBall();
-                    sendResponse({ success: true });
-                    return true;
                 default:
-                    console.warn('[content] PageEdit: Unknown message type:', message.type);
+                    console.warn('[content] Unknown message type:', message.type);
                     sendResponse({ success: false, error: 'Unknown message type' });
                     return true;
             }
@@ -58,11 +81,11 @@ export class ContentManager {
      * @returns 解析结果
      */
     private async parseUserInput(text: string): Promise<ParseResult> {
-        console.log('[content] PageEdit: Parsing user input:', text);
+        console.log('[content] Parsing user input:', text);
         try {
             // 获取当前页面的HTML内容
             const htmlContext = document.documentElement.outerHTML;
-            // console.log('[content] PageEdit: HTML context:', htmlContext);
+            // console.log('[content] HTML context:', htmlContext);
 
             // 使用 NLPProcessor 处理用户输入
             const result = await NLPProcessor.processInput(text, htmlContext, {
@@ -70,10 +93,10 @@ export class ContentManager {
                 minConfidence: 0.6 // 最小置信度
             });
 
-            console.log('[content] PageEdit: Processed result:', result);
+            console.log('[content] Processed result:', result);
             return result;
         } catch (error) {
-            console.error('[content] PageEdit: Error parsing user input:', error);
+            console.error('[content] Error parsing user input:', error);
             return {
                 modifications: [],
                 success: false,
@@ -149,10 +172,10 @@ export class ContentManager {
      * @param event 面板事件
      */
     public async handlePanelEvent(event: PanelEvent): Promise<void> {
-        console.log('[content] PageEdit: Handling panel event:', event);
+        console.log('[content] Handling panel event:', event);
 
         if (!floatingBall) {
-            console.error('[content] PageEdit: FloatingBall not initialized');
+            console.error('[content] FloatingBall not initialized');
             return;
         }
 
@@ -187,10 +210,10 @@ export class ContentManager {
                     break;
 
                 default:
-                    console.warn('[content] PageEdit: Unknown panel event type:', event.type);
+                    console.warn('[content] Unknown panel event type:', event.type);
             }
         } catch (error) {
-            console.error('[content] PageEdit: Error handling panel event:', error);
+            console.error('[content] Error handling panel event:', error);
             floatingBall.showFeedback('处理指令时出错', 'error');
         } finally {
             // 重置按钮状态
@@ -214,24 +237,12 @@ export class ContentManager {
             }
             return false;
         } catch (error) {
-            console.error('[content] PageEdit: Error undoing modification:', error);
+            console.error('[content] Error undoing modification:', error);
             return false;
         }
     }
-
-    // 初始化悬浮球
-    private initializeFloatingBall(): void {
-        if (!floatingBall) {
-            const contentManager = new ContentManager();
-            floatingBall = new FloatingBall();
-
-            // 设置面板事件回调
-            floatingBall.setPanelEventCallback(
-                contentManager.handlePanelEvent.bind(contentManager)
-            );
-        }
-    }
 }
+
 // 初始化悬浮球
 function initializeFloatingBall() {
     if (!floatingBall) {
@@ -247,6 +258,7 @@ function initializeFloatingBall() {
 
 // 页面加载完成后初始化悬浮球
 window.addEventListener('load', () => {
+    console.log('[content] Page loaded, initializing floating ball');
     initializeFloatingBall();
 });
 
