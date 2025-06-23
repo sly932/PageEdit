@@ -3,7 +3,7 @@ import { StyleService } from './services/styleService';
 
 async function initializePage() {
     const domain = window.location.hostname;
-    
+    console.log('[content.index] initializePage, domain:', domain);
     // 获取最近使用的 Eddy
     const lastUsedEddy = await StorageService.getLastUsedEddy(domain);
     

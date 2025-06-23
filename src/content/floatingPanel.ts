@@ -23,7 +23,7 @@ export class FloatingPanel {
     private hasBeenDragged: boolean = false; // 跟踪面板是否已被拖动过
 
     constructor(shadowRoot: ShadowRoot) {
-        console.log('[PageEdit][FloatingPanel] Constructor called');
+        console.log('[FloatingPanel] Constructor called');
         this.shadowRoot = shadowRoot;
         this.injectStyles();  // 先注入样式
         this.panel = this.createPanel();
@@ -395,7 +395,7 @@ export class FloatingPanel {
             }
         `;
         this.shadowRoot.appendChild(style);
-        console.log('[PageEdit][FloatingPanel] Styles injected');
+        console.log('[FloatingPanel] Styles injected');
         
         // 检测PT Mono字体是否加载成功
         this.checkAndApplyPTMonoFont();
@@ -428,7 +428,7 @@ export class FloatingPanel {
         
         // 如果宽度不同，说明PT Mono字体加载成功
         if (Math.abs(ptMonoWidth - systemMonoWidth) > 1) {
-            console.log('[PageEdit][FloatingPanel] PT Mono font loaded successfully');
+            console.log('[FloatingPanel] PT Mono font loaded successfully');
             // 动态添加PT Mono到placeholder样式
             const ptMonoStyle = document.createElement('style');
             ptMonoStyle.textContent = `
@@ -438,7 +438,7 @@ export class FloatingPanel {
             `;
             this.shadowRoot.appendChild(ptMonoStyle);
         } else {
-            console.warn('[PageEdit][FloatingPanel] PT Mono font failed to load, using system monospace fonts as fallback');
+            console.warn('[FloatingPanel] PT Mono font failed to load, using system monospace fonts as fallback');
         }
     }
 
@@ -463,7 +463,7 @@ export class FloatingPanel {
         this.undoButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
         </svg>`;
-        console.log('[PageEdit][FloatingPanel] Undo button created');
+        console.log('[FloatingPanel] Undo button created');
 
         // 创建主题切换按钮
         const themeToggleButton = document.createElement('button');
@@ -655,17 +655,17 @@ export class FloatingPanel {
     }
 
     private initialize(): void {
-        console.log('[PageEdit][FloatingPanel] Initializing panel');
+        console.log('[FloatingPanel] Initializing panel');
         
         if (!this.input || !this.applyButton || !this.undoButton) {
-            console.error('[PageEdit][FloatingPanel] Panel elements not found');
+            console.error('[FloatingPanel] Panel elements not found');
             return;
         }
 
         // Add event listeners
         this.applyButton.addEventListener('click', () => this.handleApply());
         this.undoButton.addEventListener('click', () => this.handleUndo());
-        console.log('[PageEdit][FloatingPanel] Event listeners attached to buttons');
+        console.log('[FloatingPanel] Event listeners attached to buttons');
 
         // 添加 Tooltip 事件监听器
         this.addTooltipEvents(this.undoButton, 'UNDO');
@@ -868,14 +868,14 @@ export class FloatingPanel {
     }
 
     private handleUndo(): void {
-        console.log('[PageEdit][FloatingPanel] Undo button clicked');
-        console.log('[PageEdit][FloatingPanel] Event callback exists:', !!this.eventCallback);
+        console.log('[FloatingPanel] Undo button clicked');
+        console.log('[FloatingPanel] Event callback exists:', !!this.eventCallback);
         // 触发撤销事件
         if (this.eventCallback) {
-            console.log('[PageEdit][FloatingPanel] Calling event callback');
+            console.log('[FloatingPanel] Calling event callback');
             this.eventCallback({ type: 'undo' });
         } else {
-            console.warn('[PageEdit][FloatingPanel] No event callback set');
+            console.warn('[FloatingPanel] No event callback set');
         }
     }
 
@@ -921,7 +921,7 @@ export class FloatingPanel {
     }
 
     public toggle(): void {
-        console.log('[PageEdit][FloatingPanel] Toggling panel visibility');
+        console.log('[FloatingPanel] Toggling panel visibility');
         if (this.panel.style.display === 'none' || !this.panel.style.display) {
             this.show();
         } else {
@@ -930,7 +930,7 @@ export class FloatingPanel {
     }
 
     public show(): void {
-        console.log('[PageEdit][FloatingPanel] Showing panel');
+        console.log('[FloatingPanel] Showing panel');
         
         // 只有在面板未被拖动过时才应用预设位置
         if (!this.hasBeenDragged) {
@@ -947,7 +947,7 @@ export class FloatingPanel {
     }
 
     public hide(): void {
-        console.log('[PageEdit][FloatingPanel] Hiding panel');
+        console.log('[FloatingPanel] Hiding panel');
         this.panel.style.display = 'none';
     }
 
@@ -1090,7 +1090,7 @@ export class FloatingPanel {
     }
 
     private toggleTheme(): void {
-        console.log('[PageEdit][FloatingPanel] Toggling theme');
+        console.log('[FloatingPanel] Toggling theme');
         const isDarkMode = this.panel.classList.contains('dark-mode');
         
         if (isDarkMode) {

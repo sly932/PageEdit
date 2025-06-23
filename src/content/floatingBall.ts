@@ -12,11 +12,11 @@ export class FloatingBall {
     private panelEventCallback: ((event: PanelEvent) => void) | null = null;
 
     constructor() {
-        console.log('[PageEdit][FloatingBall] Initializing FloatingBall...');
+        console.log('[FloatingBall] Initializing FloatingBall...');
         // 创建根元素
         this.rootElement = document.createElement('div');
         this.rootElement.id = 'pageedit-root-element';
-        console.log('[PageEdit][FloatingBall] Root element created:', this.rootElement);
+        console.log('[FloatingBall] Root element created:', this.rootElement);
         this.rootElement.style.position = 'fixed';
         this.rootElement.style.top = '0';
         this.rootElement.style.left = '0';
@@ -190,10 +190,10 @@ export class FloatingBall {
     }
 
     private createBall(): HTMLDivElement {
-        console.log('[PageEdit][FloatingBall] Creating floating ball...');
+        console.log('[FloatingBall] Creating floating ball...');
         const ball = document.createElement('div');
         ball.id = 'pageedit-floating-ball';
-        console.log('[PageEdit][FloatingBall] Ball element created with classes:', ball.className);
+        console.log('[FloatingBall] Ball element created with classes:', ball.className);
         
         // 更现代的图标设计
         ball.innerHTML = `
@@ -205,7 +205,7 @@ export class FloatingBall {
     }
 
     private initialize(): void {
-        console.log('[PageEdit][FloatingBall] Initializing ball events and styles...');
+        console.log('[FloatingBall] Initializing ball events and styles...');
         try {
             // 设置安全的初始位置
             const safePosition = this.calculateSafePosition();
@@ -219,9 +219,9 @@ export class FloatingBall {
             // 添加 Tooltip 事件监听器
             this.addTooltipEvents(this.ball, 'EDIT');
             
-            console.log('[PageEdit][FloatingBall] Event listeners added successfully');
+            console.log('[FloatingBall] Event listeners added successfully');
         } catch (error) {
-            console.error('[PageEdit][FloatingBall] Error initializing ball:', error);
+            console.error('[FloatingBall] Error initializing ball:', error);
         }
 
         // 添加到Shadow DOM
@@ -263,7 +263,7 @@ export class FloatingBall {
     }
 
     private handleMouseDown(e: MouseEvent): void {
-        console.log('[PageEdit][FloatingBall] Mouse down event triggered');
+        console.log('[FloatingBall] Mouse down event triggered');
         e.preventDefault();
         this.isDragging = false;
         this.startX = e.clientX - this.ball.offsetLeft;
@@ -319,10 +319,10 @@ export class FloatingBall {
     }
 
     private handleClick(e: MouseEvent): void {
-        console.log('[PageEdit][FloatingBall] Click event triggered');
+        console.log('[FloatingBall] Click event triggered');
         // 如果正在拖拽，不触发点击事件
         if (this.isDragging) {
-            console.log('[PageEdit][FloatingBall] Click event ignored due to dragging');
+            console.log('[FloatingBall] Click event ignored due to dragging');
             e.preventDefault();
             e.stopPropagation();
             return;
