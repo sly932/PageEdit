@@ -29,6 +29,7 @@ export class FloatingPanel {
     private isNewEddy: boolean = false;
     private titleElement!: HTMLSpanElement;
     private newEddyButton!: HTMLButtonElement;
+    private deleteButton!: HTMLButtonElement;
     private hasUnsavedChanges: boolean = false; // 添加未保存更改标记
     
     // 下拉菜单相关属性
@@ -448,6 +449,25 @@ export class FloatingPanel {
                 color: rgb(74, 222, 128) !important;
             }
 
+            /* 删除按钮特殊样式 */
+            .delete-button {
+                color: rgb(156, 163, 175) !important;
+            }
+
+            .delete-button:hover {
+                background: rgba(239, 68, 68, 0.1) !important;
+                color: rgb(239, 68, 68) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .delete-button {
+                color: rgb(156, 163, 175) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .delete-button:hover {
+                background: rgba(248, 113, 113, 0.1) !important;
+                color: rgb(248, 113, 113) !important;
+            }
+
             /* 关闭按钮特殊样式 */
             .close-button {
                 color: rgb(156, 163, 175) !important;
@@ -779,6 +799,14 @@ export class FloatingPanel {
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>`;
 
+        // 创建删除 Eddy 按钮
+        this.deleteButton = document.createElement('button');
+        this.deleteButton.className = 'header-button delete-button';
+        this.deleteButton.title = 'DELETE';
+        this.deleteButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+        </svg>`;
+
         const closeButtonContainer = document.createElement('div');
         closeButtonContainer.className = 'close-button-container';
         
@@ -789,9 +817,10 @@ export class FloatingPanel {
         
         closeButtonContainer.appendChild(closeButton);
 
-        // 第一行：标题容器 + 新建 Eddy 按钮 + 下拉框 + 工具按钮 + close 按钮
+        // 第一行：标题容器 + 新建 Eddy 按钮 + 删除 Eddy 按钮 + 主题切换按钮 + close 按钮
         headerRow1.appendChild(titleContainer);
         headerRow1.appendChild(this.newEddyButton);
+        headerRow1.appendChild(this.deleteButton);
         headerRow1.appendChild(themeToggleButton);
         headerRow1.appendChild(closeButtonContainer);
 
@@ -930,6 +959,10 @@ export class FloatingPanel {
         // 主题切换按钮功能
         themeToggleButton.addEventListener('click', () => this.toggleTheme());
         this.addTooltipEvents(themeToggleButton, 'THEME');
+        
+        // 删除按钮功能
+        this.deleteButton.addEventListener('click', () => this.handleDeleteEddy());
+        this.addTooltipEvents(this.deleteButton, 'DELETE');
         
         this.shadowRoot.appendChild(panel);
         return panel;
@@ -1845,6 +1878,39 @@ export class FloatingPanel {
             console.log('[FloatingPanel] Draft saved for eddy:', this.currentEddy.name);
         } catch (error) {
             console.error('[FloatingPanel] Error saving draft:', error);
+        }
+    }
+
+    private handleDeleteEddy(): void {
+        if (!this.currentEddy || this.currentEddy.id.startsWith('temp_')) {
+            // 如果是临时Eddy，不需要删除
+            return;
+        }
+        
+        // 显示确认对话框
+        if (confirm(`Are you sure you want to delete "${this.currentEddy.name}"? This action cannot be undone.`)) {
+            this.deleteCurrentEddy();
+        }
+    }
+
+    private async deleteCurrentEddy(): Promise<void> {
+        if (!this.currentEddy || this.currentEddy.id.startsWith('temp_')) {
+            return;
+        }
+        
+        try {
+            console.log('[FloatingPanel] Deleting eddy:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
+            
+            // 删除Eddy
+            await StorageService.deleteEddy(this.currentEddy.id);
+            
+            // 创建新的Eddy
+            await this.createNewEddy();
+            
+            console.log('[FloatingPanel] Eddy deleted successfully');
+        } catch (error) {
+            console.error('[FloatingPanel] Error deleting eddy:', error);
+            this.showFeedback('Failed to delete eddy', 'error');
         }
     }
 }
