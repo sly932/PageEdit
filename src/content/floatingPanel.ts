@@ -29,6 +29,7 @@ export class FloatingPanel {
     private isNewEddy: boolean = false;
     private titleElement!: HTMLSpanElement;
     private newEddyButton!: HTMLButtonElement;
+    private hasUnsavedChanges: boolean = false; // 添加未保存更改标记
     
     // 下拉菜单相关属性
     private dropdownButton!: HTMLButtonElement;
@@ -136,8 +137,7 @@ export class FloatingPanel {
             /* 面板头部 */
             .panel-header {
                 display: flex;
-                align-items: center;
-                justify-content: space-between;
+                flex-direction: column;
                 padding: 12px 16px;
                 background: rgba(243, 244, 246, 0.5);
                 border-bottom: 1px solid rgba(229, 231, 235, 0.5);
@@ -145,6 +145,24 @@ export class FloatingPanel {
                 z-index: 2;
                 cursor: move;
                 gap: 8px;
+            }
+
+            /* 第一行容器 */
+            .header-row-1 {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                gap: 4px;
+            }
+
+            /* 第二行容器 */
+            .header-row-2 {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 4px;
+                width: 100%;
             }
 
             #pageedit-floating-panel.dark-mode .panel-header {
@@ -417,21 +435,40 @@ export class FloatingPanel {
 
             /* 新建 Eddy 按钮特殊样式 */
             .new-eddy-button {
-                color: rgb(34, 197, 94) !important;
+                color: rgb(156, 163, 175) !important;
             }
 
             .new-eddy-button:hover {
                 background: rgba(34, 197, 94, 0.1) !important;
-                color: rgb(22, 163, 74) !important;
+                color: rgb(34, 197, 94) !important;
             }
 
             #pageedit-floating-panel.dark-mode .new-eddy-button {
-                color: rgb(74, 222, 128) !important;
+                color: rgb(156, 163, 175) !important;
             }
 
             #pageedit-floating-panel.dark-mode .new-eddy-button:hover {
                 background: rgba(74, 222, 128, 0.1) !important;
-                color: rgb(34, 197, 94) !important;
+                color: rgb(74, 222, 128) !important;
+            }
+
+            /* 关闭按钮特殊样式 */
+            .close-button {
+                color: rgb(156, 163, 175) !important;
+            }
+
+            .close-button:hover {
+                background: rgba(239, 68, 68, 0.1) !important;
+                color: rgb(239, 68, 68) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .close-button {
+                color: rgb(156, 163, 175) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .close-button:hover {
+                background: rgba(248, 113, 113, 0.1) !important;
+                color: rgb(248, 113, 113) !important;
             }
 
             /* 自定义 Tooltip 样式 */
@@ -495,9 +532,8 @@ export class FloatingPanel {
                 align-items: center;
                 gap: 4px;
                 position: relative;
-                flex: 0 0 150px;
-                min-width: 150px;
-                max-width: 150px;
+                flex: 1;
+                min-width: 0;
             }
 
             /* 控制按钮容器样式 */
@@ -506,13 +542,13 @@ export class FloatingPanel {
                 align-items: center;
                 gap: 4px;
                 flex-shrink: 0;
-                min-width: 120px;
             }
 
             /* 下拉按钮样式 */
             .dropdown-button {
                 color: rgb(156, 163, 175) !important;
                 transition: transform 0.2s ease;
+                position: relative;
             }
 
             .dropdown-button:hover {
@@ -538,7 +574,6 @@ export class FloatingPanel {
                 position: absolute;
                 top: 100%;
                 left: 0;
-                right: 0;
                 background: rgba(255, 255, 255, 0.95);
                 border: 1px solid rgba(0, 0, 0, 0.1);
                 border-radius: 8px;
@@ -548,6 +583,7 @@ export class FloatingPanel {
                 max-height: 200px;
                 overflow-y: auto;
                 margin-top: 4px;
+                min-width: 200px;
             }
 
             #pageedit-floating-panel.dark-mode .dropdown-menu {
@@ -600,6 +636,15 @@ export class FloatingPanel {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 max-width: 200px;
+            }
+
+            /* 编辑时隐藏第一行工具栏 */
+            .panel-header.editing .header-row-1 .header-button,
+            .panel-header.editing .header-row-1 .close-button-container,
+            .panel-header.editing .header-row-1 .dropdown-menu {
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease;
             }
         `;
         this.shadowRoot.appendChild(style);
@@ -675,6 +720,7 @@ export class FloatingPanel {
         titleContainer.style.display = 'flex';
         titleContainer.style.alignItems = 'center';
         titleContainer.style.gap = '4px';
+        titleContainer.style.position = 'relative';
 
         // 创建下拉按钮
         this.dropdownButton = document.createElement('button');
@@ -692,6 +738,15 @@ export class FloatingPanel {
         titleContainer.appendChild(this.titleElement);
         titleContainer.appendChild(this.dropdownButton);
         titleContainer.appendChild(this.dropdownMenu);
+        // 注意：不在这里添加 dropdownButton 到 titleContainer
+
+        // 创建第一行容器
+        const headerRow1 = document.createElement('div');
+        headerRow1.className = 'header-row-1';
+
+        // 创建第二行容器
+        const headerRow2 = document.createElement('div');
+        headerRow2.className = 'header-row-2';
 
         const controlsContainer = document.createElement('div');
         controlsContainer.className = 'controls-container';
@@ -730,13 +785,17 @@ export class FloatingPanel {
         
         closeButtonContainer.appendChild(closeButton);
 
-        controlsContainer.appendChild(this.undoButton);
-        controlsContainer.appendChild(themeToggleButton);
-        controlsContainer.appendChild(this.newEddyButton);
-        controlsContainer.appendChild(closeButtonContainer);
+        // 第一行：标题容器 + 新建 Eddy 按钮 + 下拉框 + 工具按钮 + close 按钮
+        headerRow1.appendChild(titleContainer);
+        headerRow1.appendChild(this.newEddyButton);
+        headerRow1.appendChild(themeToggleButton);
+        headerRow1.appendChild(closeButtonContainer);
 
-        header.appendChild(titleContainer);
-        header.appendChild(controlsContainer);
+        // 第二行：Undo 按钮
+        headerRow2.appendChild(this.undoButton);
+
+        header.appendChild(headerRow1);
+        header.appendChild(headerRow2);
 
         // 创建面板内容
         const content = document.createElement('div');
@@ -1082,6 +1141,9 @@ export class FloatingPanel {
             return;
         }
 
+        // 标记有未保存更改
+        this.hasUnsavedChanges = true;
+
         // 开始处理状态
         this.isProcessing = true;
         this.applyButton.title = 'Cancel';
@@ -1380,6 +1442,7 @@ export class FloatingPanel {
         console.log('[FloatingPanel] Setting current eddy:', eddy.name, '(ID:', eddy.id, ')', 'isNew:', isNew);
         this.currentEddy = eddy;
         this.isNewEddy = isNew;
+        this.hasUnsavedChanges = false; // 重置未保存更改标记
         
         // 更新标题
         this.updateTitle();
@@ -1390,6 +1453,13 @@ export class FloatingPanel {
         } else {
             // 清空输入框
             this.clearInput();
+        }
+        
+        // 如果不是临时Eddy，将其设置为最近使用的Eddy（后台异步执行）
+        if (!isNew && !eddy.id.startsWith('temp_')) {
+            this.setAsLastUsedEddy(eddy).catch(error => {
+                console.error('[FloatingPanel] Error setting eddy as last used:', error);
+            });
         }
     }
 
@@ -1410,8 +1480,8 @@ export class FloatingPanel {
 
     private async createNewEddy(): Promise<void> {
         try {
-            // 保存当前 Eddy（如果有修改）
-            if (this.currentEddy && this.input.value.trim()) {
+            // 保存当前 Eddy（如果有未保存更改）
+            if (this.currentEddy && this.hasUnsavedChanges) {
                 await this.saveCurrentEddy();
             }
 
@@ -1420,13 +1490,18 @@ export class FloatingPanel {
             
             console.log('[FloatingPanel] Creating new eddy with name:', newEddyName);
             
-            const newEddy = await StorageService.createEddy(
-                newEddyName,
-                currentDomain,
-                []
-            );
+            // 创建一个临时的Eddy对象，不立即保存到存储
+            const newEddy: Eddy = {
+                id: `temp_${Date.now()}`, // 临时ID
+                name: newEddyName,
+                domain: currentDomain,
+                modifications: [],
+                lastUsed: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            };
             
-            console.log('[FloatingPanel] New eddy created:', newEddy.name, '(ID:', newEddy.id, ')');
+            console.log('[FloatingPanel] New temporary eddy created:', newEddy.name, '(ID:', newEddy.id, ')');
             
             // 设置新的 Eddy
             this.setCurrentEddy(newEddy, true);
@@ -1439,7 +1514,7 @@ export class FloatingPanel {
     }
 
     private async saveCurrentEddy(): Promise<void> {
-        if (!this.currentEddy) return;
+        if (!this.currentEddy || !this.hasUnsavedChanges) return;
         
         try {
             // 更新 Eddy 名称（如果用户编辑了标题）
@@ -1448,9 +1523,28 @@ export class FloatingPanel {
                 this.currentEddy.name = newName;
             }
             
-            // 这里可以添加保存修改的逻辑
-            // 目前先更新 Eddy
-            await StorageService.updateEddy(this.currentEddy);
+            // 设置为最近使用的Eddy
+            this.currentEddy.lastUsed = true;
+            
+            // 如果是临时Eddy，需要先创建真实的Eddy
+            if (this.isNewEddy && this.currentEddy.id.startsWith('temp_')) {
+                console.log('[FloatingPanel] Converting temporary eddy to real eddy');
+                const realEddy = await StorageService.createEddy(
+                    this.currentEddy.name,
+                    this.currentEddy.domain,
+                    this.currentEddy.modifications
+                );
+                this.currentEddy = realEddy;
+                this.isNewEddy = false;
+                console.log('[FloatingPanel] Temporary eddy converted to real eddy:', realEddy.id);
+            } else {
+                // 更新现有的Eddy
+                await StorageService.updateEddy(this.currentEddy);
+            }
+            
+            // 重置未保存更改标记
+            this.hasUnsavedChanges = false;
+            
             console.log('[FloatingPanel] Current eddy saved:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
         } catch (error) {
             console.error('[FloatingPanel] Error saving current eddy:', error);
@@ -1476,6 +1570,7 @@ export class FloatingPanel {
             // 点击时聚焦并进入编辑状态
             this.titleElement.focus();
             this.titleElement.classList.add('editing');
+            this.panel.querySelector('.panel-header')?.classList.add('editing');
             
             // 将光标移到文本末尾
             const range = document.createRange();
@@ -1488,13 +1583,20 @@ export class FloatingPanel {
 
         this.titleElement.addEventListener('focus', () => {
             this.titleElement.classList.add('editing');
+            this.panel.querySelector('.panel-header')?.classList.add('editing');
         });
 
         this.titleElement.addEventListener('blur', async () => {
             this.titleElement.classList.remove('editing');
-            // 保存 Eddy 名称
+            this.panel.querySelector('.panel-header')?.classList.remove('editing');
+            
+            // 检查标题是否被修改
             if (this.currentEddy) {
-                await this.saveCurrentEddy();
+                const newName = this.titleElement.textContent?.trim() || this.currentEddy.name;
+                if (newName !== this.currentEddy.name) {
+                    this.hasUnsavedChanges = true;
+                    await this.saveCurrentEddy();
+                }
             }
         });
 
@@ -1618,8 +1720,8 @@ export class FloatingPanel {
             
             console.log('[FloatingPanel] Switching to eddy:', eddy.name, '(ID:', eddy.id, ')');
             
-            // 保存当前 Eddy（如果有修改）
-            if (this.currentEddy && this.input.value.trim()) {
+            // 保存当前 Eddy（如果有未保存更改）
+            if (this.currentEddy && this.hasUnsavedChanges) {
                 await this.saveCurrentEddy();
             }
             
@@ -1637,5 +1739,27 @@ export class FloatingPanel {
         this.dropdownMenu.style.display = 'none';
         this.dropdownButton.classList.remove('open');
         this.isDropdownOpen = false;
+    }
+
+    private async setAsLastUsedEddy(eddy: Eddy): Promise<void> {
+        try {
+            // 如果当前Eddy已经是lastUsed，不需要更新
+            if (eddy.lastUsed) {
+                return;
+            }
+            
+            console.log('[FloatingPanel] Setting eddy as last used:', eddy.name, '(ID:', eddy.id, ')');
+            
+            // 设置当前Eddy为lastUsed
+            eddy.lastUsed = true;
+            eddy.updatedAt = Date.now();
+            
+            // 更新存储
+            await StorageService.updateEddy(eddy);
+            
+            console.log('[FloatingPanel] Eddy set as last used successfully');
+        } catch (error) {
+            console.error('[FloatingPanel] Error setting eddy as last used:', error);
+        }
     }
 }

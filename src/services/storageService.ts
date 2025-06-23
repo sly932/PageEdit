@@ -78,7 +78,7 @@ export class StorageService {
         console.log('[StorageService] Creating new eddy:', name, 'for domain:', domain);
         const eddys = await this.getEddys();
         
-        // 如果新 Eddy 是最近使用的，将同一域名的其他 Eddy 的 lastUsed 设为 false
+        // 将同一域名的其他 Eddy 的 lastUsed 设为 false
         let updatedCount = 0;
         eddys.forEach(eddy => {
             if (eddy.domain === domain) {
@@ -95,7 +95,7 @@ export class StorageService {
             name,
             domain,
             modifications,
-            lastUsed: true,
+            lastUsed: true, // 新创建的Eddy总是设置为lastUsed
             createdAt: Date.now(),
             updatedAt: Date.now()
         };
