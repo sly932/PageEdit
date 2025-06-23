@@ -57,13 +57,13 @@ export class FloatingPanel {
                 width: 320px !important;
                 max-width: 320px !important;
                 min-width: 320px !important;
-                background: rgba(255, 255, 255, 0.9);
+                background: rgba(255, 255, 255, 0.6);
                 border-radius: 12px;
                 box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                backdrop-filter: blur(8px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
+                -webkit-backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
+                border: 1px solid rgba(255, 255, 255, 0.4);
                 overflow: visible;
-                transition: all 0.2s ease-out;
                 pointer-events: auto;
                 display: none;
                 z-index: 2147483647;
@@ -92,9 +92,11 @@ export class FloatingPanel {
                 min-height: 54px !important;
                 max-height: 200px !important;
                 padding: 16px 20px 48px 20px;
-                border: 1px solid rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.15);
                 border-radius: 27px;
-                background: rgba(255, 255, 255, 0.8);
+                background: rgba(255, 255, 255, 0.5);
+                backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
+                -webkit-backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
                 color: rgb(17, 24, 39);
                 font-size: 14px;
                 line-height: 1.5;
@@ -119,19 +121,25 @@ export class FloatingPanel {
 
             /* 深色模式 */
             #pageedit-floating-panel.dark-mode {
-                background: rgba(30, 30, 30, 0.9);
-                border-color: rgba(75, 85, 99, 0.3);
+                background: rgba(30, 30, 30, 0.6);
+                border-color: rgba(75, 85, 99, 0.4);
+                backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
+                -webkit-backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
             }
             
             #pageedit-floating-panel.dark-mode .panel-textarea {
-                background: rgba(52, 53, 55, 1);
-                border-color: rgba(60, 60, 60, 1);
+                background: rgba(52, 53, 55, 0.5);
+                border-color: rgba(60, 60, 60, 0.9);
                 color: rgb(240, 240, 240);
+                backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
+                -webkit-backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
             }
 
             #pageedit-floating-panel.dark-mode .panel-header {
-                background: rgba(23, 23, 23, 0.5);
-                border-bottom-color: rgba(60, 60, 60, 1);
+                background: rgba(17, 24, 39, 0.5);
+                border-bottom-color: rgba(55, 65, 81, 0.5);
+                backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
+                -webkit-backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
             }
 
             /* 面板头部 */
@@ -140,6 +148,8 @@ export class FloatingPanel {
                 flex-direction: column;
                 padding: 12px 16px;
                 background: rgba(243, 244, 246, 0.5);
+                backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
+                -webkit-backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
                 border-bottom: 1px solid rgba(229, 231, 235, 0.5);
                 position: relative;
                 z-index: 2;
@@ -168,6 +178,8 @@ export class FloatingPanel {
             #pageedit-floating-panel.dark-mode .panel-header {
                 background: rgba(17, 24, 39, 0.5);
                 border-bottom-color: rgba(55, 65, 81, 0.5);
+                backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
+                -webkit-backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
             }
 
             .panel-header::before {
@@ -474,7 +486,9 @@ export class FloatingPanel {
             /* 自定义 Tooltip 样式 */
             .custom-tooltip {
                 position: absolute;
-                background: rgba(255, 255, 255, 0.95);
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
                 color: rgb(17, 24, 39);
                 padding: 6px 10px;
                 border-radius: 6px;
@@ -487,8 +501,7 @@ export class FloatingPanel {
                 transition: all 0.1s ease;
                 z-index: 2147483647;
                 font-family: inherit;
-                backdrop-filter: blur(4px);
-                border: 1px solid rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.15);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             }
@@ -500,17 +513,21 @@ export class FloatingPanel {
 
             /* 深色模式下的 Tooltip */
             #pageedit-floating-panel.dark-mode .custom-tooltip {
-                background: rgba(31, 41, 55, 0.95);
+                background: rgba(31, 41, 55, 0.7);
                 color: rgb(229, 231, 235);
-                border-color: rgba(75, 85, 99, 0.3);
+                border-color: rgba(75, 85, 99, 0.4);
+                backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
             }
 
             /* 系统主题适配 */
             @media (prefers-color-scheme: dark) {
                 .custom-tooltip {
-                    background: rgba(31, 41, 55, 0.95);
+                    background: rgba(31, 41, 55, 0.7);
                     color: rgb(229, 231, 235);
-                    border-color: rgba(75, 85, 99, 0.3);
+                    border-color: rgba(75, 85, 99, 0.4);
+                    backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                    -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
                 }
             }
 
@@ -574,11 +591,12 @@ export class FloatingPanel {
                 position: absolute;
                 top: 100%;
                 left: 0;
-                background: rgba(255, 255, 255, 0.95);
-                border: 1px solid rgba(0, 0, 0, 0.1);
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
+                -webkit-backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
+                border: 1px solid rgba(0, 0, 0, 0.15);
                 border-radius: 8px;
                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-                backdrop-filter: blur(8px);
                 z-index: 2147483648;
                 max-height: 200px;
                 overflow-y: auto;
@@ -587,8 +605,10 @@ export class FloatingPanel {
             }
 
             #pageedit-floating-panel.dark-mode .dropdown-menu {
-                background: rgba(31, 41, 55, 0.95);
-                border-color: rgba(75, 85, 99, 0.3);
+                background: rgba(31, 41, 55, 0.7);
+                border-color: rgba(75, 85, 99, 0.4);
+                backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
+                -webkit-backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
             }
 
             .dropdown-item {

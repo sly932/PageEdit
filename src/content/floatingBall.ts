@@ -105,8 +105,9 @@ export class FloatingBall {
                 min-height: 48px !important;
                 max-width: 48px !important;
                 max-height: 48px !important;
-                background: rgba(255, 255, 255, 0.8);
-                backdrop-filter: blur(8px);
+                background: rgba(255, 255, 255, 0.6);
+                backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
+                -webkit-backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
                 border-radius: 14px;
                 box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
                 cursor: grab;
@@ -114,16 +115,17 @@ export class FloatingBall {
                 align-items: center;
                 justify-content: center;
                 z-index: 999999;
-                transition: all 0.2s ease-out;
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.4);
                 overflow: hidden;
                 pointer-events: auto;
             }
 
             @media (prefers-color-scheme: dark) {
                 #pageedit-floating-ball {
-                    background: rgba(31, 41, 55, 0.8);
-                    border-color: rgba(55, 65, 81, 0.3);
+                    background: rgba(31, 41, 55, 0.6);
+                    border-color: rgba(55, 65, 81, 0.4);
+                    backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
+                    -webkit-backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
                 }
             }
 
@@ -151,7 +153,9 @@ export class FloatingBall {
             /* 自定义 Tooltip 样式 */
             .custom-tooltip {
                 position: absolute;
-                background: rgba(255, 255, 255, 0.95);
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
                 color: rgb(17, 24, 39);
                 padding: 6px 10px;
                 border-radius: 6px;
@@ -164,8 +168,7 @@ export class FloatingBall {
                 transition: all 0.1s ease;
                 z-index: 2147483647;
                 font-family: inherit;
-                backdrop-filter: blur(4px);
-                border: 1px solid rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.15);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             }
@@ -178,9 +181,11 @@ export class FloatingBall {
             /* 深色模式下的 Tooltip */
             @media (prefers-color-scheme: dark) {
                 .custom-tooltip {
-                    background: rgba(31, 41, 55, 0.95);
+                    background: rgba(31, 41, 55, 0.7);
                     color: rgb(229, 231, 235);
-                    border-color: rgba(75, 85, 99, 0.3);
+                    border-color: rgba(75, 85, 99, 0.4);
+                    backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                    -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
                 }
             }
         `;
