@@ -61,7 +61,7 @@ export class FloatingPanel {
                 box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                 backdrop-filter: blur(8px);
                 border: 1px solid rgba(255, 255, 255, 0.2);
-                overflow: hidden;
+                overflow: visible;
                 transition: all 0.2s ease-out;
                 pointer-events: auto;
                 display: none;
@@ -144,6 +144,7 @@ export class FloatingPanel {
                 position: relative;
                 z-index: 2;
                 cursor: move;
+                gap: 8px;
             }
 
             #pageedit-floating-panel.dark-mode .panel-header {
@@ -361,6 +362,7 @@ export class FloatingPanel {
                 z-index: 1;
                 cursor: pointer;
                 min-width: 60px;
+                max-width: 90px;
                 outline: none;
                 border-radius: 4px;
                 padding: 2px 4px;
@@ -386,6 +388,9 @@ export class FloatingPanel {
                 box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
                 cursor: text;
                 border: 1px solid rgba(59, 130, 246, 0.3);
+                max-width: none;
+                overflow: visible;
+                text-overflow: clip;
             }
 
             #pageedit-floating-panel.dark-mode .eddy-title {
@@ -405,6 +410,9 @@ export class FloatingPanel {
                 background-color: rgba(96, 165, 250, 0.15);
                 box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
                 border-color: rgba(96, 165, 250, 0.4);
+                max-width: none;
+                overflow: visible;
+                text-overflow: clip;
             }
 
             /* 新建 Eddy 按钮特殊样式 */
@@ -487,6 +495,18 @@ export class FloatingPanel {
                 align-items: center;
                 gap: 4px;
                 position: relative;
+                flex: 0 0 150px;
+                min-width: 150px;
+                max-width: 150px;
+            }
+
+            /* 控制按钮容器样式 */
+            .controls-container {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex-shrink: 0;
+                min-width: 120px;
             }
 
             /* 下拉按钮样式 */
@@ -579,6 +599,7 @@ export class FloatingPanel {
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                max-width: 200px;
             }
         `;
         this.shadowRoot.appendChild(style);
@@ -673,9 +694,7 @@ export class FloatingPanel {
         titleContainer.appendChild(this.dropdownMenu);
 
         const controlsContainer = document.createElement('div');
-        controlsContainer.style.display = 'flex';
-        controlsContainer.style.alignItems = 'center';
-        controlsContainer.style.gap = '4px';
+        controlsContainer.className = 'controls-container';
 
         this.undoButton = document.createElement('button');
         this.undoButton.className = 'header-button';
@@ -900,7 +919,13 @@ export class FloatingPanel {
         this.addTooltipEvents(this.undoButton, 'UNDO');
         this.addTooltipEvents(this.newEddyButton, 'CREATE NEW EDDY');
         this.addTooltipEvents(this.dropdownButton, 'SWITCH EDDY');
-        this.addTooltipEvents(this.titleElement, 'RENAME EDDY');
+        
+        // 为标题添加动态 tooltip，显示完整标题
+        this.titleElement.addEventListener('mouseenter', () => {
+            const fullTitle = this.currentEddy ? this.currentEddy.name : 'PageEdit';
+            this.showTooltip(this.titleElement, fullTitle);
+        });
+        this.titleElement.addEventListener('mouseleave', () => this.hideTooltip());
         
         // 设置 Eddy 相关事件处理器
         this.setupEddyEventHandlers();
@@ -1574,6 +1599,14 @@ export class FloatingPanel {
         nameElement.textContent = eddy.name;
         
         item.appendChild(nameElement);
+        
+        // 为下拉菜单项添加 tooltip，显示完整名称
+        item.addEventListener('mouseenter', () => {
+            this.showTooltip(item, eddy.name);
+        });
+        item.addEventListener('mouseleave', () => {
+            this.hideTooltip();
+        });
         
         // 添加点击事件
         item.addEventListener('click', async () => {
