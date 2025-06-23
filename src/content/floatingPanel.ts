@@ -105,8 +105,19 @@ export class FloatingPanel {
 
             /* 深色模式 */
             #pageedit-floating-panel.dark-mode {
-                background: rgba(31, 41, 55, 0.9);
+                background: rgba(30, 30, 30, 0.9);
                 border-color: rgba(75, 85, 99, 0.3);
+            }
+            
+            #pageedit-floating-panel.dark-mode .panel-textarea {
+                background: rgba(52, 53, 55, 1);
+                border-color: rgba(60, 60, 60, 1);
+                color: rgb(240, 240, 240);
+            }
+
+            #pageedit-floating-panel.dark-mode .panel-header {
+                background: rgba(23, 23, 23, 0.5);
+                border-bottom-color: rgba(60, 60, 60, 1);
             }
 
             /* 面板头部 */
@@ -235,13 +246,13 @@ export class FloatingPanel {
 
             /* 应用状态下的圆环效果 */
             .apply-button.active {
-                background: #000000;
+                background: #8952f1; /* A nice purple from an example */
                 color: white;
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             }
 
             .apply-button.active:hover {
-                background: #111827;
+                background: #9a6bf3;
             }
 
             .apply-button svg {
@@ -256,7 +267,7 @@ export class FloatingPanel {
 
             /* 处理状态下的取消按钮样式 */
             .apply-button.processing {
-                background: #000000;
+                background: #8952f1;
                 color: white;
             }
 
@@ -369,6 +380,18 @@ export class FloatingPanel {
                     color: rgb(229, 231, 235);
                     border-color: rgba(75, 85, 99, 0.3);
                 }
+            }
+
+            #pageedit-floating-panel.dark-mode .apply-button {
+                background: #3c4043; /* Google's dark gray */
+            }
+
+            #pageedit-floating-panel.dark-mode .apply-button:hover {
+                background: #4a4e51;
+            }
+
+            #pageedit-floating-panel.dark-mode .apply-button svg {
+                color: #e8eaed; /* Light gray for icon */
             }
         `;
         this.shadowRoot.appendChild(style);

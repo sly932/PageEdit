@@ -382,10 +382,9 @@ export class FloatingBall {
     private showTooltip(element: HTMLElement, text: string): void {
         // 移除现有的 tooltip
         this.hideTooltip();
-        
+
         const tooltip = this.createTooltip(text);
-        
-        // 根据系统主题状态设置样式
+
         const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (isDarkMode) {
             tooltip.style.background = 'rgba(31, 41, 55, 0.95)';
@@ -396,45 +395,80 @@ export class FloatingBall {
             tooltip.style.color = 'rgb(17, 24, 39)';
             tooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
         }
-        
+
         this.shadowRoot.appendChild(tooltip);
-        
-        // 计算位置 - 使用相对于根元素的位置
-        const rootRect = this.rootElement.getBoundingClientRect();
-        const elementRect = element.getBoundingClientRect();
-        
-        // 计算元素相对于根元素的位置
-        const relativeLeft = elementRect.left - rootRect.left;
-        const relativeTop = elementRect.top - rootRect.top;
-        
-        // 先设置为右下角位置
+
+        // --- 智能定位逻辑 ---
         tooltip.style.position = 'absolute';
-        tooltip.style.left = `${relativeLeft + elementRect.width}px`;
-        tooltip.style.top = `${relativeTop + elementRect.height}px`;
-        tooltip.style.transform = 'translateX(4px) translateY(4px)';
-        
-        // 立即显示 tooltip 以获取其尺寸
         tooltip.classList.add('show');
-        
-        // 获取tooltip的尺寸和视口信息
+        tooltip.style.visibility = 'hidden'; // 隐藏以获取尺寸
+
+        const ballRect = element.getBoundingClientRect();
         const tooltipRect = tooltip.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // 检查是否超出右边界
-        if (tooltipRect.right > viewportWidth) {
-            // 如果超出右边界，改为显示在左侧
-            tooltip.style.left = `${relativeLeft}px`;
-            tooltip.style.transform = 'translateX(-4px) translateY(4px)';
+        const margin = 10; // 图标与tooltip的间距
+
+        const positions = {
+            top: {
+                top: ballRect.top - tooltipRect.height - margin,
+                left: ballRect.left + (ballRect.width - tooltipRect.width) / 2
+            },
+            bottom: {
+                top: ballRect.bottom + margin,
+                left: ballRect.left + (ballRect.width - tooltipRect.width) / 2
+            },
+            left: {
+                top: ballRect.top + (ballRect.height - tooltipRect.height) / 2,
+                left: ballRect.left - tooltipRect.width - margin
+            },
+            right: {
+                top: ballRect.top + (ballRect.height - tooltipRect.height) / 2,
+                left: ballRect.right + margin
+            }
+        };
+
+        const viewport = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+
+        const fits = (pos: { top: number; left: number }) => {
+            return (
+                pos.top >= margin &&
+                pos.left >= margin &&
+                pos.top + tooltipRect.height <= viewport.height - margin &&
+                pos.left + tooltipRect.width <= viewport.width - margin
+            );
+        };
+
+        let finalPosition: { top: number; left: number } | null = null;
+
+        // 优先级: top > bottom > right > left
+        if (fits(positions.top)) {
+            finalPosition = positions.top;
+        } else if (fits(positions.bottom)) {
+            finalPosition = positions.bottom;
+        } else if (fits(positions.right)) {
+            finalPosition = positions.right;
+        } else if (fits(positions.left)) {
+            finalPosition = positions.left;
+        } else {
+            // Fallback: 强制放置在上方并调整
+            finalPosition = positions.top;
+            if (finalPosition.left < margin) {
+                finalPosition.left = margin;
+            }
+            if (finalPosition.left + tooltipRect.width > viewport.width - margin) {
+                finalPosition.left = viewport.width - tooltipRect.width - margin;
+            }
+            if (finalPosition.top < margin) {
+                finalPosition.top = margin;
+            }
         }
-        
-        // 检查是否超出下边界
-        if (tooltipRect.bottom > viewportHeight) {
-            // 如果超出下边界，改为显示在上方
-            tooltip.style.top = `${relativeTop}px`;
-            tooltip.style.transform = tooltip.style.transform.replace('translateY(4px)', 'translateY(-4px)');
-        }
-        
+
+        tooltip.style.top = `${finalPosition.top}px`;
+        tooltip.style.left = `${finalPosition.left}px`;
+        tooltip.style.visibility = 'visible'; // 定位后显示
+
         // 存储当前 tooltip 引用
         (this as any).currentTooltip = tooltip;
     }
