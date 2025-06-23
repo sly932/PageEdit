@@ -20,6 +20,7 @@ export class FloatingPanel {
     private shadowRoot: ShadowRoot;
     private eventCallback: PanelEventCallback | null = null;
     private isProcessing: boolean = false; // 添加处理状态标记
+    private hasBeenDragged: boolean = false; // 跟踪面板是否已被拖动过
 
     constructor(shadowRoot: ShadowRoot) {
         console.log('[PageEdit][FloatingPanel] Constructor called');
@@ -129,6 +130,7 @@ export class FloatingPanel {
                     rgba(59, 130, 246, 0) 100%);
                 opacity: 0;
                 transition: opacity 0.3s ease;
+                pointer-events: none;
             }
 
             #pageedit-floating-panel.dark-mode .panel-header::before {
@@ -175,48 +177,8 @@ export class FloatingPanel {
 
             /* 关闭按钮容器 */
             .close-button-container {
-                width: 32px;
-                height: 32px;
-                margin: -6px -6px -6px 0;
-                position: relative;
-                z-index: 3;
-            }
-
-            /* 关闭按钮 */
-            .close-button {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                width: 100%;
-                height: 100%;
                 display: flex;
                 align-items: center;
-                justify-content: center;
-                border: none;
-                background: transparent;
-                cursor: pointer;
-                border-radius: 6px;
-                transition: all 0.2s ease;
-                color: rgb(156, 163, 175);
-                padding: 0;
-            }
-
-            .close-button:hover {
-                background: rgba(0, 0, 0, 0.05);
-                color: rgb(75, 85, 99);
-            }
-
-            #pageedit-floating-panel.dark-mode .close-button:hover {
-                background: rgba(255, 255, 255, 0.1);
-                color: rgb(209, 213, 219);
-            }
-
-            .close-button svg {
-                width: 20px;
-                height: 20px;
-                pointer-events: none;
             }
 
             /* 按钮行 */
@@ -278,25 +240,6 @@ export class FloatingPanel {
                 color: #333; /* Arrow color */
             }
 
-            .undo-button {
-                background: transparent;
-                color: rgb(156, 163, 175);
-            }
-
-            .undo-button:hover {
-                background: rgba(0, 0, 0, 0.05);
-                color: rgb(75, 85, 99);
-            }
-
-            #pageedit-floating-panel.dark-mode .undo-button {
-                background: transparent;
-                color: rgb(209, 213, 219);
-            }
-
-            #pageedit-floating-panel.dark-mode .undo-button:hover {
-                background: rgba(255, 255, 255, 0.1);
-            }
-
             /* 反馈信息 */
             .pageedit-feedback {
                 position: absolute;
@@ -327,36 +270,7 @@ export class FloatingPanel {
                 pointer-events: auto;
             }
 
-            /* 主题切换按钮 */
-            .theme-toggle {
-                position: absolute;
-                right: 48px;
-                top: 12px;
-                width: 24px;
-                height: 24px;
-                padding: 0;
-                border: none;
-                background: transparent;
-                cursor: pointer;
-                color: rgb(156, 163, 175);
-                transition: all 0.2s;
-                z-index: 3;
-            }
-
-            .theme-toggle:hover {
-                color: rgb(75, 85, 99);
-            }
-
-            #pageedit-floating-panel.dark-mode .theme-toggle:hover {
-                color: rgb(209, 213, 219);
-            }
-
-            .theme-toggle svg {
-                width: 20px;
-                height: 20px;
-            }
-
-            /* 头部按钮 (Undo) */
+            /* 头部按钮 (统一所有按钮样式) */
             .header-button {
                 width: 32px;
                 height: 32px;
@@ -371,6 +285,8 @@ export class FloatingPanel {
                 color: rgb(156, 163, 175);
                 padding: 0;
                 margin-left: 4px;
+                position: relative;
+                z-index: 3;
             }
 
             .header-button:hover {
@@ -386,6 +302,49 @@ export class FloatingPanel {
             .header-button svg {
                 width: 20px;
                 height: 20px;
+            }
+
+            /* 自定义 Tooltip 样式 */
+            .custom-tooltip {
+                position: absolute;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 600;
+                white-space: nowrap;
+                pointer-events: none;
+                opacity: 0;
+                transform: translateY(4px);
+                transition: all 0.1s ease;
+                z-index: 2147483647;
+                font-family: inherit;
+                backdrop-filter: blur(4px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .custom-tooltip.show {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            /* 深色模式下的 Tooltip */
+            #pageedit-floating-panel.dark-mode .custom-tooltip {
+                background: rgba(255, 255, 255, 0.9);
+                color: rgb(17, 24, 39);
+                border-color: rgba(0, 0, 0, 0.1);
+            }
+
+            /* 系统主题适配 */
+            @media (prefers-color-scheme: dark) {
+                .custom-tooltip {
+                    background: rgba(255, 255, 255, 0.9);
+                    color: rgb(17, 24, 39);
+                    border-color: rgba(0, 0, 0, 0.1);
+                }
             }
         `;
         this.shadowRoot.appendChild(style);
@@ -408,23 +367,33 @@ export class FloatingPanel {
         controlsContainer.style.alignItems = 'center';
 
         this.undoButton = document.createElement('button');
-        this.undoButton.className = 'header-button undo-button'; // Use header-button style
-        this.undoButton.title = '撤销';
+        this.undoButton.className = 'header-button';
+        this.undoButton.title = 'Undo';
         this.undoButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+        </svg>`;
+        console.log('[PageEdit][FloatingPanel] Undo button created');
+
+        // 创建主题切换按钮
+        const themeToggleButton = document.createElement('button');
+        themeToggleButton.className = 'header-button theme-toggle';
+        themeToggleButton.title = 'Theme';
+        themeToggleButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M3 12h2.25m4.227 4.773L5.636 18.364" />
         </svg>`;
 
         const closeButtonContainer = document.createElement('div');
         closeButtonContainer.className = 'close-button-container';
         
         const closeButton = document.createElement('button');
-        closeButton.className = 'close-button';
-        closeButton.title = '关闭';
+        closeButton.className = 'header-button close-button';
+        closeButton.title = 'Close';
         closeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>`;
         
         closeButtonContainer.appendChild(closeButton);
 
         controlsContainer.appendChild(this.undoButton);
+        controlsContainer.appendChild(themeToggleButton);
         controlsContainer.appendChild(closeButtonContainer);
 
         header.appendChild(title);
@@ -446,7 +415,7 @@ export class FloatingPanel {
         // 创建应用按钮
         this.applyButton = document.createElement('button');
         this.applyButton.className = 'apply-button';
-        this.applyButton.title = '应用';
+        this.applyButton.title = 'Apply';
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
 
         inputWrapper.appendChild(this.input);
@@ -469,8 +438,14 @@ export class FloatingPanel {
         let lastMoveTime = 0; // 用于节流
 
         const onMouseDown = (e: MouseEvent) => {
+            // 检查是否点击的是按钮，如果是则不启动拖动
+            const target = e.target as HTMLElement;
+            if (target.closest('button')) {
+                return;
+            }
+            
             // 只在头部触发拖动
-            if (e.target !== header) return;
+            if (!header.contains(target)) return;
             
             isDragging = true;
             header.classList.add('dragging');
@@ -516,15 +491,16 @@ export class FloatingPanel {
             let newX = initialX + dx;
             let newY = initialY + dy;
 
-            // 获取窗口尺寸（缓存，避免频繁获取）
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
+            // 获取可视区域的实际尺寸
+            const visualViewport = window.visualViewport;
+            const viewportWidth = visualViewport ? visualViewport.width : window.innerWidth;
+            const viewportHeight = visualViewport ? visualViewport.height : window.innerHeight;
 
-            // 边界检查 - 确保面板不会完全移出窗口
+            // 边界检查 - 确保面板不会完全移出可视区域
             const minX = 0;
-            const maxX = windowWidth - panelWidth;
+            const maxX = viewportWidth - panelWidth;
             const minY = 0;
-            const maxY = windowHeight - panelHeight;
+            const maxY = viewportHeight - panelHeight;
 
             newX = Math.max(minX, Math.min(maxX, newX));
             newY = Math.max(minY, Math.min(maxY, newY));
@@ -561,6 +537,9 @@ export class FloatingPanel {
                     panel.style.left = `${finalX}px`;
                     panel.style.top = `${finalY}px`;
                     panel.style.transform = 'translate3d(0, 0, 0)'; // 保持GPU加速层
+                    
+                    // 标记面板已被拖动过
+                    this.hasBeenDragged = true;
                 });
             }
             
@@ -572,6 +551,13 @@ export class FloatingPanel {
 
         // Close button functionality
         closeButton.addEventListener('click', () => this.hide());
+        
+        // 为关闭按钮添加 Tooltip
+        this.addTooltipEvents(closeButton, 'CLOSE');
+        
+        // 主题切换按钮功能
+        themeToggleButton.addEventListener('click', () => this.toggleTheme());
+        this.addTooltipEvents(themeToggleButton, 'THEME');
         
         this.shadowRoot.appendChild(panel);
         return panel;
@@ -588,6 +574,17 @@ export class FloatingPanel {
         // Add event listeners
         this.applyButton.addEventListener('click', () => this.handleApply());
         this.undoButton.addEventListener('click', () => this.handleUndo());
+        console.log('[PageEdit][FloatingPanel] Event listeners attached to buttons');
+
+        // 添加 Tooltip 事件监听器
+        this.addTooltipEvents(this.undoButton, 'UNDO');
+        
+        // 为应用按钮添加动态 tooltip
+        this.applyButton.addEventListener('mouseenter', () => {
+            const tooltipText = this.isProcessing ? 'CANCEL' : 'APPLY';
+            this.showTooltip(this.applyButton, tooltipText);
+        });
+        this.applyButton.addEventListener('mouseleave', () => this.hideTooltip());
 
         // Auto-resize textarea
         this.input.addEventListener('input', () => {
@@ -613,6 +610,33 @@ export class FloatingPanel {
         // Detect dark mode from the page and apply it to the panel
         if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
             this.panel.classList.add('dark-mode');
+        }
+
+        // 监听系统主题变化
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.addEventListener('change', (e) => {
+            if (e.matches) {
+                this.panel.classList.add('dark-mode');
+            } else {
+                this.panel.classList.remove('dark-mode');
+            }
+        });
+
+        // 监听视口变化，当开发者工具栏打开/关闭时自动调整位置
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                if (this.panel.style.display !== 'none') {
+                    if (!this.hasBeenDragged) {
+                        // 如果面板未被拖动过，使用预设的安全位置
+                        const safePosition = this.calculateSafePosition();
+                        this.panel.style.right = safePosition.right;
+                        this.panel.style.bottom = safePosition.bottom;
+                    } else {
+                        // 如果面板已被拖动过，调整位置以保持相对于可视区域的位置
+                        this.adjustPositionForViewportChange();
+                    }
+                }
+            });
         }
     }
 
@@ -702,14 +726,14 @@ export class FloatingPanel {
         }
 
         const userInput = this.input.value.trim();
-        if (!userInput) {
-            this.showFeedback('请输入修改指令', 'error');
+        if (!userInput.trim()) {
+            this.showFeedback('Please enter your edit instruction', 'error');
             return;
         }
 
         // 开始处理状态
         this.isProcessing = true;
-        this.applyButton.title = '终止';
+        this.applyButton.title = 'Cancel';
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
             <rect x="8" y="8" width="8" height="8" rx="1"/>
         </svg>`;
@@ -731,7 +755,7 @@ export class FloatingPanel {
     // 取消处理
     private cancelProcessing(): void {
         this.isProcessing = false;
-        this.applyButton.title = '应用';
+        this.applyButton.title = 'Apply';
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
         
         // 重新启用输入框
@@ -751,9 +775,14 @@ export class FloatingPanel {
     }
 
     private handleUndo(): void {
+        console.log('[PageEdit][FloatingPanel] Undo button clicked');
+        console.log('[PageEdit][FloatingPanel] Event callback exists:', !!this.eventCallback);
         // 触发撤销事件
         if (this.eventCallback) {
+            console.log('[PageEdit][FloatingPanel] Calling event callback');
             this.eventCallback({ type: 'undo' });
+        } else {
+            console.warn('[PageEdit][FloatingPanel] No event callback set');
         }
     }
 
@@ -764,7 +793,7 @@ export class FloatingPanel {
         this.applyButton.style.opacity = '1';
         this.applyButton.style.cursor = 'pointer';
         this.applyButton.style.transform = 'scale(1)';
-        this.applyButton.title = '应用';
+        this.applyButton.title = 'Apply';
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
         this.applyButton.classList.remove('active');
         this.input.disabled = false;
@@ -808,6 +837,14 @@ export class FloatingPanel {
 
     public show(): void {
         console.log('[PageEdit][FloatingPanel] Showing panel');
+        
+        // 只有在面板未被拖动过时才应用预设位置
+        if (!this.hasBeenDragged) {
+            const safePosition = this.calculateSafePosition();
+            this.panel.style.right = safePosition.right;
+            this.panel.style.bottom = safePosition.bottom;
+        }
+        
         this.panel.style.display = 'block';
         // 延迟聚焦，确保面板已显示
         setTimeout(() => {
@@ -820,7 +857,167 @@ export class FloatingPanel {
         this.panel.style.display = 'none';
     }
 
+    // 重置面板位置到默认状态
+    public resetPosition(): void {
+        this.hasBeenDragged = false;
+        const safePosition = this.calculateSafePosition();
+        this.panel.style.right = safePosition.right;
+        this.panel.style.bottom = safePosition.bottom;
+        this.panel.style.left = 'auto';
+        this.panel.style.top = 'auto';
+        this.panel.style.transform = 'translate3d(0, 0, 0)';
+    }
+
     public destroy(): void {
         this.panel.remove();
+    }
+
+    // 计算安全的初始位置，考虑开发者工具栏
+    private calculateSafePosition(): { right: string; bottom: string } {
+        // 获取可视区域的实际高度
+        const visualViewport = window.visualViewport;
+        const viewportHeight = visualViewport ? visualViewport.height : window.innerHeight;
+        
+        // 计算底部安全距离，确保不被开发者工具栏遮挡
+        const safeBottom = Math.max(96, window.innerHeight - viewportHeight + 96);
+        
+        return {
+            right: '96px',
+            bottom: `${safeBottom}px`
+        };
+    }
+
+    // 调整已拖动面板的位置以保持相对于可视区域的位置
+    private adjustPositionForViewportChange(): void {
+        const visualViewport = window.visualViewport;
+        if (!visualViewport) return;
+
+        // 获取当前面板位置
+        const rect = this.panel.getBoundingClientRect();
+        const currentLeft = rect.left;
+        const currentTop = rect.top;
+
+        // 计算面板相对于可视区域的位置比例
+        const viewportWidth = visualViewport.width;
+        const viewportHeight = visualViewport.height;
+        
+        // 如果面板使用left/top定位，调整位置
+        if (this.panel.style.left !== 'auto' && this.panel.style.top !== 'auto') {
+            // 计算新的位置，保持相对于可视区域的位置
+            const newLeft = Math.min(currentLeft, viewportWidth - rect.width);
+            const newTop = Math.min(currentTop, viewportHeight - rect.height);
+            
+            // 确保不超出可视区域边界
+            const finalLeft = Math.max(0, newLeft);
+            const finalTop = Math.max(0, newTop);
+            
+            this.panel.style.left = `${finalLeft}px`;
+            this.panel.style.top = `${finalTop}px`;
+        }
+    }
+
+    // 创建 Tooltip
+    private createTooltip(text: string): HTMLDivElement {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'custom-tooltip';
+        tooltip.textContent = text;
+        return tooltip;
+    }
+
+    // 显示 Tooltip
+    private showTooltip(element: HTMLElement, text: string): void {
+        // 移除现有的 tooltip
+        this.hideTooltip();
+        
+        const tooltip = this.createTooltip(text);
+        
+        // 根据当前主题状态设置样式
+        const isDarkMode = this.panel.classList.contains('dark-mode');
+        if (isDarkMode) {
+            tooltip.style.background = 'rgba(255, 255, 255, 0.9)';
+            tooltip.style.color = 'rgb(17, 24, 39)';
+            tooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+        } else {
+            tooltip.style.background = 'rgba(0, 0, 0, 0.8)';
+            tooltip.style.color = 'white';
+            tooltip.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        }
+        
+        this.shadowRoot.appendChild(tooltip);
+        
+        // 使用更简单的位置计算方式
+        const rect = element.getBoundingClientRect();
+        
+        // 先设置为右下角位置
+        tooltip.style.position = 'fixed';
+        tooltip.style.left = `${rect.right}px`;
+        tooltip.style.top = `${rect.bottom}px`;
+        tooltip.style.transform = 'translateX(4px) translateY(4px)';
+        
+        // 立即显示 tooltip 以获取其尺寸
+        tooltip.classList.add('show');
+        
+        // 获取tooltip的尺寸
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 检查是否超出右边界
+        if (tooltipRect.right > viewportWidth) {
+            // 如果超出右边界，改为显示在左侧
+            tooltip.style.left = `${rect.left}px`;
+            tooltip.style.transform = 'translateX(-4px) translateY(4px)';
+        }
+        
+        // 检查是否超出下边界
+        if (tooltipRect.bottom > viewportHeight) {
+            // 如果超出下边界，改为显示在上方
+            tooltip.style.top = `${rect.top}px`;
+            tooltip.style.transform = tooltip.style.transform.replace('translateY(4px)', 'translateY(-4px)');
+        }
+        
+        // 存储当前 tooltip 引用
+        (this as any).currentTooltip = tooltip;
+    }
+
+    // 隐藏 Tooltip
+    private hideTooltip(): void {
+        const currentTooltip = (this as any).currentTooltip;
+        if (currentTooltip) {
+            currentTooltip.remove();
+            (this as any).currentTooltip = null;
+        }
+    }
+
+    // 添加 Tooltip 事件监听器
+    private addTooltipEvents(element: HTMLElement, text: string): void {
+        element.addEventListener('mouseenter', () => this.showTooltip(element, text));
+        element.addEventListener('mouseleave', () => this.hideTooltip());
+    }
+
+    private toggleTheme(): void {
+        console.log('[PageEdit][FloatingPanel] Toggling theme');
+        const isDarkMode = this.panel.classList.contains('dark-mode');
+        
+        if (isDarkMode) {
+            this.panel.classList.remove('dark-mode');
+        } else {
+            this.panel.classList.add('dark-mode');
+        }
+        
+        // 如果当前有显示的tooltip，更新其样式
+        const currentTooltip = (this as any).currentTooltip;
+        if (currentTooltip) {
+            const newIsDarkMode = this.panel.classList.contains('dark-mode');
+            if (newIsDarkMode) {
+                currentTooltip.style.background = 'rgba(255, 255, 255, 0.9)';
+                currentTooltip.style.color = 'rgb(17, 24, 39)';
+                currentTooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+            } else {
+                currentTooltip.style.background = 'rgba(0, 0, 0, 0.8)';
+                currentTooltip.style.color = 'white';
+                currentTooltip.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            }
+        }
     }
 }
