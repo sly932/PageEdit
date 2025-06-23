@@ -75,9 +75,6 @@ export class FloatingBall {
                 font-family: 'Inter', system-ui, -apple-system, sans-serif;
             }
 
-            /* 导入 Tailwind 样式 */
-            @import url('${chrome.runtime.getURL('styles/main.css')}');
-
             @media (prefers-color-scheme: dark) {
                 :host {
                     color-scheme: dark;
@@ -198,7 +195,7 @@ export class FloatingBall {
         
         // 更现代的图标设计
         ball.innerHTML = `
-            <svg class="w-6 h-6 text-gray-700 dark:text-gray-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg style="width: 1.5rem; height: 1.5rem; color: rgb(55, 65, 81);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
             </svg>
         `;

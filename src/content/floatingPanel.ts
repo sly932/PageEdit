@@ -1227,15 +1227,25 @@ export class FloatingPanel {
 
     public showFeedback(message: string, type: 'success' | 'error'): void {
         this.feedback.textContent = message;
-        this.feedback.className = `
-            pageedit-feedback fixed top-4 right-4 px-4 py-2 rounded-lg text-white
-            ${type === 'success' ? 'bg-green-500/90' : 'bg-red-500/90'}
-            opacity-100 transition-opacity duration-300
+        this.feedback.style.cssText = `
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            color: white;
+            background: ${type === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)'};
+            opacity: 1;
+            transition: opacity 0.3s;
+            z-index: 2147483647;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
         `;
 
         // 自动隐藏反馈消息
         setTimeout(() => {
-            this.feedback.className = this.feedback.className.replace('opacity-100', 'opacity-0');
+            this.feedback.style.opacity = '0';
             setTimeout(() => {
                 this.feedback.textContent = '';
             }, 300);
