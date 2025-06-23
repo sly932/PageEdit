@@ -78,10 +78,11 @@ export class FloatingPanel {
 
             /* 面板内容 */
             .panel-content {
-                padding: 16px;
+                padding: 0 16px 16px 16px;
                 position: relative;
                 z-index: 1;
                 box-sizing: border-box;
+                border-radius: 0 0 12px 12px;
             }
 
             .input-wrapper {
@@ -139,25 +140,15 @@ export class FloatingPanel {
                 -webkit-backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
             }
 
-            #pageedit-floating-panel.dark-mode .panel-header {
-                background: rgba(17, 24, 39, 0.5);
-                border-bottom-color: rgba(55, 65, 81, 0.5);
-                backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
-                -webkit-backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
-            }
-
-            /* 面板头部 */
+            /* 面板头部 - 移除独立背景，与主体融为一体 */
             .panel-header {
                 display: flex;
                 flex-direction: column;
-                padding: 12px 16px;
-                background: rgba(243, 244, 246, 0.5);
-                backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
-                -webkit-backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
-                border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+                padding: 12px 16px 8px 16px;
                 position: relative;
                 z-index: 2;
                 gap: 8px;
+                /* 移除独立背景和边框，与主体保持一致的磨砂质感 */
             }
 
             /* 第一行容器 */
@@ -178,13 +169,6 @@ export class FloatingPanel {
                 width: 100%;
             }
 
-            #pageedit-floating-panel.dark-mode .panel-header {
-                background: rgba(17, 24, 39, 0.5);
-                border-bottom-color: rgba(55, 65, 81, 0.5);
-                backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
-                -webkit-backdrop-filter: blur(25px) saturate(180%) contrast(1.05);
-            }
-
             .panel-header::before {
                 content: '';
                 position: absolute;
@@ -199,6 +183,7 @@ export class FloatingPanel {
                 opacity: 0;
                 transition: opacity 0.3s ease;
                 pointer-events: none;
+                border-radius: 12px 12px 0 0;
             }
 
             #pageedit-floating-panel.dark-mode .panel-header::before {
@@ -206,10 +191,6 @@ export class FloatingPanel {
                     rgba(96, 165, 250, 0) 0%,
                     rgba(96, 165, 250, 0.1) 50%,
                     rgba(96, 165, 250, 0) 100%);
-            }
-
-            .panel-header:hover::before {
-                opacity: 1;
             }
 
             .panel-header.dragging {
@@ -1044,6 +1025,21 @@ export class FloatingPanel {
                 }
             });
         }
+
+        // 点击外部关闭下拉菜单和取消标题编辑
+        document.addEventListener('click', (e) => {
+            // 关闭下拉菜单
+            if (!this.dropdownMenu.contains(e.target as Node) && 
+                !this.dropdownButton.contains(e.target as Node)) {
+                this.closeDropdown();
+            }
+            
+            // 取消标题编辑
+            if (this.titleElement.classList.contains('editing') && 
+                !this.titleElement.contains(e.target as Node)) {
+                this.titleElement.blur();
+            }
+        });
     }
 
     // 更新按钮状态
@@ -1612,19 +1608,20 @@ export class FloatingPanel {
 
         // 标题编辑事件
         this.titleElement.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // 点击时聚焦并进入编辑状态
-            this.titleElement.focus();
-            this.titleElement.classList.add('editing');
-            this.panel.querySelector('.panel-header')?.classList.add('editing');
-            
-            // 将光标移到文本末尾
-            const range = document.createRange();
-            const selection = window.getSelection();
-            range.selectNodeContents(this.titleElement);
-            range.collapse(false); // 将光标移到末尾
-            selection?.removeAllRanges();
-            selection?.addRange(range);
+            e.stopPropagation(); // 防止事件冒泡
+            // 只有不在编辑状态时才处理
+            if (!this.titleElement.classList.contains('editing')) {
+                this.titleElement.focus();
+                this.titleElement.classList.add('editing');
+                this.panel.querySelector('.panel-header')?.classList.add('editing');
+                // 将光标移到文本末尾
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(this.titleElement);
+                range.collapse(false); // 将光标移到末尾
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+            }
         });
 
         this.titleElement.addEventListener('focus', () => {
@@ -1638,7 +1635,15 @@ export class FloatingPanel {
             
             // 检查标题是否被修改
             if (this.currentEddy) {
-                const newName = this.titleElement.textContent?.trim() || this.currentEddy.name;
+                const newName = this.titleElement.textContent?.trim() || '';
+                
+                // 验证标题不能为空（包括只包含空格的情况）
+                if (!newName) {
+                    // 如果标题为空，直接设置原名称而不调用updateTitle
+                    this.titleElement.textContent = this.currentEddy.name;
+                    return;
+                }
+                
                 if (newName !== this.currentEddy.name) {
                     this.hasUnsavedChanges = true;
                     await this.saveCurrentEddy();
