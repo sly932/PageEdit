@@ -26,7 +26,7 @@ export class StorageService {
         console.log('[StorageService] Getting eddys for domain:', domain);
         const eddys = await this.getEddys();
         const filteredEddys = eddys.filter(eddy => eddy.domain === domain);
-        console.log('[StorageService] Found eddys for domain:', domain, ':', filteredEddys.length, 'items');
+        console.log('[StorageService] Found eddys for domain:', domain, ':', filteredEddys.length, 'items\n', filteredEddys);
         return filteredEddys;
     }
 

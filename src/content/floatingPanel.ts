@@ -364,10 +364,11 @@ export class FloatingPanel {
                 outline: none;
                 border-radius: 4px;
                 padding: 2px 4px;
-                transition: background-color 0.2s;
+                transition: all 0.2s ease;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                user-select: text;
             }
 
             .eddy-title:hover {
@@ -377,6 +378,14 @@ export class FloatingPanel {
             .eddy-title:focus {
                 background-color: rgba(59, 130, 246, 0.1);
                 box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+                cursor: text;
+            }
+
+            .eddy-title.editing {
+                background-color: rgba(59, 130, 246, 0.1);
+                box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+                cursor: text;
+                border: 1px solid rgba(59, 130, 246, 0.3);
             }
 
             #pageedit-floating-panel.dark-mode .eddy-title {
@@ -390,6 +399,12 @@ export class FloatingPanel {
             #pageedit-floating-panel.dark-mode .eddy-title:focus {
                 background-color: rgba(96, 165, 250, 0.15);
                 box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+            }
+
+            #pageedit-floating-panel.dark-mode .eddy-title.editing {
+                background-color: rgba(96, 165, 250, 0.15);
+                box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+                border-color: rgba(96, 165, 250, 0.4);
             }
 
             /* 新建 Eddy 按钮特殊样式 */
@@ -529,7 +544,6 @@ export class FloatingPanel {
                 transition: background-color 0.2s;
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
             }
 
             .dropdown-item:last-child {
@@ -565,17 +579,6 @@ export class FloatingPanel {
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-            }
-
-            .dropdown-item-id {
-                font-size: 11px;
-                color: rgb(156, 163, 175);
-                margin-left: 8px;
-                font-family: 'PT Mono', monospace;
-            }
-
-            #pageedit-floating-panel.dark-mode .dropdown-item-id {
-                color: rgb(107, 114, 128);
             }
         `;
         this.shadowRoot.appendChild(style);
@@ -897,6 +900,7 @@ export class FloatingPanel {
         this.addTooltipEvents(this.undoButton, 'UNDO');
         this.addTooltipEvents(this.newEddyButton, 'CREATE NEW EDDY');
         this.addTooltipEvents(this.dropdownButton, 'SWITCH EDDY');
+        this.addTooltipEvents(this.titleElement, 'RENAME EDDY');
         
         // 设置 Eddy 相关事件处理器
         this.setupEddyEventHandlers();
@@ -1444,21 +1448,48 @@ export class FloatingPanel {
         // 标题编辑事件
         this.titleElement.addEventListener('click', (e) => {
             e.stopPropagation();
+            // 点击时聚焦并进入编辑状态
+            this.titleElement.focus();
+            this.titleElement.classList.add('editing');
+            
+            // 将光标移到文本末尾
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.selectNodeContents(this.titleElement);
+            range.collapse(false); // 将光标移到末尾
+            selection?.removeAllRanges();
+            selection?.addRange(range);
         });
 
         this.titleElement.addEventListener('focus', () => {
-            this.titleElement.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+            this.titleElement.classList.add('editing');
         });
 
         this.titleElement.addEventListener('blur', async () => {
-            this.titleElement.style.backgroundColor = 'transparent';
+            this.titleElement.classList.remove('editing');
             // 保存 Eddy 名称
             if (this.currentEddy) {
                 await this.saveCurrentEddy();
             }
         });
 
+        // 处理中文输入法
+        let isComposing = false;
+        
+        this.titleElement.addEventListener('compositionstart', () => {
+            isComposing = true;
+        });
+        
+        this.titleElement.addEventListener('compositionend', () => {
+            isComposing = false;
+        });
+
         this.titleElement.addEventListener('keydown', async (e) => {
+            // 如果正在使用中文输入法，不处理 Enter 键
+            if (isComposing) {
+                return;
+            }
+            
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.titleElement.blur();
@@ -1495,10 +1526,13 @@ export class FloatingPanel {
             
             console.log('[FloatingPanel] Loading eddys for dropdown:', eddys.length, 'items');
             
+            // 按照编辑时间倒序排序，最近编辑的在最上面
+            const sortedEddys = eddys.sort((a, b) => b.updatedAt - a.updatedAt);
+            
             // 清空下拉菜单
             this.dropdownMenu.innerHTML = '';
             
-            if (eddys.length === 0) {
+            if (sortedEddys.length === 0) {
                 // 如果没有 Eddy，显示提示
                 const noEddyItem = document.createElement('div');
                 noEddyItem.className = 'dropdown-item';
@@ -1508,7 +1542,7 @@ export class FloatingPanel {
                 this.dropdownMenu.appendChild(noEddyItem);
             } else {
                 // 添加所有 Eddy 到下拉菜单
-                eddys.forEach(eddy => {
+                sortedEddys.forEach(eddy => {
                     const item = this.createDropdownItem(eddy);
                     this.dropdownMenu.appendChild(item);
                 });
@@ -1519,7 +1553,7 @@ export class FloatingPanel {
             this.dropdownButton.classList.add('open');
             this.isDropdownOpen = true;
             
-            console.log('[FloatingPanel] Dropdown opened with', eddys.length, 'eddys');
+            console.log('[FloatingPanel] Dropdown opened with', sortedEddys.length, 'eddys');
         } catch (error) {
             console.error('[FloatingPanel] Error opening dropdown:', error);
         }
@@ -1539,13 +1573,7 @@ export class FloatingPanel {
         nameElement.className = 'dropdown-item-name';
         nameElement.textContent = eddy.name;
         
-        // 创建 ID 元素
-        const idElement = document.createElement('span');
-        idElement.className = 'dropdown-item-id';
-        idElement.textContent = eddy.id.substring(0, 8); // 只显示前8位
-        
         item.appendChild(nameElement);
-        item.appendChild(idElement);
         
         // 添加点击事件
         item.addEventListener('click', async () => {
