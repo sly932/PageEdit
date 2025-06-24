@@ -10,7 +10,7 @@ import { PanelRenderer } from './panels/PanelRenderer';
 
 // 定义自定义事件类型
 export interface PanelEvent {
-    type: 'apply' | 'undo' | 'cancel';
+    type: 'apply' | 'undo' | 'cancel' | 'reset';
     data?: {
         text?: string;
     };
@@ -24,6 +24,7 @@ export class FloatingPanel {
     private input!: HTMLTextAreaElement;
     private applyButton!: HTMLButtonElement;
     private undoButton!: HTMLButtonElement;
+    private resetButton!: HTMLButtonElement;
     private feedback!: HTMLDivElement;
     private shadowRoot: ShadowRoot;
     private eventCallback: PanelEventCallback | null = null;
@@ -64,6 +65,7 @@ export class FloatingPanel {
         this.input = panelElements.input;
         this.applyButton = panelElements.applyButton;
         this.undoButton = panelElements.undoButton;
+        this.resetButton = panelElements.resetButton;
         this.feedback = panelElements.feedback;
         this.titleElement = panelElements.titleElement;
         this.newEddyButton = panelElements.newEddyButton;
@@ -103,7 +105,7 @@ export class FloatingPanel {
     private setupEventListeners(): void {
         console.log('[FloatingPanel] Setting up event listeners');
         
-        if (!this.input || !this.applyButton || !this.undoButton) {
+        if (!this.input || !this.applyButton || !this.undoButton || !this.resetButton) {
             console.error('[FloatingPanel] Panel elements not found');
             return;
         }
@@ -111,10 +113,12 @@ export class FloatingPanel {
         // Add event listeners
         this.applyButton.addEventListener('click', () => this.handleApply());
         this.undoButton.addEventListener('click', () => this.handleUndo());
+        this.resetButton.addEventListener('click', () => this.handleReset());
         console.log('[FloatingPanel] Event listeners attached to buttons');
 
         // 添加 Tooltip 事件监听器
         PanelTooltip.addTooltipEvents(this.undoButton, 'UNDO');
+        PanelTooltip.addTooltipEvents(this.resetButton, 'RESET ALL');
         PanelTooltip.addTooltipEvents(this.newEddyButton, 'CREATE NEW EDDY');
         PanelTooltip.addTooltipEvents(this.dropdownButton, 'SWITCH EDDY');
         
@@ -347,13 +351,15 @@ export class FloatingPanel {
 
     private handleUndo(): void {
         console.log('[FloatingPanel] Undo button clicked');
-        console.log('[FloatingPanel] Event callback exists:', !!this.eventCallback);
-        // 触发撤销事件
         if (this.eventCallback) {
-            console.log('[FloatingPanel] Calling event callback');
             this.eventCallback({ type: 'undo' });
-        } else {
-            console.warn('[FloatingPanel] No event callback set');
+        }
+    }
+
+    private handleReset(): void {
+        console.log('[FloatingPanel] Reset button clicked');
+        if (this.eventCallback) {
+            this.eventCallback({ type: 'reset' });
         }
     }
 

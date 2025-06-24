@@ -10,6 +10,7 @@ export class PanelRenderer {
     private static input: HTMLTextAreaElement | null = null;
     private static applyButton: HTMLButtonElement | null = null;
     private static undoButton: HTMLButtonElement | null = null;
+    private static resetButton: HTMLButtonElement | null = null;
     private static feedback: HTMLDivElement | null = null;
     private static titleElement: HTMLSpanElement | null = null;
     private static newEddyButton: HTMLButtonElement | null = null;
@@ -26,6 +27,7 @@ export class PanelRenderer {
         input: HTMLTextAreaElement;
         applyButton: HTMLButtonElement;
         undoButton: HTMLButtonElement;
+        resetButton: HTMLButtonElement;
         feedback: HTMLDivElement;
         titleElement: HTMLSpanElement;
         newEddyButton: HTMLButtonElement;
@@ -99,6 +101,15 @@ export class PanelRenderer {
         </svg>`;
         console.log('[PanelRenderer] Undo button created');
 
+        // 创建重置按钮
+        const resetButton = document.createElement('button');
+        resetButton.className = 'header-button';
+        resetButton.title = 'Reset all';
+        resetButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>`;
+        console.log('[PanelRenderer] Reset button created');
+
         // 创建主题切换按钮
         const themeToggleButton = document.createElement('button');
         themeToggleButton.className = 'header-button theme-toggle';
@@ -142,6 +153,7 @@ export class PanelRenderer {
 
         // 第二行：Undo 按钮
         headerRow2.appendChild(undoButton);
+        headerRow2.appendChild(resetButton);
 
         header.appendChild(headerRow1);
         header.appendChild(headerRow2);
@@ -187,6 +199,7 @@ export class PanelRenderer {
             input,
             applyButton,
             undoButton,
+            resetButton,
             newEddyButton,
             dropdownButton,
             titleElement
@@ -199,6 +212,7 @@ export class PanelRenderer {
         PanelRenderer.input = input;
         PanelRenderer.applyButton = applyButton;
         PanelRenderer.undoButton = undoButton;
+        PanelRenderer.resetButton = resetButton;
         PanelRenderer.feedback = feedback;
         PanelRenderer.titleElement = titleElement;
         PanelRenderer.newEddyButton = newEddyButton;
@@ -211,6 +225,7 @@ export class PanelRenderer {
             input,
             applyButton,
             undoButton,
+            resetButton,
             feedback,
             titleElement,
             newEddyButton,
@@ -228,6 +243,7 @@ export class PanelRenderer {
         input: HTMLTextAreaElement,
         applyButton: HTMLButtonElement,
         undoButton: HTMLButtonElement,
+        resetButton: HTMLButtonElement,
         newEddyButton: HTMLButtonElement,
         dropdownButton: HTMLButtonElement,
         titleElement: HTMLSpanElement
@@ -251,6 +267,10 @@ export class PanelRenderer {
 
     static getUndoButton(): HTMLButtonElement | null {
         return PanelRenderer.undoButton;
+    }
+
+    static getResetButton(): HTMLButtonElement | null {
+        return PanelRenderer.resetButton;
     }
 
     static getFeedback(): HTMLDivElement | null {

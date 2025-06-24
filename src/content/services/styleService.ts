@@ -282,4 +282,52 @@ export class StyleService {
             return false;
         }
     }
+
+    /**
+     * 一键还原所有修改
+     * 移除所有通过PageEdit添加的样式元素
+     * @returns 是否还原成功
+     */
+    static resetAllModifications(): boolean {
+        try {
+            console.log('[StyleService] Resetting all modifications');
+            
+            // 移除主文档中的所有样式元素
+            const styleElements = (window as any).__pageEditStyleElements || [];
+            console.log('[StyleService] Found', styleElements.length, 'style elements in main document');
+            
+            styleElements.forEach((element: HTMLStyleElement) => {
+                if (element && element.parentNode) {
+                    element.remove();
+                }
+            });
+            (window as any).__pageEditStyleElements = [];
+            
+            // 处理Shadow DOM中的样式元素
+            const shadowRoots = document.querySelectorAll('*');
+            let shadowStyleCount = 0;
+            
+            shadowRoots.forEach(element => {
+                if (element.shadowRoot) {
+                    const shadowStyleElements = (element.shadowRoot as any).__pageEditStyleElements || [];
+                    shadowStyleCount += shadowStyleElements.length;
+                    
+                    shadowStyleElements.forEach((styleElement: HTMLStyleElement) => {
+                        if (styleElement && styleElement.parentNode) {
+                            styleElement.remove();
+                        }
+                    });
+                    (element.shadowRoot as any).__pageEditStyleElements = [];
+                }
+            });
+            
+            console.log('[StyleService] Removed', shadowStyleCount, 'style elements from Shadow DOMs');
+            console.log('[StyleService] All modifications reset successfully');
+            
+            return true;
+        } catch (error) {
+            console.error('[StyleService] Reset all modifications failed:', error);
+            return false;
+        }
+    }
 } 

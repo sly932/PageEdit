@@ -208,6 +208,17 @@ export class ContentManager {
                     }
                     break;
 
+                case 'reset':
+                    // 一键还原所有修改
+                    const resetSuccess = StyleService.resetAllModifications();
+
+                    if (resetSuccess) {
+                        floatingBall.showFeedback('已还原所有修改', 'success');
+                    } else {
+                        floatingBall.showFeedback('还原修改时出错', 'error');
+                    }
+                    break;
+
                 default:
                     console.warn('[content] Unknown panel event type:', event.type);
             }
