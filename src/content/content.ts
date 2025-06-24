@@ -14,6 +14,7 @@ let floatingBall: FloatingBall | null = null;
  * 处理页面修改和与popup的通信
  */
 export class ContentManager {
+    private currentApplyId: string | null = null;
     constructor() {
         console.log('[content] ContentManager initialized');
         // 初始化消息监听
@@ -108,14 +109,24 @@ export class ContentManager {
     /**
      * 处理页面修改请求
      * @param message 修改消息
+     * @param applyId 本次apply的唯一ID
      */
-    private async handleModifyPage(message: Message): Promise<void> {
+    private async handleModifyPage(message: Message, applyId?: string): Promise<void> {
         try {
             // 解析用户输入
             const parseResult = await this.parseUserInput(message.data.text);
-            if (!parseResult.success) {
-                throw new Error(parseResult.error || 'Failed to parse user input');
+            // 检查applyId是否仍然有效
+            if (applyId && this.currentApplyId !== applyId) {
+                console.log('[content] Apply已被取消，本次结果丢弃');
+                return;
             }
+            if (!parseResult.success || !parseResult.modifications || parseResult.modifications.length === 0) {
+                throw new Error(parseResult.error || 'No valid modifications found');
+            }
+
+            // 开始新的修改组
+            const groupId = StyleService.startModificationGroup(message.data.text);
+            console.log('[content] Started modification group:', groupId);
 
             // 应用所有修改
             for (const modification of parseResult.modifications) {
@@ -130,7 +141,7 @@ export class ContentManager {
                             value: modification.value,
                             method: 'style',  // 强制使用 style 方法
                             target: modification.target
-                        });
+                        }, groupId);
                         
                         if (!success) {
                             throw new Error(`Failed to apply modification: ${modification.property}`);
@@ -150,7 +161,7 @@ export class ContentManager {
                             value: modification.value,
                             method: modification.method,
                             target: modification.target
-                        });
+                        }, groupId);
                         
                         if (!success) {
                             throw new Error(`Failed to apply modification: ${modification.property}`);
@@ -161,6 +172,11 @@ export class ContentManager {
                     throw error;
                 }
             }
+
+            // 结束修改组
+            StyleService.endModificationGroup();
+            console.log('[content] Completed modification group:', groupId);
+
         } catch (error) {
             console.error('Failed to handle page modification:', error);
             throw error;
@@ -183,42 +199,42 @@ export class ContentManager {
             switch (event.type) {
                 case 'apply':
                     if (event.data?.text) {
+                        // 生成唯一applyId
+                        const applyId = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                        this.currentApplyId = applyId;
                         // 创建一个类似于消息的对象
                         const message: Message = {
                             type: 'MODIFY_PAGE',
                             data: { text: event.data.text }
                         };
-
-                        // 处理修改
-                        await this.handleModifyPage(message);
-
+                        // 处理修改，传递applyId
+                        await this.handleModifyPage(message, applyId);
                         // 显示成功反馈
                         floatingBall.showFeedback('修改已应用', 'success');
                     }
                     break;
-
                 case 'undo':
                     // 撤销最后一次修改
                     const success = this.undoLastModification();
-
                     if (success) {
                         floatingBall.showFeedback('已撤销上次修改', 'success');
                     } else {
                         floatingBall.showFeedback('没有可撤销的修改', 'error');
                     }
                     break;
-
                 case 'reset':
                     // 一键还原所有修改
                     const resetSuccess = StyleService.resetAllModifications();
-
                     if (resetSuccess) {
                         floatingBall.showFeedback('已还原所有修改', 'success');
                     } else {
                         floatingBall.showFeedback('还原修改时出错', 'error');
                     }
                     break;
-
+                case 'cancel':
+                    // 取消当前apply
+                    this.currentApplyId = null;
+                    break;
                 default:
                     console.warn('[content] Unknown panel event type:', event.type);
             }
@@ -237,15 +253,8 @@ export class ContentManager {
      */
     private undoLastModification(): boolean {
         try {
-            // 获取最后一个样式元素
-            const styleElements = (window as any).__pageEditStyleElements || [];
-            if (styleElements.length > 0) {
-                // 移除最后一个样式元素
-                const lastStyleElement = styleElements.pop();
-                lastStyleElement.remove();
-                return true;
-            }
-            return false;
+            // 撤销最后一次修改组（包含多个modifications）
+            return StyleService.undoLastModificationGroup();
         } catch (error) {
             console.error('[content] Error undoing modification:', error);
             return false;

@@ -480,7 +480,7 @@ export class FloatingPanel {
         PanelEvents.setCurrentEddy(eddy, isNew);
         
         // 如果是编辑现有 Eddy，加载其修改内容和草稿
-        if (!isNew && eddy.modifications.length > 0) {
+        if (!isNew && eddy.modificationGroups && eddy.modificationGroups.length > 0) {
             this.loadEddyModifications(eddy);
         }
         
@@ -498,7 +498,11 @@ export class FloatingPanel {
     private loadEddyModifications(eddy: Eddy): void {
         // 这里可以根据需要加载 Eddy 的修改内容
         // 目前保持输入内容不变，后续可以扩展
-        console.log('[FloatingPanel] Loaded eddy modifications:', eddy.modifications.length, 'items');
+        if (eddy.modificationGroups) {
+            console.log('[FloatingPanel] Loaded eddy modifications:', eddy.modificationGroups.length, 'items');
+        } else {
+            console.log('[FloatingPanel] No modifications found in eddy');
+        }
     }
 
     private loadDraftContent(eddy: Eddy): void {
@@ -538,7 +542,7 @@ export class FloatingPanel {
                 id: `temp_${Date.now()}`, // 临时ID
                 name: newEddyName,
                 domain: currentDomain,
-                modifications: [],
+                modificationGroups: [],
                 lastUsed: false,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
@@ -591,7 +595,7 @@ export class FloatingPanel {
                 const realEddy = await StorageService.createEddy(
                     this.currentEddy.name,
                     this.currentEddy.domain,
-                    this.currentEddy.modifications
+                    this.currentEddy.modificationGroups?.flatMap(group => group.modifications) || []
                 );
                 this.currentEddy = realEddy;
                 this.isNewEddy = false;

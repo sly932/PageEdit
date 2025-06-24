@@ -17,6 +17,7 @@ export class StorageService {
         console.log('[StorageService] Getting all eddys');
         const result = await chrome.storage.local.get(this.STORAGE_KEY);
         const eddys = result[this.STORAGE_KEY] || [];
+        
         console.log('[StorageService] Retrieved eddys:', eddys.length, 'items');
         return eddys;
     }
@@ -94,7 +95,12 @@ export class StorageService {
             id: uuidv4(),
             name,
             domain,
-            modifications,
+            modificationGroups: [{
+                id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                timestamp: Date.now(),
+                userQuery: 'Created from modifications',
+                modifications: modifications
+            }],
             lastUsed: true, // 新创建的Eddy总是设置为lastUsed
             createdAt: Date.now(),
             updatedAt: Date.now()

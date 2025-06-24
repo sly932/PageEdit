@@ -9,14 +9,18 @@ export class StyleService {
     /**
      * 根据修改方法应用样式
      * @param modification 样式修改对象
+     * @param groupId 可选的修改组ID
      * @returns 是否修改成功
      */
-    static applyModification(modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>): boolean {
+    static applyModification(
+        modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>,
+        groupId?: string
+    ): boolean {
         try {
             switch (modification.method) {
                 case 'style':
                     // 使用 style 标签方式
-                    return this.modifyByCSSRule(modification);
+                    return this.modifyByCSSRule(modification, groupId);
                 case 'DOM':
                     // 使用直接 DOM 方式
                     const elements = Array.from(document.querySelectorAll(modification.target)) as HTMLElement[];
@@ -121,9 +125,13 @@ export class StyleService {
     /**
      * 通过CSS规则修改样式
      * @param modification 修改对象
+     * @param groupId 可选的修改组ID
      * @returns 是否修改成功
      */
-    static modifyByCSSRule(modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>): boolean {
+    static modifyByCSSRule(
+        modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>,
+        groupId?: string
+    ): boolean {
         try {
             // 创建样式规则
             const styleText = `${modification.property}: ${modification.value}`;
@@ -139,6 +147,17 @@ export class StyleService {
             (window as any).__pageEditStyleElements = 
                 (window as any).__pageEditStyleElements || [];
             (window as any).__pageEditStyleElements.push(styleElement);
+            
+            // 添加到分组管理
+            if (groupId) {
+                const groups = (window as any).__pageEditStyleElementGroups || [];
+                const group = groups.find((g: any) => g.groupId === groupId);
+                if (group) {
+                    group.styleElements.push(styleElement);
+                } else {
+                    console.warn(`Group ${groupId} not found`);
+                }
+            }
             
             return true;
         } catch (error) {
@@ -268,17 +287,99 @@ export class StyleService {
         try {
             let allSuccess = true;
             
-            for (const modification of eddy.modifications) {
-                const success = this.applyModification(modification);
-                if (!success) {
-                    allSuccess = false;
-                    console.warn(`Failed to apply modification: ${JSON.stringify(modification)}`);
+            // 处理分组结构
+            if (eddy.modificationGroups) {
+                for (const group of eddy.modificationGroups) {
+                    // 开始新的修改组
+                    const groupId = this.startModificationGroup(group.userQuery);
+                    
+                    for (const modification of group.modifications) {
+                        const success = this.applyModification(modification, groupId);
+                        if (!success) {
+                            allSuccess = false;
+                            console.warn(`Failed to apply modification: ${JSON.stringify(modification)}`);
+                        }
+                    }
+                    
+                    // 结束修改组
+                    this.endModificationGroup();
                 }
             }
             
             return allSuccess;
         } catch (error) {
             console.error('Failed to apply eddy:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 开始一个新的修改组
+     * @param userQuery 用户输入的查询
+     * @returns 修改组ID
+     */
+    static startModificationGroup(userQuery: string): string {
+        const groupId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // 初始化样式元素组
+        (window as any).__pageEditStyleElementGroups = 
+            (window as any).__pageEditStyleElementGroups || [];
+        
+        (window as any).__pageEditStyleElementGroups.push({
+            groupId,
+            styleElements: [],
+            timestamp: Date.now(),
+            userQuery
+        });
+        
+        console.log('[StyleService] Started modification group:', groupId);
+        return groupId;
+    }
+
+    /**
+     * 结束当前修改组
+     */
+    static endModificationGroup(): void {
+        console.log('[StyleService] Current modification group ended');
+    }
+
+    /**
+     * 获取当前修改组
+     * @param groupId 可选的组ID
+     * @returns 当前修改组对象
+     */
+    private static getCurrentModificationGroup(groupId?: string): any {
+        const groups = (window as any).__pageEditStyleElementGroups || [];
+        if (groupId) {
+            return groups.find((group: any) => group.groupId === groupId);
+        }
+        return groups[groups.length - 1]; // 返回最后一个组
+    }
+
+    /**
+     * 撤销最后一次apply操作
+     * @returns 是否撤销成功
+     */
+    static undoLastModificationGroup(): boolean {
+        try {
+            const groups = (window as any).__pageEditStyleElementGroups || [];
+            if (groups.length === 0) {
+                return false;
+            }
+
+            const lastGroup = groups.pop();
+            console.log('[StyleService] Undoing modification group:', lastGroup.groupId);
+
+            // 移除该组的所有样式元素
+            lastGroup.styleElements.forEach((element: HTMLStyleElement) => {
+                if (element && element.parentNode) {
+                    element.remove();
+                }
+            });
+
+            return true;
+        } catch (error) {
+            console.error('[StyleService] Error undoing modification group:', error);
             return false;
         }
     }
@@ -292,18 +393,23 @@ export class StyleService {
         try {
             console.log('[StyleService] Resetting all modifications');
             
-            // 移除主文档中的所有样式元素
-            const styleElements = (window as any).__pageEditStyleElements || [];
-            console.log('[StyleService] Found', styleElements.length, 'style elements in main document');
+            // 使用分组结构
+            const groups = (window as any).__pageEditStyleElementGroups || [];
+            console.log('[StyleService] Found', groups.length, 'modification groups');
             
-            styleElements.forEach((element: HTMLStyleElement) => {
-                if (element && element.parentNode) {
-                    element.remove();
-                }
+            // 移除所有组的样式元素
+            groups.forEach((group: any) => {
+                group.styleElements.forEach((element: HTMLStyleElement) => {
+                    if (element && element.parentNode) {
+                        element.remove();
+                    }
+                });
             });
-            (window as any).__pageEditStyleElements = [];
             
-            // 处理Shadow DOM中的样式元素
+            // 清空所有组
+            (window as any).__pageEditStyleElementGroups = [];
+            
+            // 处理Shadow DOM中的样式元素（保持原有逻辑）
             const shadowRoots = document.querySelectorAll('*');
             let shadowStyleCount = 0;
             
