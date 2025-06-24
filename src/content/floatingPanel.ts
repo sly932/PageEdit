@@ -415,18 +415,14 @@ export class FloatingPanel {
 
     // 更新undo/redo按钮状态
     public updateUndoRedoButtonStates(): void {
-        // 导入StyleService
-        const { StyleService } = require('./services/styleService');
+        const stateInfo = StyleService.getStateInfo();
         
-        const canUndo = !StyleService.isUndoStackEmpty();
-        const canRedo = !StyleService.isRedoStackEmpty();
-        
-        this.undoButton.disabled = !canUndo;
-        this.redoButton.disabled = !canRedo;
+        this.undoButton.disabled = !stateInfo.canUndo;
+        this.redoButton.disabled = !stateInfo.canRedo;
         
         // 更新按钮样式
-        this.undoButton.style.opacity = canUndo ? '1' : '0.5';
-        this.redoButton.style.opacity = canRedo ? '1' : '0.5';
+        this.undoButton.style.opacity = stateInfo.canUndo ? '1' : '0.5';
+        this.redoButton.style.opacity = stateInfo.canRedo ? '1' : '0.5';
     }
 
     // 清空输入框
@@ -534,15 +530,15 @@ export class FloatingPanel {
         // 更新 PanelEvents 模块
         PanelEvents.setCurrentEddy(eddy, isNew);
         
-        // 应用 Eddy 的修改（如果有的话）
-        if (eddy.modificationGroups && eddy.modificationGroups.length > 0) {
-            this.loadEddyModifications(eddy);
-            // 立即应用 Eddy 的所有 modificationGroups
-            this.applyEddyModifications(eddy);
+        // 应用 Eddy 的样式元素（如果有的话）
+        if (eddy.currentStyleElements && eddy.currentStyleElements.length > 0) {
+            this.loadEddyStyleElements(eddy);
+            // 立即应用 Eddy 的所有样式元素
+            this.applyEddyStyleElements(eddy);
         } else {
-            // 如果 Eddy 没有修改，清空页面
-            StyleService.resetAllModifications();
-            console.log('[FloatingPanel] Cleared all modifications for eddy without modifications:', eddy.name);
+            // 如果 Eddy 没有样式元素，清空页面
+            StyleService.clearAllStyleElements();
+            console.log('[FloatingPanel] Cleared all modifications for eddy without style elements:', eddy.name);
         }
         
         // 加载草稿内容（如果有的话）
@@ -556,13 +552,13 @@ export class FloatingPanel {
         }
     }
 
-    private loadEddyModifications(eddy: Eddy): void {
-        // 这里可以根据需要加载 Eddy 的修改内容
+    private loadEddyStyleElements(eddy: Eddy): void {
+        // 这里可以根据需要加载 Eddy 的样式元素内容
         // 目前保持输入内容不变，后续可以扩展
-        if (eddy.modificationGroups) {
-            console.log('[FloatingPanel] Loaded eddy modifications:', eddy.modificationGroups.length, 'items');
+        if (eddy.currentStyleElements) {
+            console.log('[FloatingPanel] Loaded eddy style elements:', eddy.currentStyleElements.length, 'items');
         } else {
-            console.log('[FloatingPanel] No modifications found in eddy');
+            console.log('[FloatingPanel] No style elements found in eddy');
         }
     }
 
@@ -594,7 +590,7 @@ export class FloatingPanel {
             }
 
             // 清空当前页面的所有修改（因为要切换到新的 Eddy）
-            StyleService.resetAllModifications();
+            StyleService.clearAllStyleElements();
             console.log('[FloatingPanel] Cleared all modifications for new eddy');
 
             const currentDomain = window.location.hostname;
@@ -607,7 +603,7 @@ export class FloatingPanel {
                 id: `temp_${Date.now()}`, // 临时ID
                 name: newEddyName,
                 domain: currentDomain,
-                modificationGroups: [],
+                currentStyleElements: [],
                 lastUsed: false,
                 createdAt: Date.now(),
                 updatedAt: Date.now()
@@ -660,7 +656,7 @@ export class FloatingPanel {
                 const realEddy = await StorageService.createEddy(
                     this.currentEddy.name,
                     this.currentEddy.domain,
-                    { modificationGroups: this.currentEddy.modificationGroups || [] }
+                    { currentStyleElements: this.currentEddy.currentStyleElements || [] }
                 );
                 this.currentEddy = realEddy;
                 this.isNewEddy = false;
@@ -791,58 +787,28 @@ export class FloatingPanel {
     }
 
     /**
-     * 应用 Eddy 的所有 modificationGroups 到页面
+     * 应用 Eddy 的样式元素到页面
      * @param eddy Eddy 对象
      */
-    private async applyEddyModifications(eddy: Eddy): Promise<void> {
+    private async applyEddyStyleElements(eddy: Eddy): Promise<void> {
         try {
-            if (!eddy.modificationGroups || eddy.modificationGroups.length === 0) {
-                console.log('[FloatingPanel] No modification groups to apply for eddy:', eddy.name);
+            if (!eddy.currentStyleElements || eddy.currentStyleElements.length === 0) {
+                console.log('[FloatingPanel] No style elements to apply for eddy:', eddy.name);
                 return;
             }
 
-            console.log('[FloatingPanel] Applying', eddy.modificationGroups.length, 'modification groups for eddy:', eddy.name);
+            console.log('[FloatingPanel] Applying', eddy.currentStyleElements.length, 'style elements for eddy:', eddy.name);
 
-            // 先清除当前页面的所有修改
-            StyleService.resetAllModifications();
-
-            // 应用每个 modificationGroup
-            for (const group of eddy.modificationGroups) {
-                // 使用原始的 group.id，而不是重新生成
-                const groupId = group.id;
-                
-                // 手动创建修改组（不调用 startModificationGroup，避免生成新 ID）
-                (window as any).__pageEditStyleElementGroups = 
-                    (window as any).__pageEditStyleElementGroups || [];
-                
-                (window as any).__pageEditStyleElementGroups.push({
-                    groupId: groupId,
-                    styleElements: [],
-                    timestamp: group.timestamp,
-                    userQuery: group.userQuery
-                });
-                
-                // 应用该组的所有修改
-                for (const modification of group.modifications) {
-                    const success = StyleService.applyModification({
-                        property: modification.property,
-                        value: modification.value,
-                        method: modification.method,
-                        target: modification.target
-                    }, groupId);
-                    
-                    if (!success) {
-                        console.warn('[FloatingPanel] Failed to apply modification:', modification);
-                    }
-                }
-                
-                // 结束修改组
-                StyleService.endModificationGroup();
+            // 使用 StyleService 来应用 Eddy，确保状态一致性
+            const success = await StyleService.applyEddy(eddy);
+            
+            if (success) {
+                console.log('[FloatingPanel] Successfully applied all style elements for eddy:', eddy.name);
+            } else {
+                console.error('[FloatingPanel] Failed to apply style elements for eddy:', eddy.name);
             }
-
-            console.log('[FloatingPanel] Successfully applied all modification groups for eddy:', eddy.name);
         } catch (error) {
-            console.error('[FloatingPanel] Error applying eddy modifications:', error);
+            console.error('[FloatingPanel] Error applying eddy style elements:', error);
         }
     }
 

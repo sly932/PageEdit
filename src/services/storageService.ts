@@ -1,6 +1,7 @@
 import { Eddy } from '../types/eddy';
 import { Modification } from '../types/index';
 import { v4 as uuidv4 } from 'uuid';
+import { migrateEddyToNewFormat, migrateEddysToNewFormat } from '../utils/migration';
 
 export class StorageService {
     private static readonly STORAGE_KEY = 'eddy_eddys';
@@ -17,6 +18,16 @@ export class StorageService {
         console.log('[StorageService] Getting all eddys');
         const result = await chrome.storage.local.get(this.STORAGE_KEY);
         const eddys = result[this.STORAGE_KEY] || [];
+        
+        // 检查是否需要迁移
+        const needsMigration = eddys.some((eddy: any) => eddy.currentStyleElements === undefined);
+        if (needsMigration) {
+            console.log('[StorageService] Detected old format eddys, migrating...');
+            const migratedEddys = migrateEddysToNewFormat(eddys);
+            await this.saveEddys(migratedEddys);
+            console.log('[StorageService] Migration completed');
+            return migratedEddys;
+        }
         
         console.log('[StorageService] Retrieved eddys:', eddys.length, 'items');
         return eddys;
@@ -75,7 +86,7 @@ export class StorageService {
     }
 
     // 创建新的 Eddy
-    static async createEddy(name: string, domain: string, modifications: Modification[] | { modificationGroups: any[] }): Promise<Eddy> {
+    static async createEddy(name: string, domain: string, options: { currentStyleElements?: any[] } = {}): Promise<Eddy> {
         console.log('[StorageService] Creating new eddy:', name, 'for domain:', domain);
         const eddys = await this.getEddys();
         
@@ -91,27 +102,11 @@ export class StorageService {
             console.log('[StorageService] Reset lastUsed for', updatedCount, 'existing eddys in domain:', domain);
         }
 
-        let modificationGroups: any[] = [];
-
-        // 处理不同的输入格式
-        if (Array.isArray(modifications)) {
-            // 如果是扁平的 modifications 数组，创建一个默认的 group
-            modificationGroups = [{
-                id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                timestamp: Date.now(),
-                userQuery: 'Created from modifications',
-                modifications: modifications
-            }];
-        } else if (modifications && 'modificationGroups' in modifications) {
-            // 如果直接传入了 modificationGroups
-            modificationGroups = modifications.modificationGroups;
-        }
-
         const newEddy: Eddy = {
             id: uuidv4(),
             name,
             domain,
-            modificationGroups: modificationGroups,
+            currentStyleElements: options.currentStyleElements || [],
             lastUsed: true, // 新创建的Eddy总是设置为lastUsed
             createdAt: Date.now(),
             updatedAt: Date.now()

@@ -384,7 +384,7 @@ export class FloatingBall {
             const newEddy = await StorageService.createEddy(
                 newEddyName,
                 currentDomain,
-                []
+                { currentStyleElements: [] }
             );
             
             console.log('[FloatingBall] New eddy created:', newEddy.name, '(ID:', newEddy.id, ')');

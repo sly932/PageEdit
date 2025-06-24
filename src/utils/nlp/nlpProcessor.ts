@@ -158,8 +158,15 @@ export class NLPProcessor {
             
             const llmService = LLMService.getInstance(config);
             console.log('[nlpProcessor] LLM service:', llmService);
-            const results = await llmService.processInput(text, htmlContext);
+            // 记录开始时间
+            const startTime = Date.now();
+            var results = await llmService.processInput(text, htmlContext);
+            // 记录结束时间
+            const endTime = Date.now();
+            console.log('[nlpProcessor] LLM time:', endTime - startTime);
             console.log('[nlpProcessor] LLM results:', results);
+            // 替换可能存在的```json 和 ``` 
+            results = results.replace(/```json/g, '').replace(/```/g, '');
             // 解析LLM返回的JSON字符串
             let parsedResults;
             try {
