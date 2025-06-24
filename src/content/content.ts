@@ -177,9 +177,78 @@ export class ContentManager {
             StyleService.endModificationGroup();
             console.log('[content] Completed modification group:', groupId);
 
+            // 保存 modificationGroup 到当前 Eddy
+            await this.saveModificationGroupToEddy(groupId, message.data.text, parseResult.modifications);
+
         } catch (error) {
             console.error('Failed to handle page modification:', error);
             throw error;
+        }
+    }
+
+    /**
+     * 将 modificationGroup 保存到当前 Eddy
+     * @param groupId 修改组ID
+     * @param userQuery 用户查询
+     * @param modifications 修改列表
+     */
+    private async saveModificationGroupToEddy(groupId: string, userQuery: string, modifications: any[]): Promise<void> {
+        try {
+            // 获取当前 Eddy（通过 FloatingBall 获取）
+            const floatingBall = (window as any).__pageEditFloatingBall;
+            if (!floatingBall || !floatingBall.panel || !floatingBall.panel.currentEddy) {
+                console.warn('[content] No current eddy found, skipping modification group save');
+                return;
+            }
+
+            const currentEddy = floatingBall.panel.currentEddy;
+            
+            // 创建 modificationGroup
+            const modificationGroup = {
+                id: groupId,
+                timestamp: Date.now(),
+                userQuery: userQuery,
+                modifications: modifications
+            };
+
+            // 添加到 Eddy 的 modificationGroups
+            if (!currentEddy.modificationGroups) {
+                currentEddy.modificationGroups = [];
+            }
+            currentEddy.modificationGroups.push(modificationGroup);
+
+            // 标记 Eddy 有未保存更改
+            if (floatingBall.panel.setHasUnsavedChanges) {
+                floatingBall.panel.setHasUnsavedChanges(true);
+            }
+
+            // 立即保存到存储
+            await this.saveEddyToStorage(currentEddy);
+
+            console.log('[content] Saved modification group to eddy:', groupId, 'with', modifications.length, 'modifications');
+        } catch (error) {
+            console.error('[content] Error saving modification group to eddy:', error);
+        }
+    }
+
+    /**
+     * 保存 Eddy 到存储
+     * @param eddy Eddy 对象
+     */
+    private async saveEddyToStorage(eddy: any): Promise<void> {
+        try {
+            // 导入 StorageService
+            const { StorageService } = await import('../services/storageService');
+            
+            // 更新 Eddy 的更新时间
+            eddy.updatedAt = Date.now();
+            
+            // 保存到存储
+            await StorageService.updateEddy(eddy);
+            
+            console.log('[content] Eddy saved to storage:', eddy.name, '(ID:', eddy.id, ')');
+        } catch (error) {
+            console.error('[content] Error saving eddy to storage:', error);
         }
     }
 

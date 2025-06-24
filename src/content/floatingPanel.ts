@@ -595,7 +595,7 @@ export class FloatingPanel {
                 const realEddy = await StorageService.createEddy(
                     this.currentEddy.name,
                     this.currentEddy.domain,
-                    this.currentEddy.modificationGroups?.flatMap(group => group.modifications) || []
+                    { modificationGroups: this.currentEddy.modificationGroups || [] }
                 );
                 this.currentEddy = realEddy;
                 this.isNewEddy = false;

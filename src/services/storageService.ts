@@ -75,7 +75,7 @@ export class StorageService {
     }
 
     // 创建新的 Eddy
-    static async createEddy(name: string, domain: string, modifications: Modification[]): Promise<Eddy> {
+    static async createEddy(name: string, domain: string, modifications: Modification[] | { modificationGroups: any[] }): Promise<Eddy> {
         console.log('[StorageService] Creating new eddy:', name, 'for domain:', domain);
         const eddys = await this.getEddys();
         
@@ -91,16 +91,27 @@ export class StorageService {
             console.log('[StorageService] Reset lastUsed for', updatedCount, 'existing eddys in domain:', domain);
         }
 
-        const newEddy: Eddy = {
-            id: uuidv4(),
-            name,
-            domain,
-            modificationGroups: [{
+        let modificationGroups: any[] = [];
+
+        // 处理不同的输入格式
+        if (Array.isArray(modifications)) {
+            // 如果是扁平的 modifications 数组，创建一个默认的 group
+            modificationGroups = [{
                 id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 timestamp: Date.now(),
                 userQuery: 'Created from modifications',
                 modifications: modifications
-            }],
+            }];
+        } else if (modifications && 'modificationGroups' in modifications) {
+            // 如果直接传入了 modificationGroups
+            modificationGroups = modifications.modificationGroups;
+        }
+
+        const newEddy: Eddy = {
+            id: uuidv4(),
+            name,
+            domain,
+            modificationGroups: modificationGroups,
             lastUsed: true, // 新创建的Eddy总是设置为lastUsed
             createdAt: Date.now(),
             updatedAt: Date.now()

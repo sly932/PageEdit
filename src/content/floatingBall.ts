@@ -43,6 +43,9 @@ export class FloatingBall {
 
         // 添加根元素到页面
         document.body.appendChild(this.rootElement);
+
+        // 将实例暴露到全局，以便 ContentManager 可以访问
+        (window as any).__pageEditFloatingBall = this;
     }
 
     // 设置面板事件回调
@@ -64,6 +67,11 @@ export class FloatingBall {
     // 清空输入框
     public clearInput(): void {
         this.panel.clearInput();
+    }
+
+    // 设置未保存更改状态
+    public setHasUnsavedChanges(hasChanges: boolean): void {
+        this.panel.setHasUnsavedChanges(hasChanges);
     }
 
     private injectStyles(): void {
