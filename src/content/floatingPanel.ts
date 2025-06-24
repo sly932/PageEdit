@@ -10,7 +10,7 @@ import { PanelRenderer } from './panels/PanelRenderer';
 
 // 定义自定义事件类型
 export interface PanelEvent {
-    type: 'apply' | 'undo' | 'cancel' | 'reset';
+    type: 'apply' | 'undo' | 'redo' | 'cancel' | 'reset';
     data?: {
         text?: string;
     };
@@ -24,6 +24,7 @@ export class FloatingPanel {
     private input!: HTMLTextAreaElement;
     private applyButton!: HTMLButtonElement;
     private undoButton!: HTMLButtonElement;
+    private redoButton!: HTMLButtonElement;
     private resetButton!: HTMLButtonElement;
     private feedback!: HTMLDivElement;
     private shadowRoot: ShadowRoot;
@@ -49,6 +50,7 @@ export class FloatingPanel {
 
     constructor(shadowRoot: ShadowRoot) {
         this.shadowRoot = shadowRoot;
+        console.log('[FloatingPanel] Initializing FloatingPanel...');
 
         // 先初始化 Tooltip
         PanelTooltip.initialize(this.shadowRoot);
@@ -65,6 +67,7 @@ export class FloatingPanel {
         this.input = panelElements.input;
         this.applyButton = panelElements.applyButton;
         this.undoButton = panelElements.undoButton;
+        this.redoButton = panelElements.redoButton;
         this.resetButton = panelElements.resetButton;
         this.feedback = panelElements.feedback;
         this.titleElement = panelElements.titleElement;
@@ -99,7 +102,10 @@ export class FloatingPanel {
         // 设置事件监听器
         this.setupEventListeners();
         
-        console.log('[FloatingPanel] Panel created successfully');
+        // 添加页面刷新前的事件监听器
+        this.setupPageUnloadListener();
+
+        console.log('[FloatingPanel] FloatingPanel initialized successfully');
     }
 
     private setupEventListeners(): void {
@@ -113,11 +119,13 @@ export class FloatingPanel {
         // Add event listeners
         this.applyButton.addEventListener('click', () => this.handleApply());
         this.undoButton.addEventListener('click', () => this.handleUndo());
+        this.redoButton.addEventListener('click', () => this.handleRedo());
         this.resetButton.addEventListener('click', () => this.handleReset());
         console.log('[FloatingPanel] Event listeners attached to buttons');
 
         // 添加 Tooltip 事件监听器
         PanelTooltip.addTooltipEvents(this.undoButton, 'UNDO');
+        PanelTooltip.addTooltipEvents(this.redoButton, 'REDO');
         PanelTooltip.addTooltipEvents(this.resetButton, 'RESET ALL');
         PanelTooltip.addTooltipEvents(this.newEddyButton, 'CREATE NEW EDDY');
         PanelTooltip.addTooltipEvents(this.dropdownButton, 'SWITCH EDDY');
@@ -349,10 +357,35 @@ export class FloatingPanel {
         }
     }
 
+    // 取消进行中的请求
+    private cancelPendingRequests(): void {
+        console.log('[FloatingPanel] Cancelling pending requests');
+        
+        // 重置处理状态
+        this.isProcessing = false;
+        
+        // 重置按钮状态
+        this.resetApplyButton();
+        
+        // 触发取消事件
+        if (this.eventCallback) {
+            this.eventCallback({
+                type: 'cancel'
+            });
+        }
+    }
+
     private handleUndo(): void {
         console.log('[FloatingPanel] Undo button clicked');
         if (this.eventCallback) {
             this.eventCallback({ type: 'undo' });
+        }
+    }
+
+    private handleRedo(): void {
+        console.log('[FloatingPanel] Redo button clicked');
+        if (this.eventCallback) {
+            this.eventCallback({ type: 'redo' });
         }
     }
 
@@ -378,6 +411,22 @@ export class FloatingPanel {
         this.input.style.opacity = '1';
         this.input.style.cursor = 'text';
         this.updateButtonState(); // 重新检查输入内容状态，会处理提示文字
+    }
+
+    // 更新undo/redo按钮状态
+    public updateUndoRedoButtonStates(): void {
+        // 导入StyleService
+        const { StyleService } = require('./services/styleService');
+        
+        const canUndo = !StyleService.isUndoStackEmpty();
+        const canRedo = !StyleService.isRedoStackEmpty();
+        
+        this.undoButton.disabled = !canUndo;
+        this.redoButton.disabled = !canRedo;
+        
+        // 更新按钮样式
+        this.undoButton.style.opacity = canUndo ? '1' : '0.5';
+        this.redoButton.style.opacity = canRedo ? '1' : '0.5';
     }
 
     // 清空输入框
@@ -472,16 +521,28 @@ export class FloatingPanel {
     public setCurrentEddy(eddy: Eddy, isNew: boolean = false): void {
         console.log('[FloatingPanel] Setting current eddy:', eddy.name, '(ID:', eddy.id, ')', 'isNew:', isNew);
         
+        // 取消进行中的请求
+        this.cancelPendingRequests();
+        
         this.currentEddy = eddy;
         this.isNewEddy = isNew;
         this.hasUnsavedChanges = false; // 重置未保存更改标记
         
+        // 设置全局当前Eddy引用，供StyleService使用
+        (window as any).__pageEditCurrentEddy = eddy;
+        
         // 更新 PanelEvents 模块
         PanelEvents.setCurrentEddy(eddy, isNew);
         
-        // 如果是编辑现有 Eddy，加载其修改内容和草稿
-        if (!isNew && eddy.modificationGroups && eddy.modificationGroups.length > 0) {
+        // 应用 Eddy 的修改（如果有的话）
+        if (eddy.modificationGroups && eddy.modificationGroups.length > 0) {
             this.loadEddyModifications(eddy);
+            // 立即应用 Eddy 的所有 modificationGroups
+            this.applyEddyModifications(eddy);
+        } else {
+            // 如果 Eddy 没有修改，清空页面
+            StyleService.resetAllModifications();
+            console.log('[FloatingPanel] Cleared all modifications for eddy without modifications:', eddy.name);
         }
         
         // 加载草稿内容（如果有的话）
@@ -531,6 +592,10 @@ export class FloatingPanel {
             if (this.currentEddy && this.hasUnsavedChanges) {
                 await this.saveCurrentEddy();
             }
+
+            // 清空当前页面的所有修改（因为要切换到新的 Eddy）
+            StyleService.resetAllModifications();
+            console.log('[FloatingPanel] Cleared all modifications for new eddy');
 
             const currentDomain = window.location.hostname;
             const newEddyName = 'New Eddy';
@@ -684,11 +749,15 @@ export class FloatingPanel {
         if (!this.currentEddy || this.currentEddy.id.startsWith('temp_')) {
             return;
         }
-        
+
         try {
+            // 取消进行中的请求
+            this.cancelPendingRequests();
+            
             console.log('[FloatingPanel] Deleting eddy:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
             const domain = this.currentEddy.domain;
-            // 删除Eddy
+            
+            // 删除 Eddy
             await StorageService.deleteEddy(this.currentEddy.id);
 
             // 获取当前域名下所有 Eddy
@@ -712,12 +781,85 @@ export class FloatingPanel {
             console.log('[FloatingPanel] Eddy deleted successfully');
         } catch (error) {
             console.error('[FloatingPanel] Error deleting eddy:', error);
-            this.showFeedback('Failed to delete eddy', 'error');
+            this.showFeedback('删除Eddy时出错', 'error');
         }
     }
 
     public setHasUnsavedChanges(hasChanges: boolean): void {
         this.hasUnsavedChanges = hasChanges;
         console.log('[FloatingPanel] hasUnsavedChanges set to:', hasChanges);
+    }
+
+    /**
+     * 应用 Eddy 的所有 modificationGroups 到页面
+     * @param eddy Eddy 对象
+     */
+    private async applyEddyModifications(eddy: Eddy): Promise<void> {
+        try {
+            if (!eddy.modificationGroups || eddy.modificationGroups.length === 0) {
+                console.log('[FloatingPanel] No modification groups to apply for eddy:', eddy.name);
+                return;
+            }
+
+            console.log('[FloatingPanel] Applying', eddy.modificationGroups.length, 'modification groups for eddy:', eddy.name);
+
+            // 先清除当前页面的所有修改
+            StyleService.resetAllModifications();
+
+            // 应用每个 modificationGroup
+            for (const group of eddy.modificationGroups) {
+                // 使用原始的 group.id，而不是重新生成
+                const groupId = group.id;
+                
+                // 手动创建修改组（不调用 startModificationGroup，避免生成新 ID）
+                (window as any).__pageEditStyleElementGroups = 
+                    (window as any).__pageEditStyleElementGroups || [];
+                
+                (window as any).__pageEditStyleElementGroups.push({
+                    groupId: groupId,
+                    styleElements: [],
+                    timestamp: group.timestamp,
+                    userQuery: group.userQuery
+                });
+                
+                // 应用该组的所有修改
+                for (const modification of group.modifications) {
+                    const success = StyleService.applyModification({
+                        property: modification.property,
+                        value: modification.value,
+                        method: modification.method,
+                        target: modification.target
+                    }, groupId);
+                    
+                    if (!success) {
+                        console.warn('[FloatingPanel] Failed to apply modification:', modification);
+                    }
+                }
+                
+                // 结束修改组
+                StyleService.endModificationGroup();
+            }
+
+            console.log('[FloatingPanel] Successfully applied all modification groups for eddy:', eddy.name);
+        } catch (error) {
+            console.error('[FloatingPanel] Error applying eddy modifications:', error);
+        }
+    }
+
+    /**
+     * 应用 Eddy 中的所有修改
+     * @param eddy Eddy 对象
+     * @returns 是否全部修改成功
+     */
+    static async applyEddy(eddy: Eddy): Promise<boolean> {
+        return StyleService.applyEddy(eddy);
+    }
+
+    private setupPageUnloadListener(): void {
+        // 添加页面刷新前的事件监听器
+        window.addEventListener('beforeunload', () => {
+            console.log('[FloatingPanel] Page unloading, cancelling pending requests');
+            this.cancelPendingRequests();
+        });
     }
 }

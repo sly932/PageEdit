@@ -10,6 +10,7 @@ export class PanelRenderer {
     private static input: HTMLTextAreaElement | null = null;
     private static applyButton: HTMLButtonElement | null = null;
     private static undoButton: HTMLButtonElement | null = null;
+    private static redoButton: HTMLButtonElement | null = null;
     private static resetButton: HTMLButtonElement | null = null;
     private static feedback: HTMLDivElement | null = null;
     private static titleElement: HTMLSpanElement | null = null;
@@ -27,6 +28,7 @@ export class PanelRenderer {
         input: HTMLTextAreaElement;
         applyButton: HTMLButtonElement;
         undoButton: HTMLButtonElement;
+        redoButton: HTMLButtonElement;
         resetButton: HTMLButtonElement;
         feedback: HTMLDivElement;
         titleElement: HTMLSpanElement;
@@ -101,6 +103,15 @@ export class PanelRenderer {
         </svg>`;
         console.log('[PanelRenderer] Undo button created');
 
+        // 创建重做按钮
+        const redoButton = document.createElement('button');
+        redoButton.className = 'header-button';
+        redoButton.title = 'Redo';
+        redoButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
+        </svg>`;
+        console.log('[PanelRenderer] Redo button created');
+
         // 创建重置按钮
         const resetButton = document.createElement('button');
         resetButton.className = 'header-button';
@@ -153,6 +164,7 @@ export class PanelRenderer {
 
         // 第二行：Undo 按钮
         headerRow2.appendChild(undoButton);
+        headerRow2.appendChild(redoButton);
         headerRow2.appendChild(resetButton);
 
         header.appendChild(headerRow1);
@@ -199,6 +211,7 @@ export class PanelRenderer {
             input,
             applyButton,
             undoButton,
+            redoButton,
             resetButton,
             newEddyButton,
             dropdownButton,
@@ -212,6 +225,7 @@ export class PanelRenderer {
         PanelRenderer.input = input;
         PanelRenderer.applyButton = applyButton;
         PanelRenderer.undoButton = undoButton;
+        PanelRenderer.redoButton = redoButton;
         PanelRenderer.resetButton = resetButton;
         PanelRenderer.feedback = feedback;
         PanelRenderer.titleElement = titleElement;
@@ -225,6 +239,7 @@ export class PanelRenderer {
             input,
             applyButton,
             undoButton,
+            redoButton,
             resetButton,
             feedback,
             titleElement,
@@ -243,6 +258,7 @@ export class PanelRenderer {
         input: HTMLTextAreaElement,
         applyButton: HTMLButtonElement,
         undoButton: HTMLButtonElement,
+        redoButton: HTMLButtonElement,
         resetButton: HTMLButtonElement,
         newEddyButton: HTMLButtonElement,
         dropdownButton: HTMLButtonElement,
@@ -267,6 +283,10 @@ export class PanelRenderer {
 
     static getUndoButton(): HTMLButtonElement | null {
         return PanelRenderer.undoButton;
+    }
+
+    static getRedoButton(): HTMLButtonElement | null {
+        return PanelRenderer.redoButton;
     }
 
     static getResetButton(): HTMLButtonElement | null {

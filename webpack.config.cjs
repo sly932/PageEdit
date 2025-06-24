@@ -72,13 +72,24 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       'process.env': {
-        LLM_PROVIDER: JSON.stringify(process.env.LLM_PROVIDER || 'openai'),
+        LLM_PROVIDER: JSON.stringify(process.env.LLM_PROVIDER || 'siliconflow'),
+
         OPENAI_API_KEY: JSON.stringify(process.env.OPENAI_API_KEY || ''),
         OPENAI_MODEL: JSON.stringify(process.env.OPENAI_MODEL || 'gpt-4.1'),
         OPENAI_API_BASE_URL: JSON.stringify(process.env.OPENAI_API_BASE_URL || ''),
+
         CLAUDE_API_KEY: JSON.stringify(process.env.CLAUDE_API_KEY || ''),
         CLAUDE_MODEL: JSON.stringify(process.env.CLAUDE_MODEL || 'anthropic.claude-3-opus'),
-        CLAUDE_API_BASE_URL: JSON.stringify(process.env.CLAUDE_API_BASE_URL || '')
+        CLAUDE_API_BASE_URL: JSON.stringify(process.env.CLAUDE_API_BASE_URL || ''),
+
+        DEEPSEEK_API_KEY: JSON.stringify(process.env.DEEPSEEK_API_KEY || ''),
+        DEEPSEEK_API_BASE_URL: JSON.stringify(process.env.DEEPSEEK_API_BASE_URL || ''),
+        DEEPSEEK_MODEL: JSON.stringify(process.env.DEEPSEEK_MODEL || 'deepseek-chat'),
+
+        SILICONFLOW_API_KEY: JSON.stringify(process.env.SILICONFLOW_API_KEY || ''),
+        SILICONFLOW_API_BASE_URL: JSON.stringify(process.env.SILICONFLOW_API_BASE_URL || ''),
+        SILICONFLOW_MODEL: JSON.stringify(process.env.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V3')
+
       }
     })
   ]

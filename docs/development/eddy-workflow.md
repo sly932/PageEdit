@@ -160,8 +160,97 @@ eddy.updatedAt = Date.now();
 await StorageService.updateEddy(eddy);
 ```
 
+### 5. Eddy 切换和新建阶段
+
+#### 5.1 页面加载时自动应用
+```
+页面加载 → FloatingBall.checkAndInitializeEddy() → 获取 lastUsedEddy → setCurrentEddy() → applyEddyModifications()
+```
+
+**关键代码**：
+```typescript
+// FloatingBall.checkAndInitializeEddy()
+const lastUsedEddy = await StorageService.getLastUsedEddy(currentDomain);
+if (lastUsedEddy) {
+    this.panel.setCurrentEddy(lastUsedEddy);
+}
+```
+
+#### 5.2 切换 Eddy 时自动应用
+```
+用户点击下拉菜单 → PanelEvents.onSwitchEddy() → setCurrentEddy() → applyEddyModifications()
+```
+
+**关键代码**：
+```typescript
+// PanelEvents.createDropdownItem()
+item.addEventListener('click', async () => {
+    if (PanelEvents.onSwitchEddy) {
+        PanelEvents.onSwitchEddy(eddy);
+    }
+});
+```
+
+#### 5.3 新建 Eddy 时清空页面
+```
+用户点击新建按钮 → createNewEddy() → 清空当前修改 → 创建新 Eddy
+```
+
+**关键代码**：
+```typescript
+// FloatingPanel.createNewEddy()
+// 清空当前页面的所有修改（因为要切换到新的 Eddy）
+StyleService.resetAllModifications();
+```
+
+#### 5.4 应用 Eddy 修改的核心逻辑
+```
+setCurrentEddy() → 检查 modificationGroups → 有修改则应用，无修改则清空
+```
+
+**关键代码**：
+```typescript
+// FloatingPanel.setCurrentEddy()
+// 应用 Eddy 的修改（如果有的话）
+if (eddy.modificationGroups && eddy.modificationGroups.length > 0) {
+    this.applyEddyModifications(eddy);
+} else {
+    // 如果 Eddy 没有修改，清空页面
+    StyleService.resetAllModifications();
+}
+```
+
+#### 5.5 应用 Eddy 修改的详细流程
+```
+applyEddyModifications() → 清除当前修改 → 遍历 modificationGroups → 重新应用所有修改
+```
+
+**关键代码**：
+```typescript
+// FloatingPanel.applyEddyModifications()
+// 先清除当前页面的所有修改
+StyleService.resetAllModifications();
+
+// 应用每个 modificationGroup
+for (const group of eddy.modificationGroups) {
+    const groupId = StyleService.startModificationGroup(group.userQuery);
+    
+    for (const modification of group.modifications) {
+        StyleService.applyModification({
+            property: modification.property,
+            value: modification.value,
+            method: modification.method,
+            target: modification.target
+        }, groupId);
+    }
+    
+    StyleService.endModificationGroup();
+}
+```
+
 ## 数据流转图
 
+### 主要工作流程
 ```
 用户输入
     ↓
@@ -184,6 +273,52 @@ saveModificationGroupToEddy() → 添加到 currentEddy
 saveEddyToStorage() → 保存到 Chrome 存储
     ↓
 完成
+```
+
+### Eddy 切换和新建流程
+```
+页面加载/切换 Eddy/新建 Eddy
+    ↓
+setCurrentEddy(eddy)
+    ↓
+检查是否有 modificationGroups
+    ↓
+有修改 → applyEddyModifications(eddy)
+    ↓
+StyleService.resetAllModifications() → 清除当前修改
+    ↓
+遍历 modificationGroups
+    ↓
+StyleService.startModificationGroup() → 创建新组
+    ↓
+StyleService.applyModification() → 应用每个修改
+    ↓
+StyleService.endModificationGroup() → 结束组
+    ↓
+完成应用
+    ↓
+无修改 → StyleService.resetAllModifications() → 清空页面
+```
+
+### 完整状态管理流程
+```
+页面加载
+    ↓
+FloatingBall.checkAndInitializeEddy()
+    ↓
+StorageService.getLastUsedEddy()
+    ↓
+有 lastUsedEddy → setCurrentEddy(lastUsedEddy) → 应用/清空修改
+    ↓
+无 lastUsedEddy → createNewEddy() → setCurrentEddy(newEddy) → 清空页面
+    ↓
+用户操作
+    ↓
+应用修改 → 保存到 Eddy → 保存到存储
+    ↓
+切换 Eddy → setCurrentEddy(targetEddy) → 应用目标 Eddy 的修改
+    ↓
+新建 Eddy → 清空页面 → createNewEddy() → setCurrentEddy(newEddy)
 ```
 
 ## 关键数据结构

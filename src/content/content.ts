@@ -113,6 +113,9 @@ export class ContentManager {
      */
     private async handleModifyPage(message: Message, applyId?: string): Promise<void> {
         try {
+            // 清空redo栈，因为用户进行了新的操作
+            StyleService.clearRedoStack();
+
             // 解析用户输入
             const parseResult = await this.parseUserInput(message.data.text);
             // 检查applyId是否仍然有效
@@ -177,6 +180,9 @@ export class ContentManager {
             StyleService.endModificationGroup();
             console.log('[content] Completed modification group:', groupId);
 
+            // 打印undo/redo stack
+            StyleService.printStackStatus();
+
             // 保存 modificationGroup 到当前 Eddy
             await this.saveModificationGroupToEddy(groupId, message.data.text, parseResult.modifications);
 
@@ -203,6 +209,12 @@ export class ContentManager {
 
             const currentEddy = floatingBall.panel.currentEddy;
             
+            // 安全检查：确保Eddy仍然存在且是当前Eddy
+            if (!this.isEddyValid(currentEddy)) {
+                console.warn('[content] Eddy is no longer valid, skipping modification group save');
+                return;
+            }
+            
             // 创建 modificationGroup
             const modificationGroup = {
                 id: groupId,
@@ -228,6 +240,37 @@ export class ContentManager {
             console.log('[content] Saved modification group to eddy:', groupId, 'with', modifications.length, 'modifications');
         } catch (error) {
             console.error('[content] Error saving modification group to eddy:', error);
+        }
+    }
+
+    /**
+     * 检查Eddy是否仍然有效
+     * @param eddy Eddy对象
+     * @returns 是否有效
+     */
+    private isEddyValid(eddy: any): boolean {
+        try {
+            // 检查Eddy是否仍然存在
+            if (!eddy || !eddy.id) {
+                return false;
+            }
+
+            // 检查Eddy是否仍然是当前Eddy
+            const floatingBall = (window as any).__pageEditFloatingBall;
+            if (!floatingBall || !floatingBall.panel || !floatingBall.panel.currentEddy) {
+                return false;
+            }
+
+            const currentEddy = floatingBall.panel.currentEddy;
+            if (currentEddy.id !== eddy.id) {
+                console.log('[content] Eddy changed during request, current:', currentEddy.id, 'request:', eddy.id);
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('[content] Error checking eddy validity:', error);
+            return false;
         }
     }
 
@@ -284,17 +327,28 @@ export class ContentManager {
                     break;
                 case 'undo':
                     // 撤销最后一次修改
-                    const success = this.undoLastModification();
+                    const success = await this.undoLastModification();
                     if (success) {
                         floatingBall.showFeedback('已撤销上次修改', 'success');
                     } else {
                         floatingBall.showFeedback('没有可撤销的修改', 'error');
                     }
                     break;
+                case 'redo':
+                    // 重做最后一次撤销的修改
+                    const redoSuccess = await this.redoLastModification();
+                    if (redoSuccess) {
+                        floatingBall.showFeedback('已重做上次撤销', 'success');
+                    } else {
+                        floatingBall.showFeedback('没有可重做的修改', 'error');
+                    }
+                    break;
                 case 'reset':
                     // 一键还原所有修改
                     const resetSuccess = StyleService.resetAllModifications();
                     if (resetSuccess) {
+                        // 同步更新Eddy的modificationGroups（清空所有修改）
+                        await this.syncEddyModificationGroups();
                         floatingBall.showFeedback('已还原所有修改', 'success');
                     } else {
                         floatingBall.showFeedback('还原修改时出错', 'error');
@@ -313,6 +367,8 @@ export class ContentManager {
         } finally {
             // 重置按钮状态
             floatingBall.resetApplyButton();
+            // 更新undo/redo按钮状态
+            floatingBall.updateUndoRedoButtonStates();
         }
     }
 
@@ -320,13 +376,92 @@ export class ContentManager {
      * 撤销最后一次修改
      * @returns 是否成功撤销
      */
-    private undoLastModification(): boolean {
+    private async undoLastModification(): Promise<boolean> {
         try {
+            console.log('[content] === UNDO OPERATION START ===');
+            
             // 撤销最后一次修改组（包含多个modifications）
-            return StyleService.undoLastModificationGroup();
+            const success = StyleService.undoLastModificationGroup();
+            if (success) {
+                // 同步更新Eddy的modificationGroups
+                await this.syncEddyModificationGroups();
+                console.log('[content] === UNDO OPERATION SUCCESS ===');
+            } else {
+                console.log('[content] === UNDO OPERATION FAILED ===');
+            }
+            return success;
         } catch (error) {
             console.error('[content] Error undoing modification:', error);
             return false;
+        }
+    }
+
+    /**
+     * 重做最后一次撤销的修改
+     * @returns 是否成功重做
+     */
+    private async redoLastModification(): Promise<boolean> {
+        try {
+            console.log('[content] === REDO OPERATION START ===');
+            
+            // 重做最后一次撤销的修改组（包含多个modifications）
+            const success = StyleService.redoLastModificationGroup();
+            if (success) {
+                // 同步更新Eddy的modificationGroups
+                await this.syncEddyModificationGroups();
+                console.log('[content] === REDO OPERATION SUCCESS ===');
+            } else {
+                console.log('[content] === REDO OPERATION FAILED ===');
+            }
+            return success;
+        } catch (error) {
+            console.error('[content] Error redoing modification:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 同步Eddy的modificationGroups与实际应用的修改组
+     */
+    private async syncEddyModificationGroups(): Promise<void> {
+        try {
+            // 获取当前 Eddy
+            const floatingBall = (window as any).__pageEditFloatingBall;
+            if (!floatingBall || !floatingBall.panel || !floatingBall.panel.currentEddy) {
+                console.warn('[content] No current eddy found, skipping sync');
+                return;
+            }
+
+            const currentEddy = floatingBall.panel.currentEddy;
+            
+            // 安全检查：确保Eddy仍然有效
+            if (!this.isEddyValid(currentEddy)) {
+                console.warn('[content] Eddy is no longer valid, skipping sync');
+                return;
+            }
+            
+            // 获取当前应用的修改组
+            const currentGroups = (window as any).__pageEditStyleElementGroups || [];
+            
+            // 更新Eddy的modificationGroups，只保留当前应用的组
+            if (currentEddy.modificationGroups) {
+                // 过滤掉不在当前应用组中的modificationGroups
+                currentEddy.modificationGroups = currentEddy.modificationGroups.filter((group: any) => {
+                    return currentGroups.some((currentGroup: any) => currentGroup.groupId === group.id);
+                });
+            }
+
+            // 标记 Eddy 有未保存更改
+            if (floatingBall.panel.setHasUnsavedChanges) {
+                floatingBall.panel.setHasUnsavedChanges(true);
+            }
+
+            // 立即保存到存储
+            await this.saveEddyToStorage(currentEddy);
+
+            console.log('[content] Synced eddy modificationGroups, current groups:', currentGroups.length);
+        } catch (error) {
+            console.error('[content] Error syncing eddy modificationGroups:', error);
         }
     }
 }

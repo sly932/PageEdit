@@ -64,6 +64,11 @@ export class FloatingBall {
         this.panel.resetApplyButton();
     }
 
+    // 更新undo/redo按钮状态
+    public updateUndoRedoButtonStates(): void {
+        this.panel.updateUndoRedoButtonStates();
+    }
+
     // 清空输入框
     public clearInput(): void {
         this.panel.clearInput();

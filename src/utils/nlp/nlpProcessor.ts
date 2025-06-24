@@ -125,7 +125,37 @@ export class NLPProcessor {
                 model: process.env.CLAUDE_MODEL || 'anthropic.claude-3-opus',
                 baseUrl: process.env.CLAUDE_API_BASE_URL
             }
-            const config = provider === 'openai' ? openaiConfig : claudeConfig;
+            const deepseekConfig = {
+                provider: (process.env.LLM_PROVIDER || 'deepseek') as LLMProvider,
+                apiKey: process.env.DEEPSEEK_API_KEY || '',
+                model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+                baseUrl: process.env.DEEPSEEK_API_BASE_URL
+            }
+            const siliconflowConfig = {
+                provider: (process.env.LLM_PROVIDER || 'siliconflow') as LLMProvider,
+                apiKey: process.env.SILICONFLOW_API_KEY || '',
+                model: process.env.SILICONFLOW_MODEL || 'qwen2.5-72b-instruct',
+                baseUrl: process.env.SILICONFLOW_API_BASE_URL
+            }
+            
+            let config;
+            switch (provider) {
+                case 'openai':
+                    config = openaiConfig;
+                    break;
+                case 'claude':
+                    config = claudeConfig;
+                    break;
+                case 'deepseek':
+                    config = deepseekConfig;
+                    break;
+                case 'siliconflow':
+                    config = siliconflowConfig;
+                    break;
+                default:
+                    config = openaiConfig;
+            }
+            
             const llmService = LLMService.getInstance(config);
             console.log('[nlpProcessor] LLM service:', llmService);
             const results = await llmService.processInput(text, htmlContext);

@@ -138,47 +138,6 @@ export class StyleService {
     }
 
     /**
-     * 恢复元素的原始样式
-     * @param element 目标元素
-     * @param property 样式属性
-     * @param originalValue 原始值
-     * @param method 修改方法
-     * @returns 是否恢复成功
-     */
-    static restoreStyle(
-        element: HTMLElement,
-        property: string,
-        originalValue: string,
-        method: ModificationMethod
-    ): boolean {
-        try {
-            if (method === 'style') {
-                // 移除对应的 style 标签
-                const styleElements = (window as any).__pageEditStyleElements || [];
-                for (let i = styleElements.length - 1; i >= 0; i--) {
-                    const styleElement = styleElements[i];
-                    if (styleElement.textContent?.includes(property)) {
-                        styleElement.remove();
-                        styleElements.splice(i, 1);
-                    }
-                }
-                return true;
-            } else {
-                // 直接恢复 DOM 样式
-                if (property === 'length' || property === 'parentRule') {
-                    console.warn(`不能恢复只读属性: ${property}`);
-                    return false;
-                }
-                (element.style as any)[property] = originalValue;
-                return true;
-            }
-        } catch (error) {
-            console.error('Style restoration failed:', error);
-            return false;
-        }
-    }
-
-    /**
      * 应用 Eddy 中的所有修改
      * @param eddy Eddy 对象
      * @returns 是否全部修改成功
@@ -190,8 +149,27 @@ export class StyleService {
             // 处理分组结构
             if (eddy.modificationGroups) {
                 for (const group of eddy.modificationGroups) {
-                    // 开始新的修改组
-                    const groupId = this.startModificationGroup(group.userQuery);
+                    // 判断 group 是否有 id，有则使用现有的，没有则新建
+                    let groupId: string;
+                    if (group.id) {
+                        groupId = group.id;
+                        
+                        // 手动创建修改组（不调用 startModificationGroup，避免生成新 ID）
+                        (window as any).__pageEditStyleElementGroups = 
+                            (window as any).__pageEditStyleElementGroups || [];
+                        
+                        (window as any).__pageEditStyleElementGroups.push({
+                            groupId: groupId,
+                            styleElements: [],
+                            timestamp: group.timestamp,
+                            userQuery: group.userQuery
+                        });
+                    } else {
+                        // 如果没有 id，则新建一个
+                        groupId = this.startModificationGroup(group.userQuery);
+                        // 将新生成的 ID 赋值给当前的 group
+                        group.id = groupId;
+                    }
                     
                     for (const modification of group.modifications) {
                         const success = this.applyModification(modification, groupId);
@@ -264,11 +242,40 @@ export class StyleService {
         try {
             const groups = (window as any).__pageEditStyleElementGroups || [];
             if (groups.length === 0) {
+                console.log('[StyleService] Undo stack is empty, nothing to undo');
+                this.printStackStatus();
                 return false;
             }
 
             const lastGroup = groups.pop();
             console.log('[StyleService] Undoing modification group:', lastGroup.groupId);
+
+            // 从当前Eddy中获取对应的modifications
+            const currentEddy = (window as any).__pageEditCurrentEddy;
+            let modifications = [];
+            
+            if (currentEddy && currentEddy.modificationGroups) {
+                const eddyGroup = currentEddy.modificationGroups.find((g: any) => g.id === lastGroup.groupId);
+                
+                if (eddyGroup && eddyGroup.modifications) {
+                    modifications = eddyGroup.modifications;
+                } else {
+                    console.warn('[StyleService] No modifications found in eddy group');
+                }
+            } else {
+                console.warn('[StyleService] No current eddy or modificationGroups');
+            }
+
+            // 创建完整的组信息，包含modifications
+            const completeGroup = {
+                ...lastGroup,
+                modifications: modifications
+            };
+            
+            console.log('[StyleService] Complete group to be added to redo stack:', completeGroup);
+
+            // 将撤销的组添加到redo栈
+            this.addToRedoStack(completeGroup);
 
             // 移除该组的所有样式元素
             lastGroup.styleElements.forEach((element: HTMLStyleElement) => {
@@ -277,11 +284,159 @@ export class StyleService {
                 }
             });
 
+            // 打印堆栈状态
+            console.log('[StyleService] === UNDO OPERATION COMPLETED ===');
+            this.printStackStatus();
+
             return true;
         } catch (error) {
             console.error('[StyleService] Error undoing modification group:', error);
             return false;
         }
+    }
+
+    /**
+     * 重做最后一次撤销的操作
+     * @returns 是否重做成功
+     */
+    static redoLastModificationGroup(): boolean {
+        try {
+            const redoStack = (window as any).__pageEditRedoStack || [];
+            if (redoStack.length === 0) {
+                console.log('[StyleService] Redo stack is empty, nothing to redo');
+                this.printStackStatus();
+                return false;
+            }
+
+            const redoGroup = redoStack.pop();
+            console.log('[StyleService] Redoing modification group:', redoGroup.groupId);
+
+            // 检查modifications是否存在
+            if (!redoGroup.modifications) {
+                console.error('[StyleService] Redo group missing modifications property:', redoGroup);
+                return false;
+            }
+
+            if (!Array.isArray(redoGroup.modifications)) {
+                console.error('[StyleService] Redo group modifications is not an array:', redoGroup.modifications);
+                return false;
+            }
+
+            if (redoGroup.modifications.length === 0) {
+                console.error('[StyleService] Redo group modifications array is empty');
+                return false;
+            }
+
+            // 重新创建样式元素
+            const newStyleElements = this.recreateStyleElements(redoGroup.modifications);
+            
+            // 重新应用该组的所有样式元素
+            const groups = (window as any).__pageEditStyleElementGroups || [];
+            const restoredGroup = {
+                ...redoGroup,
+                styleElements: newStyleElements
+            };
+            groups.push(restoredGroup);
+
+            // 打印堆栈状态
+            console.log('[StyleService] === REDO OPERATION COMPLETED ===');
+            this.printStackStatus();
+
+            return true;
+        } catch (error) {
+            console.error('[StyleService] Error redoing modification group:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 打印当前undo和redo堆栈的详细状态
+     */
+    public static printStackStatus(): void {
+        const groups = (window as any).__pageEditStyleElementGroups || [];
+        const redoStack = (window as any).__pageEditRedoStack || [];
+        
+        console.log('[StyleService] ===== STACK STATUS =====');
+        console.log('[StyleService] UNDO STACK (modificationGroups):', groups);
+        console.log('[StyleService] REDO STACK:', redoStack);
+        console.log('[StyleService] ========================');
+    }
+
+    /**
+     * 添加修改组到redo栈
+     * @param group 要添加的修改组
+     */
+    private static addToRedoStack(group: any): void {
+        (window as any).__pageEditRedoStack = (window as any).__pageEditRedoStack || [];
+        (window as any).__pageEditRedoStack.push(group);
+        console.log('[StyleService] Added to redo stack:', group.groupId);
+    }
+
+    /**
+     * 重新创建样式元素
+     * @param modifications 修改列表
+     * @returns 重新创建的样式元素数组
+     */
+    private static recreateStyleElements(modifications: any[]): HTMLStyleElement[] {
+        console.log('[StyleService] Recreating style elements for', modifications.length, 'modifications');
+        console.log('[StyleService] Modifications data:', modifications);
+        
+        // 额外的安全检查
+        if (!modifications || !Array.isArray(modifications)) {
+            console.error('[StyleService] Invalid modifications parameter:', modifications);
+            return [];
+        }
+        
+        const styleElements = modifications.map((modification, index) => {
+            // console.log(`[StyleService] Creating style element ${index + 1}:`, modification);
+            
+            // 检查modification对象是否完整
+            if (!modification || !modification.target || !modification.property || !modification.value) {
+                console.error(`[StyleService] Invalid modification at index ${index}:`, modification);
+                return null;
+            }
+            
+            const styleElement = document.createElement('style');
+            const cssText = `${modification.target} { ${modification.property}: ${modification.value}; }`;
+            styleElement.textContent = cssText;
+            
+            // console.log(`[StyleService] CSS text: ${cssText}`);
+            
+            document.head.appendChild(styleElement);
+            // console.log(`[StyleService] Style element ${index + 1} added to DOM`);
+            
+            return styleElement;
+        }).filter(element => element !== null); // 过滤掉null值
+        
+        console.log('[StyleService] Created', styleElements.length, 'style elements');
+        return styleElements;
+    }
+
+    /**
+     * 清空redo栈
+     * 通常在用户进行新的apply操作时调用
+     */
+    static clearRedoStack(): void {
+        (window as any).__pageEditRedoStack = [];
+        console.log('[StyleService] Redo stack cleared');
+    }
+
+    /**
+     * 获取redo栈状态
+     * @returns redo栈是否为空
+     */
+    static isRedoStackEmpty(): boolean {
+        const redoStack = (window as any).__pageEditRedoStack || [];
+        return redoStack.length === 0;
+    }
+
+    /**
+     * 获取undo栈状态
+     * @returns undo栈是否为空
+     */
+    static isUndoStackEmpty(): boolean {
+        const groups = (window as any).__pageEditStyleElementGroups || [];
+        return groups.length === 0;
     }
 
     /**
@@ -329,6 +484,9 @@ export class StyleService {
             
             console.log('[StyleService] Removed', shadowStyleCount, 'style elements from Shadow DOMs');
             console.log('[StyleService] All modifications reset successfully');
+            
+            console.log('[StyleService] === RESET OPERATION COMPLETED ===');
+            this.printStackStatus();
             
             return true;
         } catch (error) {
