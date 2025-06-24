@@ -102,10 +102,7 @@ export class LLMService {
 
         const baseUrl = this.config.baseUrl || 'https://api.openai.com/v1';
         const prompt = `
-请根据以下HTML内容和用户指令，生成相应的CSS样式修改操作：
-
-HTML内容:
-${htmlContext}
+请根据用户指令，生成相应的CSS样式修改操作：
 
 用户指令: "${input}"
 
