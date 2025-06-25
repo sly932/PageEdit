@@ -95,13 +95,17 @@ export class ContentManager {
             const htmlContext = document.documentElement.outerHTML;
             // console.log('[content] HTML context:', htmlContext);
 
+            // 记录开始时间
+            const startTime = Date.now();
             // 使用 NLPProcessor 处理用户输入
             const result = await NLPProcessor.processInput(text, htmlContext, {
                 preferLLM: true,  // 优先使用 LLM
                 minConfidence: 0.6 // 最小置信度
             });
-
+            // 记录结束时间
+            const endTime = Date.now();
             console.log('[content] Processed result:', result);
+            console.log('[content] LLM Time taken:', (endTime - startTime) / 1000, 's');
             return result;
         } catch (error) {
             console.error('[content] Error parsing user input:', error);
@@ -188,12 +192,57 @@ export class ContentManager {
                 floatingBall.panel.setHasUnsavedChanges(true);
             }
 
-            // 立即保存到存储
-            await this.saveEddyToStorage(currentEddy);
+            // 如果是临时Eddy，立即保存为真实Eddy
+            if (currentEddy.id.startsWith('temp_')) {
+                console.log('[content] Converting temp eddy to real eddy during apply');
+                const { StorageService } = await import('../services/storageService');
+                
+                // 创建真实的Eddy
+                const realEddy = await StorageService.createEddy(
+                    currentEddy.name,
+                    currentEddy.domain,
+                    { currentStyleElements: currentEddy.currentStyleElements }
+                );
+                
+                // 更新FloatingPanel中的currentEddy引用
+                floatingBall.panel.currentEddy = realEddy;
+                floatingBall.panel.isNewEddy = false;
+                
+                // 同步更新PanelEvents
+                if (floatingBall.panel.setCurrentEddy) {
+                    floatingBall.panel.setCurrentEddy(realEddy, false);
+                }
+                
+                // 刷新下拉菜单（如果当前是打开状态）
+                this.refreshDropdownMenu();
+                
+                console.log('[content] Temp eddy converted to real eddy:', realEddy.id);
+            } else {
+                // 更新现有的Eddy
+                await this.saveEddyToStorage(currentEddy);
+            }
 
             console.log('[content] Updated eddy style elements:', currentEddy.currentStyleElements.length);
         } catch (error) {
             console.error('[content] Error updating eddy style elements:', error);
+        }
+    }
+
+    /**
+     * 刷新下拉菜单
+     */
+    private async refreshDropdownMenu(): Promise<void> {
+        try {
+            // 导入PanelEvents
+            const { PanelEvents } = await import('./panels/PanelEvents');
+            
+            // 如果下拉菜单当前是打开状态，重新加载eddy列表
+            if (PanelEvents.isDropdownOpenState()) {
+                console.log('[content] Refreshing dropdown menu after eddy conversion');
+                await PanelEvents.refreshDropdown();
+            }
+        } catch (error) {
+            console.error('[content] Error refreshing dropdown menu:', error);
         }
     }
 

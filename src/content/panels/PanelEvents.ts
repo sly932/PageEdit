@@ -64,6 +64,18 @@ export class PanelEvents {
         PanelEvents.hasUnsavedChanges = hasChanges;
     }
 
+    // 添加公共方法检查下拉菜单状态
+    static isDropdownOpenState(): boolean {
+        return PanelEvents.isDropdownOpen;
+    }
+
+    // 添加公共方法刷新下拉菜单
+    static async refreshDropdown(): Promise<void> {
+        if (PanelEvents.isDropdownOpen) {
+            await PanelEvents.openDropdown();
+        }
+    }
+
     private static setupEddyEventHandlers(): void {
         if (!PanelEvents.newEddyButton || !PanelEvents.dropdownButton || !PanelEvents.titleElement) {
             console.error('[PanelEvents] Required elements not found');
