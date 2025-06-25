@@ -432,6 +432,16 @@ export class FloatingPanel {
         this.updateButtonState();
     }
 
+    // 更新输入框内容
+    public updateInputContent(content: string): void {
+        this.input.value = content;
+        this.input.style.height = 'auto';
+        this.input.style.height = `${this.input.scrollHeight}px`;
+        this.updateButtonState();
+        
+        console.log('[FloatingPanel] Input content updated:', content);
+    }
+
     public showFeedback(message: string, type: 'success' | 'error'): void {
         this.feedback.textContent = message;
         this.feedback.style.cssText = `

@@ -8,11 +8,19 @@ export interface StyleElementSnapshot {
     timestamp: number; // 创建时间
 }
 
+// 新的Snapshot类，包含样式元素和用户查询
+export interface Snapshot {
+    id: string; // 唯一标识符
+    elements: StyleElementSnapshot[]; // 样式元素快照数组
+    userQuery?: string; // 对应的用户查询（可选）
+    timestamp: number; // 创建时间
+}
+
 // 全局状态管理
 export interface GlobalStyleState {
-    currentElements: StyleElementSnapshot[]; // 当前应用的样式元素
-    undoStack: StyleElementSnapshot[][]; // undo栈，每个元素是一个完整的快照
-    redoStack: StyleElementSnapshot[][]; // redo栈，每个元素是一个完整的快照
+    currentSnapshot: Snapshot | null; // 当前快照
+    undoStack: Snapshot[]; // undo栈，每个元素是一个完整的快照
+    redoStack: Snapshot[]; // redo栈，每个元素是一个完整的快照
 }
 
 export interface Eddy {

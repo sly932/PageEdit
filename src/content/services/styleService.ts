@@ -1,5 +1,5 @@
 import { StyleModification, ModificationMethod, Modification } from '../../types';
-import { Eddy, StyleElementSnapshot, GlobalStyleState } from '../../types/eddy';
+import { Eddy, StyleElementSnapshot, GlobalStyleState, Snapshot } from '../../types/eddy';
 
 /**
  * 样式修改服务
@@ -11,7 +11,7 @@ export class StyleService {
      */
     private static getGlobalState(): GlobalStyleState {
         return (window as any).__pageEditGlobalStyleState || {
-            currentElements: [],
+            currentSnapshot: null,
             undoStack: [],
             redoStack: []
         };
@@ -41,6 +41,21 @@ export class StyleService {
     }
 
     /**
+     * 创建Snapshot
+     */
+    private static createSnapshot(
+        elements: StyleElementSnapshot[], 
+        userQuery?: string
+    ): Snapshot {
+        return {
+            id: `snapshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            elements: [...elements],
+            userQuery,
+            timestamp: Date.now()
+        };
+    }
+
+    /**
      * 应用样式元素快照到页面
      */
     private static applyStyleElementSnapshot(snapshot: StyleElementSnapshot): HTMLStyleElement {
@@ -48,6 +63,13 @@ export class StyleService {
         styleElement.id = snapshot.id;
         styleElement.textContent = snapshot.cssText;
         document.head.appendChild(styleElement);
+        
+        console.log('[StyleService] Applied style element:', {
+            id: snapshot.id,
+            selector: snapshot.selector,
+            cssText: snapshot.cssText
+        });
+        
         return styleElement;
     }
 
@@ -71,7 +93,7 @@ export class StyleService {
     ): boolean {
         try {
             const state = this.getGlobalState();
-            let currentElements = [...state.currentElements];
+            let currentElements = state.currentSnapshot ? [...state.currentSnapshot.elements] : [];
 
             switch (modification.method) {
                 case 'style':
@@ -114,11 +136,21 @@ export class StyleService {
                     return false;
             }
 
+            // 创建新的Snapshot，保持当前快照的userQuery
+            const currentUserQuery = state.currentSnapshot ? state.currentSnapshot.userQuery : undefined;
+            const newSnapshot = this.createSnapshot(currentElements, currentUserQuery);
+            
             // 更新全局状态
-            this.updateGlobalState({ currentElements });
+            this.updateGlobalState({ currentSnapshot: newSnapshot });
             
             // 重新应用所有样式元素到页面
             this.applyAllStyleElements(currentElements);
+
+            console.log('[StyleService] Modification applied successfully:', {
+                elementsCount: currentElements.length,
+                snapshotId: newSnapshot.id,
+                userQuery: newSnapshot.userQuery
+            });
 
             return true;
         } catch (error) {
@@ -189,7 +221,7 @@ export class StyleService {
             
             // 重置全局状态
             this.updateGlobalState({
-                currentElements: [],
+                currentSnapshot: null,
                 undoStack: [],
                 redoStack: []
             });
@@ -207,28 +239,48 @@ export class StyleService {
      */
     private static clearAllStyleElementsFromDOM(): void {
         const state = this.getGlobalState();
-        state.currentElements.forEach(snapshot => {
-            this.removeStyleElement(snapshot);
-        });
+        if (state.currentSnapshot) {
+            state.currentSnapshot.elements.forEach(snapshot => {
+                this.removeStyleElement(snapshot);
+            });
+        }
     }
 
     /**
      * 保存当前状态快照
      */
-    static saveSnapshot(): void {
+    static saveSnapshot(userQuery?: string): void {
         const state = this.getGlobalState();
-        const currentSnapshot = [...state.currentElements];
         
-        // 添加到undo栈
-        const newUndoStack = [...state.undoStack, currentSnapshot];
+        // 如果当前没有快照，创建一个空的
+        if (!state.currentSnapshot) {
+            const emptySnapshot = this.createSnapshot([], userQuery);
+            this.updateGlobalState({ currentSnapshot: emptySnapshot });
+        } else if (userQuery && !state.currentSnapshot.userQuery) {
+            // 如果有用户查询但当前快照没有，更新用户查询
+            const updatedSnapshot = {
+                ...state.currentSnapshot,
+                userQuery: userQuery
+            };
+            this.updateGlobalState({ currentSnapshot: updatedSnapshot });
+        }
+        
+        // 保存当前快照到undo栈
+        const currentSnapshot = state.currentSnapshot!;
+        state.undoStack.push(currentSnapshot);
         
         // 清空redo栈（因为有了新的操作）
         this.updateGlobalState({
-            undoStack: newUndoStack,
+            undoStack: state.undoStack,
             redoStack: []
         });
 
-        console.log('[StyleService] Snapshot saved, undo stack size:', newUndoStack.length);
+        console.log('[StyleService] Snapshot saved, undo stack size:', state.undoStack.length);
+        console.log('[StyleService] Saved snapshot:', {
+            id: currentSnapshot.id,
+            elementsCount: currentSnapshot.elements.length,
+            userQuery: currentSnapshot.userQuery
+        });
     }
 
     /**
@@ -252,20 +304,19 @@ export class StyleService {
             
             // 应用空状态
             this.updateGlobalState({
-                currentElements: [],
+                currentSnapshot: null,
                 undoStack: state.undoStack,
                 redoStack: state.redoStack
             });
         } else {
             // 应用undo栈顶端的快照
             const currentSnapshot = state.undoStack[state.undoStack.length - 1];
-            this.applyAllStyleElements(currentSnapshot);
+            this.applyAllStyleElements(currentSnapshot.elements);
             this.updateGlobalState({
-                currentElements: currentSnapshot,
+                currentSnapshot: currentSnapshot,
                 undoStack: state.undoStack,
                 redoStack: state.redoStack
             });
-            
         }
 
         //打印两个stack
@@ -288,11 +339,11 @@ export class StyleService {
 
         const nextSnapshot = state.redoStack.pop()!;
         state.undoStack.push(nextSnapshot);
-        this.applyAllStyleElements(nextSnapshot);
+        this.applyAllStyleElements(nextSnapshot.elements);
 
         // 更新全局状态
         this.updateGlobalState({
-            currentElements: state.undoStack[state.undoStack.length - 1],
+            currentSnapshot: nextSnapshot,
             undoStack: state.undoStack,
             redoStack: state.redoStack
         });
@@ -311,7 +362,7 @@ export class StyleService {
         return {
             canUndo: state.undoStack.length > 0,
             canRedo: state.redoStack.length > 0,
-            elementCount: state.currentElements.length
+            elementCount: state.currentSnapshot ? state.currentSnapshot.elements.length : 0
         };
     }
 
@@ -320,7 +371,26 @@ export class StyleService {
      */
     static getCurrentStyleElements(): StyleElementSnapshot[] {
         const state = this.getGlobalState();
-        return [...state.currentElements];
+        return state.currentSnapshot ? [...state.currentSnapshot.elements] : [];
+    }
+
+    /**
+     * 获取当前快照
+     */
+    static getCurrentSnapshot(): Snapshot | null {
+        const state = this.getGlobalState();
+        return state.currentSnapshot;
+    }
+
+    /**
+     * 获取快照历史信息
+     */
+    static getSnapshotHistory(): { undoStack: Snapshot[]; redoStack: Snapshot[] } {
+        const state = this.getGlobalState();
+        return {
+            undoStack: [...state.undoStack],
+            redoStack: [...state.redoStack]
+        };
     }
 
     /**
@@ -329,7 +399,7 @@ export class StyleService {
     static printStateInfo(): void {
         const state = this.getGlobalState();
         console.log('[StyleService] ===== STATE INFO =====');
-        console.log('[StyleService] Current elements:', state.currentElements.length);
+        console.log('[StyleService] Current elements:', state.currentSnapshot ? state.currentSnapshot.elements.length : 0);
         console.log('[StyleService] Undo stack size:', state.undoStack.length);
         console.log('[StyleService] Redo stack size:', state.redoStack.length);
         console.log('[StyleService] ======================');
@@ -355,8 +425,9 @@ export class StyleService {
             console.log('[StyleService] Applying', eddy.currentStyleElements.length, 'style elements for eddy:', eddy.name);
 
             // 设置全局状态
+            const snapshot = this.createSnapshot(eddy.currentStyleElements);
             this.updateGlobalState({
-                currentElements: [...eddy.currentStyleElements]
+                currentSnapshot: snapshot
             });
 
             // 应用样式元素到页面

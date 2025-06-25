@@ -154,7 +154,7 @@ export class ContentManager {
             }
 
             // 保存快照
-            StyleService.saveSnapshot();
+            StyleService.saveSnapshot(message.data.text);
 
             // 更新当前Eddy的样式元素
             await this.updateCurrentEddyStyleElements();
@@ -387,6 +387,10 @@ export class ContentManager {
             if (success) {
                 // 更新当前Eddy的样式元素
                 await this.updateCurrentEddyStyleElements();
+                
+                // 更新输入框内容为对应的用户查询
+                this.updateInputWithSnapshotQuery();
+                
                 console.log('[content] === UNDO OPERATION SUCCESS ===');
             } else {
                 console.log('[content] === UNDO OPERATION FAILED ===');
@@ -410,6 +414,10 @@ export class ContentManager {
             if (success) {
                 // 更新当前Eddy的样式元素
                 await this.updateCurrentEddyStyleElements();
+                
+                // 更新输入框内容为对应的用户查询
+                this.updateInputWithSnapshotQuery();
+                
                 console.log('[content] === REDO OPERATION SUCCESS ===');
             } else {
                 console.log('[content] === REDO OPERATION FAILED ===');
@@ -418,6 +426,34 @@ export class ContentManager {
         } catch (error) {
             console.error('[content] Error redoing modification:', error);
             return false;
+        }
+    }
+
+    /**
+     * 根据当前快照更新输入框内容
+     */
+    private updateInputWithSnapshotQuery(): void {
+        try {
+            const floatingBall = (window as any).__pageEditFloatingBall;
+            if (!floatingBall || !floatingBall.panel) {
+                console.warn('[content] FloatingBall not found, cannot update input');
+                return;
+            }
+
+            const currentSnapshot = StyleService.getCurrentSnapshot();
+            console.log('[content] Current snapshot for input update:', currentSnapshot);
+            
+            if (currentSnapshot && currentSnapshot.userQuery) {
+                // 更新输入框为对应的用户查询
+                floatingBall.panel.updateInputContent(currentSnapshot.userQuery);
+                console.log('[content] Updated input with snapshot query:', currentSnapshot.userQuery);
+            } else {
+                // 如果没有用户查询，清空输入框
+                floatingBall.panel.updateInputContent('');
+                console.log('[content] Cleared input - no user query in snapshot');
+            }
+        } catch (error) {
+            console.error('[content] Error updating input with snapshot query:', error);
         }
     }
 }
