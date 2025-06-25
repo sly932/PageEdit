@@ -325,6 +325,9 @@ export class FloatingPanel {
         this.input.style.opacity = '0.7';
         this.input.style.cursor = 'default';
 
+        // 更新undo/redo/reset按钮状态（禁用）
+        this.updateUndoRedoButtonStates();
+
         // 触发应用事件
         if (this.eventCallback) {
             this.eventCallback({
@@ -345,6 +348,9 @@ export class FloatingPanel {
         this.input.disabled = false;
         this.input.style.opacity = '1';
         this.input.style.cursor = 'text';
+        
+        // 更新undo/redo/reset按钮状态（重新启用）
+        this.updateUndoRedoButtonStates();
         
         // 重新检查按钮状态
         this.updateButtonState();
@@ -410,6 +416,10 @@ export class FloatingPanel {
         this.input.disabled = false;
         this.input.style.opacity = '1';
         this.input.style.cursor = 'text';
+        
+        // 更新undo/redo/reset按钮状态
+        this.updateUndoRedoButtonStates();
+        
         this.updateButtonState(); // 重新检查输入内容状态，会处理提示文字
     }
 
@@ -417,12 +427,40 @@ export class FloatingPanel {
     public updateUndoRedoButtonStates(): void {
         const stateInfo = StyleService.getStateInfo();
         
+        // 如果正在处理LLM请求，禁用所有按钮
+        if (this.isProcessing) {
+            this.undoButton.disabled = true;
+            this.redoButton.disabled = true;
+            this.resetButton.disabled = true;
+            
+            // 设置按钮样式为禁用状态
+            this.undoButton.style.opacity = '0.5';
+            this.redoButton.style.opacity = '0.5';
+            this.resetButton.style.opacity = '0.5';
+            
+            // 设置鼠标样式为禁止
+            this.undoButton.style.cursor = 'not-allowed';
+            this.redoButton.style.cursor = 'not-allowed';
+            this.resetButton.style.cursor = 'not-allowed';
+            
+            console.log('[FloatingPanel] Buttons disabled during processing');
+            return;
+        }
+        
+        // 正常状态下的按钮管理
         this.undoButton.disabled = !stateInfo.canUndo;
         this.redoButton.disabled = !stateInfo.canRedo;
+        this.resetButton.disabled = false; // reset按钮总是可用的（除了处理中）
         
         // 更新按钮样式
         this.undoButton.style.opacity = stateInfo.canUndo ? '1' : '0.5';
         this.redoButton.style.opacity = stateInfo.canRedo ? '1' : '0.5';
+        this.resetButton.style.opacity = '1';
+        
+        // 设置鼠标样式
+        this.undoButton.style.cursor = stateInfo.canUndo ? 'pointer' : 'not-allowed';
+        this.redoButton.style.cursor = stateInfo.canRedo ? 'pointer' : 'not-allowed';
+        this.resetButton.style.cursor = 'pointer';
     }
 
     // 清空输入框

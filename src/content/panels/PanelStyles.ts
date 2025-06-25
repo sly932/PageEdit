@@ -309,9 +309,20 @@ export class PanelStyles {
                 color: rgb(75, 85, 99);
             }
 
+            /* 禁用状态的按钮不响应hover效果 */
+            .header-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
+            }
+
             #pageedit-floating-panel.dark-mode .header-button:hover {
                 background: rgba(255, 255, 255, 0.1);
                 color: rgb(209, 213, 219);
+            }
+
+            #pageedit-floating-panel.dark-mode .header-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
             }
 
             .header-button svg {
@@ -391,6 +402,11 @@ export class PanelStyles {
                 color: rgb(34, 197, 94) !important;
             }
 
+            .new-eddy-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
+            }
+
             #pageedit-floating-panel.dark-mode .new-eddy-button {
                 color: rgb(156, 163, 175) !important;
             }
@@ -398,6 +414,11 @@ export class PanelStyles {
             #pageedit-floating-panel.dark-mode .new-eddy-button:hover {
                 background: rgba(74, 222, 128, 0.1) !important;
                 color: rgb(74, 222, 128) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .new-eddy-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
             }
 
             /* 删除按钮特殊样式 */
@@ -410,6 +431,11 @@ export class PanelStyles {
                 color: rgb(239, 68, 68) !important;
             }
 
+            .delete-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
+            }
+
             #pageedit-floating-panel.dark-mode .delete-button {
                 color: rgb(156, 163, 175) !important;
             }
@@ -417,6 +443,11 @@ export class PanelStyles {
             #pageedit-floating-panel.dark-mode .delete-button:hover {
                 background: rgba(248, 113, 113, 0.1) !important;
                 color: rgb(248, 113, 113) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .delete-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
             }
 
             /* 关闭按钮特殊样式 */
@@ -429,6 +460,11 @@ export class PanelStyles {
                 color: rgb(239, 68, 68) !important;
             }
 
+            .close-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
+            }
+
             #pageedit-floating-panel.dark-mode .close-button {
                 color: rgb(156, 163, 175) !important;
             }
@@ -436,6 +472,11 @@ export class PanelStyles {
             #pageedit-floating-panel.dark-mode .close-button:hover {
                 background: rgba(248, 113, 113, 0.1) !important;
                 color: rgb(248, 113, 113) !important;
+            }
+
+            #pageedit-floating-panel.dark-mode .close-button:disabled:hover {
+                background: transparent !important;
+                color: rgb(156, 163, 175) !important;
             }
 
             /* 自定义 Tooltip 样式 */
