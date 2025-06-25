@@ -385,4 +385,71 @@ this.redoButton.style.opacity = stateInfo.canRedo ? '1' : '0.5';
 - **视觉反馈**: 按钮透明度变化，清晰显示可点击状态
 - **功能反馈**: 按钮禁用状态，防止无效操作
 - **实时更新**: 状态变更后立即更新按钮状态
-- **一致性**: 按钮状态始终与GlobalState保持一致 
+- **一致性**: 按钮状态始终与GlobalState保持一致
+
+## Temp Eddy名字自动更新
+
+### 1. 功能概述
+当temp eddy第一次执行apply操作时，系统会自动将eddy的名字更新为query的内容，提供更好的用户体验。
+
+### 2. 实现细节
+```typescript
+// ContentManager.updateCurrentEddyStyleElements()
+if (updatedEddy.id.startsWith('temp_')) {
+    // 根据query内容更新eddy名字（保留20个字符）
+    const currentSnapshot = StyleService.getCurrentSnapshot();
+    let newEddyName = updatedEddy.name; // 默认使用当前名字
+    
+    if (currentSnapshot && currentSnapshot.userQuery) {
+        // 使用query内容作为名字，保留20个字符
+        newEddyName = currentSnapshot.userQuery.trim().substring(0, 20);
+        if (newEddyName.length === 20) {
+            newEddyName += '...'; // 如果截断了，添加省略号
+        }
+    }
+    
+    // 创建真实的Eddy
+    const realEddy = await StorageService.createEddy(
+        newEddyName,
+        updatedEddy.domain,
+        { currentStyleElements: updatedEddy.currentStyleElements }
+    );
+    
+    // 更新panel上的标题
+    if (floatingBall.panel.updateEddyTitle) {
+        floatingBall.panel.updateEddyTitle(newEddyName);
+    }
+}
+```
+
+### 3. 名字处理规则
+- **长度限制**: 最多保留20个字符
+- **截断处理**: 如果超过20个字符，添加"..."省略号
+- **空白处理**: 自动去除首尾空白字符
+- **默认回退**: 如果没有query内容，使用默认名字"New Eddy"
+
+### 4. 标题更新机制
+```typescript
+// FloatingPanel.updateEddyTitle()
+public updateEddyTitle(title: string): void {
+    if (this.titleElement) {
+        this.titleElement.textContent = title;
+        
+        // 如果当前有eddy，同步更新eddy的名字
+        if (this.currentEddy) {
+            this.currentEddy.name = title;
+        }
+    }
+}
+```
+
+### 5. 用户体验
+- **自动命名**: 用户不需要手动编辑eddy名字
+- **语义化名字**: eddy名字反映实际的功能或样式
+- **即时反馈**: panel标题立即更新
+- **一致性**: eddy名字与query内容保持一致
+
+### 6. 工作流程
+```
+用户输入query → 点击apply → temp eddy转换 → 名字更新为query内容 → panel标题更新 → 完成
+``` 

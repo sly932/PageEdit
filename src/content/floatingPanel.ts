@@ -882,4 +882,20 @@ export class FloatingPanel {
             this.cancelPendingRequests();
         });
     }
+
+    /**
+     * 更新Eddy标题
+     * @param title 新的标题
+     */
+    public updateEddyTitle(title: string): void {
+        if (this.titleElement) {
+            console.log('[FloatingPanel] Updating eddy title from', this.titleElement.textContent, 'to', title);
+            this.titleElement.textContent = title;
+            
+            // 如果当前有eddy，同步更新eddy的名字
+            if (this.currentEddy) {
+                this.currentEddy.name = title;
+            }
+        }
+    }
 }

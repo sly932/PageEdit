@@ -220,9 +220,12 @@ export class PanelEvents {
     }
 
     private static updateTitle(): void {
+        console.log('[PanelEvents] updateTitle called, currentEddy:', PanelEvents.currentEddy?.name, 'titleElement:', !!PanelEvents.titleElement);
         if (PanelEvents.currentEddy && PanelEvents.titleElement) {
+            console.log('[PanelEvents] Updating title from', PanelEvents.titleElement.textContent, 'to', PanelEvents.currentEddy.name);
             PanelEvents.titleElement.textContent = PanelEvents.currentEddy.name;
         } else if (PanelEvents.titleElement) {
+            console.log('[PanelEvents] No current eddy, setting title to PageEdit');
             PanelEvents.titleElement.textContent = 'PageEdit';
         }
     }

@@ -203,9 +203,27 @@ export class ContentManager {
                 console.log('[content] Converting temp eddy to real eddy during apply');
                 const { StorageService } = await import('../services/storageService');
                 
+                // 根据query内容更新eddy名字（保留20个字符）
+                const currentSnapshot = StyleService.getCurrentSnapshot();
+                let newEddyName = updatedEddy.name; // 默认使用当前名字
+                
+                console.log('[content] Current snapshot:', currentSnapshot);
+                console.log('[content] Current snapshot userQuery:', currentSnapshot?.userQuery);
+                
+                if (currentSnapshot && currentSnapshot.userQuery) {
+                    // 使用query内容作为名字，保留20个字符
+                    newEddyName = currentSnapshot.userQuery.trim().substring(0, 20);
+                    if (newEddyName.length === 20) {
+                        newEddyName += '...'; // 如果截断了，添加省略号
+                    }
+                    console.log('[content] Updated eddy name from query:', newEddyName);
+                } else {
+                    console.log('[content] No userQuery found in snapshot, keeping original name:', newEddyName);
+                }
+                
                 // 创建真实的Eddy
                 const realEddy = await StorageService.createEddy(
-                    updatedEddy.name,
+                    newEddyName,
                     updatedEddy.domain,
                     { currentStyleElements: updatedEddy.currentStyleElements }
                 );
@@ -224,10 +242,7 @@ export class ContentManager {
                     floatingBall.panel.setCurrentEddy(realEddy, false);
                 }
                 
-                // 刷新下拉菜单（如果当前是打开状态）
-                this.refreshDropdownMenu();
-                
-                console.log('[content] Temp eddy converted to real eddy:', realEddy.id);
+                console.log('[content] Temp eddy converted to real eddy:', realEddy.id, 'with name:', newEddyName);
             } else {
                 // 更新现有的Eddy
                 await this.saveEddyToStorage(updatedEddy);
@@ -245,24 +260,6 @@ export class ContentManager {
             }
         } catch (error) {
             console.error('[content] Error updating eddy style elements:', error);
-        }
-    }
-
-    /**
-     * 刷新下拉菜单
-     */
-    private async refreshDropdownMenu(): Promise<void> {
-        try {
-            // 导入PanelEvents
-            const { PanelEvents } = await import('./panels/PanelEvents');
-            
-            // 如果下拉菜单当前是打开状态，重新加载eddy列表
-            if (PanelEvents.isDropdownOpenState()) {
-                console.log('[content] Refreshing dropdown menu after eddy conversion');
-                await PanelEvents.refreshDropdown();
-            }
-        } catch (error) {
-            console.error('[content] Error refreshing dropdown menu:', error);
         }
     }
 
