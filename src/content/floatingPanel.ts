@@ -489,6 +489,10 @@ export class FloatingPanel {
         }
         
         this.panel.style.display = 'block';
+        
+        // 更新undo/redo按钮状态
+        this.updateUndoRedoButtonStates();
+        
         // 延迟聚焦，确保面板已显示
         setTimeout(() => {
             this.input.focus();
@@ -540,25 +544,56 @@ export class FloatingPanel {
         // 更新 PanelEvents 模块
         PanelEvents.setCurrentEddy(eddy, isNew);
         
-        // 应用 Eddy 的样式元素（如果有的话）
-        if (eddy.currentStyleElements && eddy.currentStyleElements.length > 0) {
-            this.loadEddyStyleElements(eddy);
-            // 立即应用 Eddy 的所有样式元素
-            this.applyEddyStyleElements(eddy);
+        // 从Eddy恢复GlobalState（多版本管理）
+        const restoreSuccess = StyleService.restoreFromEddy(eddy);
+        if (restoreSuccess) {
+            console.log('[FloatingPanel] Successfully restored GlobalState from eddy');
+            
+            // 更新输入框内容为当前快照的用户查询
+            this.updateInputWithSnapshotQuery();
         } else {
-            // 如果 Eddy 没有样式元素，清空页面
-            StyleService.clearAllStyleElements();
-            console.log('[FloatingPanel] Cleared all modifications for eddy without style elements:', eddy.name);
+            console.warn('[FloatingPanel] Failed to restore GlobalState from eddy, falling back to legacy method');
+            
+            // 向后兼容：如果没有多版本管理字段，使用原来的方法
+            if (eddy.currentStyleElements && eddy.currentStyleElements.length > 0) {
+                this.loadEddyStyleElements(eddy);
+                // 立即应用 Eddy 的所有样式元素
+                this.applyEddyStyleElements(eddy);
+            } else {
+                // 如果 Eddy 没有样式元素，直接清空页面DOM
+                StyleService.clearAllStyleElementsFromDOM();
+                console.log('[FloatingPanel] Cleared all style elements from DOM for eddy without style elements:', eddy.name);
+            }
         }
         
         // 加载草稿内容（如果有的话）
         this.loadDraftContent(eddy);
+        
+        // 更新undo/redo按钮状态
+        this.updateUndoRedoButtonStates();
         
         // 如果不是临时Eddy，将其设置为最近使用的Eddy（后台异步执行）
         if (!isNew && !eddy.id.startsWith('temp_')) {
             this.setAsLastUsedEddy(eddy).catch(error => {
                 console.error('[FloatingPanel] Error setting eddy as last used:', error);
             });
+        }
+    }
+
+    /**
+     * 更新输入框内容为当前快照的用户查询
+     */
+    private updateInputWithSnapshotQuery(): void {
+        const currentSnapshot = StyleService.getCurrentSnapshot();
+        if (currentSnapshot && currentSnapshot.userQuery) {
+            console.log('[FloatingPanel] Updating input with snapshot query:', currentSnapshot.userQuery);
+            this.input.value = currentSnapshot.userQuery;
+            this.input.style.height = 'auto';
+            this.input.style.height = `${this.input.scrollHeight}px`;
+            this.updateButtonState();
+        } else {
+            console.log('[FloatingPanel] No user query in current snapshot, clearing input');
+            this.clearInput();
         }
     }
 
@@ -573,27 +608,30 @@ export class FloatingPanel {
     }
 
     private loadDraftContent(eddy: Eddy): void {
-        // 加载草稿内容
-        if (eddy.draftContent && eddy.draftContent.trim()) {
+        // 优先使用currentSnapshot中的userQuery
+        const currentSnapshot = StyleService.getCurrentSnapshot();
+        if (currentSnapshot && currentSnapshot.userQuery && currentSnapshot.userQuery.trim()) {
+            console.log('[FloatingPanel] Loading query from current snapshot:', currentSnapshot.userQuery);
+            this.input.value = currentSnapshot.userQuery;
+            this.input.style.height = 'auto';
+            this.input.style.height = `${this.input.scrollHeight}px`;
+            this.updateButtonState();
+        } else if (eddy.draftContent && eddy.draftContent.trim()) {
+            // 向后兼容：如果没有快照查询，使用draftContent
             console.log('[FloatingPanel] Loading draft content for eddy:', eddy.name);
             this.input.value = eddy.draftContent;
             this.input.style.height = 'auto';
             this.input.style.height = `${this.input.scrollHeight}px`;
             this.updateButtonState();
         } else {
-            // 如果没有草稿内容，清空输入框
-            console.log('[FloatingPanel] No draft content found, clearing input');
+            // 如果都没有内容，清空输入框
+            console.log('[FloatingPanel] No query or draft content found, clearing input');
             this.clearInput();
         }
     }
 
     private async createNewEddy(): Promise<void> {
         try {
-            // 保存当前 Eddy 的草稿（如果有的话）
-            if (this.currentEddy && !this.currentEddy.id.startsWith('temp_')) {
-                await this.saveDraft();
-            }
-            
             // 保存当前 Eddy（如果有未保存更改）
             if (this.currentEddy && this.hasUnsavedChanges) {
                 await this.saveCurrentEddy();
@@ -616,10 +654,14 @@ export class FloatingPanel {
                 currentStyleElements: [],
                 lastUsed: false,
                 createdAt: Date.now(),
-                updatedAt: Date.now()
+                updatedAt: Date.now(),
+                // 初始化多版本管理字段
+                currentSnapshot: null,
+                undoStack: [],
+                redoStack: []
             };
             
-            console.log('[FloatingPanel] New temporary eddy created:', newEddy.name, '(ID:', newEddy.id, ')');
+            console.log('[FloatingPanel] New temporary eddy created with version management:', newEddy.name, '(ID:', newEddy.id, ')');
             
             // 设置新的 Eddy
             this.setCurrentEddy(newEddy, true);
@@ -660,6 +702,9 @@ export class FloatingPanel {
             // 设置为最近使用的Eddy
             this.currentEddy.lastUsed = true;
             
+            // 保存当前GlobalState到Eddy（多版本管理）
+            this.currentEddy = StyleService.saveToEddy(this.currentEddy);
+            
             // 如果是临时Eddy，需要先创建真实的Eddy
             if (this.isNewEddy && this.currentEddy.id.startsWith('temp_')) {
                 console.log('[FloatingPanel] Converting temporary eddy to real eddy');
@@ -668,6 +713,10 @@ export class FloatingPanel {
                     this.currentEddy.domain,
                     { currentStyleElements: this.currentEddy.currentStyleElements || [] }
                 );
+                // 复制多版本管理字段到真实Eddy
+                realEddy.currentSnapshot = this.currentEddy.currentSnapshot;
+                realEddy.undoStack = this.currentEddy.undoStack;
+                realEddy.redoStack = this.currentEddy.redoStack;
                 this.currentEddy = realEddy;
                 this.isNewEddy = false;
                 console.log('[FloatingPanel] Temporary eddy converted to real eddy:', realEddy.id);
@@ -729,14 +778,9 @@ export class FloatingPanel {
             return;
         }
         
-        const draftContent = this.input.value.trim();
-        
-        try {
-            await StorageService.saveEddyDraft(this.currentEddy.id, draftContent);
-            console.log('[FloatingPanel] Draft saved for eddy:', this.currentEddy.name);
-        } catch (error) {
-            console.error('[FloatingPanel] Error saving draft:', error);
-        }
+        // 现在不再保存draftContent，因为使用currentSnapshot中的userQuery
+        // 草稿内容会自动保存在currentSnapshot中
+        console.log('[FloatingPanel] Draft content is now managed through currentSnapshot');
     }
 
     private handleDeleteEddy(): void {

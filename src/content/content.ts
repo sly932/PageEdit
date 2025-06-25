@@ -126,6 +126,14 @@ export class ContentManager {
         try {
             // 清空redo栈，因为用户进行了新的操作
             StyleService.clearRedoStack();
+            
+            // 保存清空redo栈后的状态到Eddy
+            const floatingBall = (window as any).__pageEditFloatingBall;
+            if (floatingBall && floatingBall.panel && floatingBall.panel.currentEddy) {
+                const updatedEddy = StyleService.clearRedoStackAndSave(floatingBall.panel.currentEddy);
+                floatingBall.panel.currentEddy = updatedEddy;
+                console.log('[content] Cleared redo stack and saved to eddy');
+            }
 
             // 解析用户输入
             const parseResult = await this.parseUserInput(message.data.text);
@@ -181,11 +189,9 @@ export class ContentManager {
 
             const currentEddy = floatingBall.panel.currentEddy;
             
-            // 获取当前应用的样式元素
-            const currentElements = StyleService.getCurrentStyleElements();
-            
-            // 更新Eddy的样式元素
-            currentEddy.currentStyleElements = [...currentElements];
+            // 使用StyleService.saveToEddy保存完整的GlobalState
+            const updatedEddy = StyleService.saveToEddy(currentEddy);
+            floatingBall.panel.currentEddy = updatedEddy;
             
             // 标记有未保存更改
             if (floatingBall.panel.setHasUnsavedChanges) {
@@ -193,16 +199,21 @@ export class ContentManager {
             }
 
             // 如果是临时Eddy，立即保存为真实Eddy
-            if (currentEddy.id.startsWith('temp_')) {
+            if (updatedEddy.id.startsWith('temp_')) {
                 console.log('[content] Converting temp eddy to real eddy during apply');
                 const { StorageService } = await import('../services/storageService');
                 
                 // 创建真实的Eddy
                 const realEddy = await StorageService.createEddy(
-                    currentEddy.name,
-                    currentEddy.domain,
-                    { currentStyleElements: currentEddy.currentStyleElements }
+                    updatedEddy.name,
+                    updatedEddy.domain,
+                    { currentStyleElements: updatedEddy.currentStyleElements }
                 );
+                
+                // 复制多版本管理字段到真实Eddy
+                realEddy.currentSnapshot = updatedEddy.currentSnapshot;
+                realEddy.undoStack = updatedEddy.undoStack;
+                realEddy.redoStack = updatedEddy.redoStack;
                 
                 // 更新FloatingPanel中的currentEddy引用
                 floatingBall.panel.currentEddy = realEddy;
@@ -219,10 +230,19 @@ export class ContentManager {
                 console.log('[content] Temp eddy converted to real eddy:', realEddy.id);
             } else {
                 // 更新现有的Eddy
-                await this.saveEddyToStorage(currentEddy);
+                await this.saveEddyToStorage(updatedEddy);
             }
 
-            console.log('[content] Updated eddy style elements:', currentEddy.currentStyleElements.length);
+            console.log('[content] Updated eddy with GlobalState:', {
+                elementsCount: updatedEddy.currentStyleElements.length,
+                undoStackSize: updatedEddy.undoStack?.length || 0,
+                redoStackSize: updatedEddy.redoStack?.length || 0
+            });
+            
+            // 更新undo/redo按钮状态
+            if (floatingBall) {
+                floatingBall.updateUndoRedoButtonStates();
+            }
         } catch (error) {
             console.error('[content] Error updating eddy style elements:', error);
         }
@@ -350,8 +370,20 @@ export class ContentManager {
                     // 一键还原所有修改
                     const resetSuccess = StyleService.clearAllStyleElements();
                     if (resetSuccess) {
-                        // 同步更新Eddy的样式元素（清空所有修改）
-                        await this.updateCurrentEddyStyleElements();
+                        // 获取当前Eddy并保存GlobalState
+                        const floatingBall = (window as any).__pageEditFloatingBall;
+                        if (floatingBall && floatingBall.panel && floatingBall.panel.currentEddy) {
+                            const updatedEddy = StyleService.saveToEddy(floatingBall.panel.currentEddy);
+                            floatingBall.panel.currentEddy = updatedEddy;
+                            
+                            // 保存到存储
+                            await this.saveEddyToStorage(updatedEddy);
+                            console.log('[content] Saved GlobalState to eddy after reset');
+                        }
+                        
+                        // 更新undo/redo按钮状态
+                        floatingBall.updateUndoRedoButtonStates();
+                        
                         floatingBall.showFeedback('已还原所有修改', 'success');
                     } else {
                         floatingBall.showFeedback('还原修改时出错', 'error');
@@ -385,11 +417,24 @@ export class ContentManager {
             
             const success = StyleService.undo();
             if (success) {
-                // 更新当前Eddy的样式元素
-                await this.updateCurrentEddyStyleElements();
+                // 获取当前Eddy并保存GlobalState
+                const floatingBall = (window as any).__pageEditFloatingBall;
+                if (floatingBall && floatingBall.panel && floatingBall.panel.currentEddy) {
+                    const updatedEddy = StyleService.saveToEddy(floatingBall.panel.currentEddy);
+                    floatingBall.panel.currentEddy = updatedEddy;
+                    
+                    // 保存到存储
+                    await this.saveEddyToStorage(updatedEddy);
+                    console.log('[content] Saved GlobalState to eddy after undo');
+                }
                 
                 // 更新输入框内容为对应的用户查询
                 this.updateInputWithSnapshotQuery();
+                
+                // 更新undo/redo按钮状态
+                if (floatingBall) {
+                    floatingBall.updateUndoRedoButtonStates();
+                }
                 
                 console.log('[content] === UNDO OPERATION SUCCESS ===');
             } else {
@@ -412,11 +457,24 @@ export class ContentManager {
             
             const success = StyleService.redo();
             if (success) {
-                // 更新当前Eddy的样式元素
-                await this.updateCurrentEddyStyleElements();
+                // 获取当前Eddy并保存GlobalState
+                const floatingBall = (window as any).__pageEditFloatingBall;
+                if (floatingBall && floatingBall.panel && floatingBall.panel.currentEddy) {
+                    const updatedEddy = StyleService.saveToEddy(floatingBall.panel.currentEddy);
+                    floatingBall.panel.currentEddy = updatedEddy;
+                    
+                    // 保存到存储
+                    await this.saveEddyToStorage(updatedEddy);
+                    console.log('[content] Saved GlobalState to eddy after redo');
+                }
                 
                 // 更新输入框内容为对应的用户查询
                 this.updateInputWithSnapshotQuery();
+                
+                // 更新undo/redo按钮状态
+                if (floatingBall) {
+                    floatingBall.updateUndoRedoButtonStates();
+                }
                 
                 console.log('[content] === REDO OPERATION SUCCESS ===');
             } else {

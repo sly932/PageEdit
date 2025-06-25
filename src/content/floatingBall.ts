@@ -365,6 +365,9 @@ export class FloatingBall {
                 await this.createNewEddy();
             }
             
+            // 更新undo/redo按钮状态
+            this.panel.updateUndoRedoButtonStates();
+            
             // 展开面板
             this.panel.toggle();
         } catch (error) {
@@ -387,7 +390,12 @@ export class FloatingBall {
                 { currentStyleElements: [] }
             );
             
-            console.log('[FloatingBall] New eddy created:', newEddy.name, '(ID:', newEddy.id, ')');
+            // 初始化多版本管理字段
+            newEddy.currentSnapshot = null;
+            newEddy.undoStack = [];
+            newEddy.redoStack = [];
+            
+            console.log('[FloatingBall] New eddy created with version management:', newEddy.name, '(ID:', newEddy.id, ')');
             
             // 设置面板为新建模式
             this.panel.setCurrentEddy(newEddy, true);

@@ -219,14 +219,21 @@ export class StyleService {
             // 清除所有样式元素
             this.clearAllStyleElementsFromDOM();
             
-            // 重置全局状态
+            // 创建空白快照而不是清空所有状态
+            const emptySnapshot = this.createSnapshot([], "clear eddy");
+            
+            // 保存当前状态到undo栈
+            const state = this.getGlobalState();
+            state.undoStack.push(emptySnapshot);
+            
+            // 更新全局状态
             this.updateGlobalState({
-                currentSnapshot: null,
-                undoStack: [],
-                redoStack: []
+                currentSnapshot: state.undoStack[state.undoStack.length - 1],
+                undoStack: state.undoStack,
+                redoStack: [] // 清空redo栈，因为有了新的操作
             });
 
-            console.log('[StyleService] All style elements cleared successfully');
+            console.log('[StyleService] Created empty snapshot, can undo to previous state');
             return true;
         } catch (error) {
             console.error('[StyleService] Clear failed:', error);
@@ -237,7 +244,7 @@ export class StyleService {
     /**
      * 从DOM中清除所有样式元素
      */
-    private static clearAllStyleElementsFromDOM(): void {
+    static clearAllStyleElementsFromDOM(): void {
         const state = this.getGlobalState();
         if (state.currentSnapshot) {
             state.currentSnapshot.elements.forEach(snapshot => {
@@ -412,31 +419,37 @@ export class StyleService {
      */
     static async applyEddy(eddy: Eddy): Promise<boolean> {
         try {
-            // 重置当前状态
-            this.clearAllStyleElements();
+            // 清空当前页面的所有样式元素
+            this.clearAllStyleElementsFromDOM();
+            
+            // 重置GlobalState为新eddy的状态
+            const globalState: GlobalStyleState = {
+                currentSnapshot: eddy.currentSnapshot || null,
+                undoStack: eddy.undoStack || [],
+                redoStack: eddy.redoStack || []
+            };
+            
+            // 更新全局状态
+            this.updateGlobalState(globalState);
 
             if (!eddy.currentStyleElements || eddy.currentStyleElements.length === 0) {
                 console.log('[StyleService] No style elements to apply for eddy:', eddy.name);
-                // 保存空状态的快照
-                this.saveSnapshot();
                 return true;
             }
 
             console.log('[StyleService] Applying', eddy.currentStyleElements.length, 'style elements for eddy:', eddy.name);
 
-            // 设置全局状态
-            const snapshot = this.createSnapshot(eddy.currentStyleElements);
-            this.updateGlobalState({
-                currentSnapshot: snapshot
-            });
-
-            // 应用样式元素到页面
-            eddy.currentStyleElements.forEach(snapshot => {
-                this.applyStyleElementSnapshot(snapshot);
-            });
-
-            // 保存初始状态快照
-            this.saveSnapshot();
+            // 如果有当前快照，应用其样式元素到页面
+            if (globalState.currentSnapshot) {
+                this.applyAllStyleElements(globalState.currentSnapshot.elements);
+                console.log('[StyleService] Applied current snapshot with', globalState.currentSnapshot.elements.length, 'elements');
+            } else {
+                // 如果没有快照但有currentStyleElements（向后兼容），创建快照并应用
+                const snapshot = this.createSnapshot(eddy.currentStyleElements);
+                this.updateGlobalState({ currentSnapshot: snapshot });
+                this.applyAllStyleElements(eddy.currentStyleElements);
+                console.log('[StyleService] Created snapshot from currentStyleElements with', eddy.currentStyleElements.length, 'elements');
+            }
 
             console.log('[StyleService] Successfully applied all style elements for eddy:', eddy.name);
             return true;
@@ -471,5 +484,119 @@ export class StyleService {
     static isUndoStackEmpty(): boolean {
         const state = this.getGlobalState();
         return state.undoStack.length === 0;
+    }
+
+    /**
+     * 从Eddy恢复GlobalState
+     * @param eddy Eddy对象
+     * @returns 是否恢复成功
+     */
+    static restoreFromEddy(eddy: Eddy): boolean {
+        try {
+            console.log('[StyleService] Restoring GlobalState from eddy:', eddy.name);
+            
+            // 先清空当前页面的所有样式元素
+            this.clearAllStyleElementsFromDOM();
+            console.log('[StyleService] Cleared current style elements from DOM');
+            
+            // 构建GlobalState
+            const globalState: GlobalStyleState = {
+                currentSnapshot: eddy.currentSnapshot || null,
+                undoStack: eddy.undoStack || [],
+                redoStack: eddy.redoStack || []
+            };
+            
+            // 更新全局状态
+            this.updateGlobalState(globalState);
+            
+            // 如果有当前快照，应用其样式元素到页面
+            if (globalState.currentSnapshot) {
+                this.applyAllStyleElements(globalState.currentSnapshot.elements);
+                console.log('[StyleService] Applied current snapshot with', globalState.currentSnapshot.elements.length, 'elements');
+            } else {
+                // 如果没有快照但有currentStyleElements（向后兼容），创建快照并应用
+                if (eddy.currentStyleElements && eddy.currentStyleElements.length > 0) {
+                    const snapshot = this.createSnapshot(eddy.currentStyleElements);
+                    this.updateGlobalState({ currentSnapshot: snapshot });
+                    this.applyAllStyleElements(eddy.currentStyleElements);
+                    console.log('[StyleService] Created snapshot from currentStyleElements with', eddy.currentStyleElements.length, 'elements');
+                } else {
+                    // 页面已经是清空状态，不需要额外操作
+                    console.log('[StyleService] No style elements to apply, page is already cleared');
+                }
+            }
+            
+            console.log('[StyleService] GlobalState restored successfully from eddy:', {
+                currentSnapshot: globalState.currentSnapshot ? globalState.currentSnapshot.id : null,
+                undoStackSize: globalState.undoStack.length,
+                redoStackSize: globalState.redoStack.length
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('[StyleService] Failed to restore GlobalState from eddy:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 保存当前GlobalState到Eddy
+     * @param eddy Eddy对象
+     * @returns 更新后的Eddy对象
+     */
+    static saveToEddy(eddy: Eddy): Eddy {
+        try {
+            const state = this.getGlobalState();
+            
+            console.log('[StyleService] Saving GlobalState to eddy:', eddy.name);
+            
+            // 更新Eddy的GlobalState字段
+            const updatedEddy: Eddy = {
+                ...eddy,
+                currentSnapshot: state.currentSnapshot,
+                undoStack: [...state.undoStack],
+                redoStack: [...state.redoStack],
+                updatedAt: Date.now()
+            };
+            
+            // 保持向后兼容：同步更新currentStyleElements
+            if (state.currentSnapshot) {
+                updatedEddy.currentStyleElements = [...state.currentSnapshot.elements];
+            } else {
+                updatedEddy.currentStyleElements = [];
+            }
+            
+            console.log('[StyleService] GlobalState saved to eddy:', {
+                currentSnapshot: state.currentSnapshot ? state.currentSnapshot.id : null,
+                undoStackSize: state.undoStack.length,
+                redoStackSize: state.redoStack.length,
+                elementsCount: updatedEddy.currentStyleElements.length
+            });
+            
+            return updatedEddy;
+        } catch (error) {
+            console.error('[StyleService] Failed to save GlobalState to eddy:', error);
+            return eddy;
+        }
+    }
+
+    /**
+     * 清空redo栈并保存到Eddy
+     * @param eddy Eddy对象
+     * @returns 更新后的Eddy对象
+     */
+    static clearRedoStackAndSave(eddy: Eddy): Eddy {
+        try {
+            console.log('[StyleService] Clearing redo stack and saving to eddy');
+            
+            // 清空redo栈
+            this.clearRedoStack();
+            
+            // 保存到Eddy
+            return this.saveToEddy(eddy);
+        } catch (error) {
+            console.error('[StyleService] Failed to clear redo stack and save:', error);
+            return eddy;
+        }
     }
 } 

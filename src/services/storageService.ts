@@ -165,6 +165,8 @@ export class StorageService {
     }
 
     // 保存 Eddy 草稿内容
+    // 注意：此方法已不再使用，因为现在使用currentSnapshot中的userQuery管理查询内容
+    // 保留此方法仅用于向后兼容
     static async saveEddyDraft(eddyId: string, draftContent: string): Promise<void> {
         console.log('[StorageService] Saving draft for eddy:', eddyId);
         const eddys = await this.getEddys();

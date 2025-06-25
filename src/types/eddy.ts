@@ -27,9 +27,14 @@ export interface Eddy {
     id: string;
     name: string;
     domain: string;
-    currentStyleElements: StyleElementSnapshot[]; // 当前应用的样式元素快照
+    currentStyleElements: StyleElementSnapshot[]; // 当前应用的样式元素快照（保持向后兼容）
     lastUsed: boolean;
     createdAt: number;
     updatedAt: number;
     draftContent?: string;
+    
+    // 新增：多版本管理字段
+    currentSnapshot?: Snapshot | null; // 当前快照
+    undoStack?: Snapshot[]; // 撤销栈
+    redoStack?: Snapshot[]; // 重做栈
 } 
