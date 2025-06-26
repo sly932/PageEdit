@@ -173,24 +173,25 @@ StorageService.updateEddy() → 持久化
 
 ```
 src/
-├── content/
-│   ├── content.ts              # ContentManager - 核心业务逻辑
-│   ├── floatingBall.ts         # FloatingBall - 悬浮球组件
-│   ├── floatingPanel.ts        # FloatingPanel - 面板组件
-│   ├── services/
-│   │   └── styleService.ts     # StyleService - 样式服务
-│   └── panels/                 # 面板相关组件
-│       ├── PanelEvents.ts      # 事件处理
-│       ├── PanelRenderer.ts    # UI渲染
-│       └── ...
-├── services/
-│   └── storageService.ts       # StorageService - 存储服务
-├── utils/
-│   └── nlp/
-│       └── nlpProcessor.ts     # NLPProcessor - 自然语言处理
-└── types/
-    ├── index.ts                # 通用类型定义
-    └── eddy.ts                 # Eddy相关类型
+├── assets/          # 静态资源文件
+├── background/      # 后台脚本
+├── components/      # 可复用组件 (如：确认对话框)
+├── content/         # 内容脚本
+│   ├── components/  # 面板中的UI组件
+│   ├── panels/      # 悬浮面板的子模块
+│   ├── services/    # 内容脚本服务
+│   ├── content.ts   # 主要内容逻辑
+│   ├── floatingBall.ts    # 悬浮球组件
+│   └── floatingPanel.ts   # 悬浮面板组件
+├── popup/          # 扩展弹出窗口
+├── services/       # 核心服务
+│   └── storageService.ts  # 存储服务
+├── styles/         # 全局样式文件
+├── types/          # 类型定义
+│   ├── eddy.ts     # Eddy 相关类型
+│   └── index.ts    # 通用类型定义
+└── utils/          # 工具函数
+    └── nlp/        # 自然语言处理
 ```
 
 ## 技术栈
