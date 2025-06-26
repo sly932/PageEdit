@@ -197,10 +197,10 @@ export class PanelRenderer {
         // 创建反馈消息区域
         const feedback = document.createElement('div');
         feedback.className = 'feedback-message';
-        content.appendChild(feedback);
 
         panel.appendChild(header);
         panel.appendChild(content);
+        panel.appendChild(feedback);
 
         // 设置事件监听器
         PanelRenderer.setupEventListeners(

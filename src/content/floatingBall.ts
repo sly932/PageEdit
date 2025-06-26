@@ -24,7 +24,7 @@ export class FloatingBall {
         this.rootElement.style.width = '100%';
         this.rootElement.style.height = '100%';
         this.rootElement.style.pointerEvents = 'none';
-        this.rootElement.style.zIndex = '2147483647';
+        this.rootElement.style.zIndex = '2147483646';
 
         // 创建Shadow DOM
         this.shadowRoot = this.rootElement.attachShadow({ mode: 'open' });
@@ -179,7 +179,7 @@ export class FloatingBall {
                 opacity: 0;
                 transform: translateY(4px);
                 transition: all 0.1s ease;
-                z-index: 2147483647;
+                z-index: 2147483646;
                 font-family: inherit;
                 border: 1px solid rgba(0, 0, 0, 0.15);
                 text-transform: uppercase;

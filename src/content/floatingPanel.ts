@@ -48,6 +48,10 @@ export class FloatingPanel {
     private draftSaveTimeout: NodeJS.Timeout | null = null; // 防抖定时器
     private readonly DRAFT_SAVE_DELAY = 1000; // 草稿保存延迟（毫秒）
 
+    // 反馈消息相关属性
+    private feedbackTimeoutId: NodeJS.Timeout | null = null;
+    private feedbackClearTextTimeoutId: NodeJS.Timeout | null = null;
+
     constructor(shadowRoot: ShadowRoot) {
         this.shadowRoot = shadowRoot;
         console.log('[FloatingPanel] Initializing FloatingPanel...');
@@ -481,6 +485,14 @@ export class FloatingPanel {
     }
 
     public showFeedback(message: string, type: 'success' | 'error'): void {
+        // 清除现有的定时器，防止消息冲突
+        if (this.feedbackTimeoutId) {
+            clearTimeout(this.feedbackTimeoutId);
+        }
+        if (this.feedbackClearTextTimeoutId) {
+            clearTimeout(this.feedbackClearTextTimeoutId);
+        }
+
         this.feedback.textContent = message;
         this.feedback.style.cssText = `
             position: fixed;
@@ -496,15 +508,19 @@ export class FloatingPanel {
             font-family: inherit;
             font-size: 14px;
             font-weight: 500;
+            pointer-events: none;
         `;
+        
+        // 确保元素立即显示，而不是等待下一个渲染周期
+        this.feedback.style.opacity = '1';
 
         // 自动隐藏反馈消息
-        setTimeout(() => {
+        this.feedbackTimeoutId = setTimeout(() => {
             this.feedback.style.opacity = '0';
-            setTimeout(() => {
+            this.feedbackClearTextTimeoutId = setTimeout(() => {
                 this.feedback.textContent = '';
-            }, 300);
-        }, 3000);
+            }, 300); // 对应 transition 时间
+        }, 1500);
     }
 
     public toggle(): void {
@@ -586,9 +602,6 @@ export class FloatingPanel {
         const restoreSuccess = StyleService.restoreFromEddy(eddy);
         if (restoreSuccess) {
             console.log('[FloatingPanel] Successfully restored GlobalState from eddy');
-            
-            // 更新输入框内容为当前快照的用户查询
-            this.updateInputWithSnapshotQuery();
         } else {
             console.warn('[FloatingPanel] Failed to restore GlobalState from eddy, falling back to legacy method');
             
@@ -604,7 +617,7 @@ export class FloatingPanel {
             }
         }
         
-        // 加载草稿内容（如果有的话）
+        // 加载草稿内容（如果有的话）- 这个方法会从currentSnapshot中获取userQuery
         this.loadDraftContent(eddy);
         
         // 更新undo/redo按钮状态
@@ -615,23 +628,6 @@ export class FloatingPanel {
             this.setAsLastUsedEddy(eddy).catch(error => {
                 console.error('[FloatingPanel] Error setting eddy as last used:', error);
             });
-        }
-    }
-
-    /**
-     * 更新输入框内容为当前快照的用户查询
-     */
-    private updateInputWithSnapshotQuery(): void {
-        const currentSnapshot = StyleService.getCurrentSnapshot();
-        if (currentSnapshot && currentSnapshot.userQuery) {
-            console.log('[FloatingPanel] Updating input with snapshot query:', currentSnapshot.userQuery);
-            this.input.value = currentSnapshot.userQuery;
-            this.input.style.height = 'auto';
-            this.input.style.height = `${this.input.scrollHeight}px`;
-            this.updateButtonState();
-        } else {
-            console.log('[FloatingPanel] No user query in current snapshot, clearing input');
-            this.clearInput();
         }
     }
 
@@ -741,7 +737,7 @@ export class FloatingPanel {
             this.currentEddy.lastUsed = true;
             
             // 保存当前GlobalState到Eddy（多版本管理）
-            this.currentEddy = StyleService.saveToEddy(this.currentEddy);
+            this.currentEddy = StyleService.updateGlobalStateToEddy(this.currentEddy);
             
             // 如果是临时Eddy，需要先创建真实的Eddy
             if (this.isNewEddy && this.currentEddy.id.startsWith('temp_')) {
@@ -760,10 +756,8 @@ export class FloatingPanel {
                 console.log('[FloatingPanel] Temporary eddy converted to real eddy:', realEddy.id);
                 // 同步 UI 层 currentEddy
                 PanelEvents.setCurrentEddy(this.currentEddy, false);
-            } else {
-                // 更新现有的Eddy
-                await StorageService.updateEddy(this.currentEddy);
-            }
+            } 
+            await StorageService.updateEddy(this.currentEddy);
             
             // 重置未保存更改标记
             this.hasUnsavedChanges = false;

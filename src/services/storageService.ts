@@ -15,7 +15,6 @@ export class StorageService {
 
     // 获取所有 Eddy
     static async getEddys(): Promise<Eddy[]> {
-        console.log('[StorageService] Getting all eddys');
         const result = await chrome.storage.local.get(this.STORAGE_KEY);
         const eddys = result[this.STORAGE_KEY] || [];
         
@@ -29,7 +28,7 @@ export class StorageService {
             return migratedEddys;
         }
         
-        console.log('[StorageService] Retrieved eddys:', eddys.length, 'items');
+        console.log('[StorageService][getEddys] Retrieved eddys:', eddys);
         return eddys;
     }
 

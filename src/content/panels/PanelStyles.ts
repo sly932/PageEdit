@@ -22,7 +22,7 @@ export class PanelStyles {
                 overflow: visible;
                 pointer-events: auto;
                 display: none;
-                z-index: 2147483647;
+                z-index: 2147483646;
                 font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
                 user-select: none;
                 box-sizing: border-box;
@@ -495,7 +495,7 @@ export class PanelStyles {
                 opacity: 0;
                 transform: translateY(4px);
                 transition: all 0.1s ease;
-                z-index: 2147483647;
+                z-index: 2147483646;
                 font-family: inherit;
                 border: 1px solid rgba(0, 0, 0, 0.15);
                 text-transform: uppercase;

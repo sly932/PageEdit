@@ -16,6 +16,9 @@
 
 ### 💻 开发文档
 - `development/` - 开发相关文档
+  - **[project-architecture.md](./development/project-architecture.md)** - 项目架构文档
+  - **[eddy-version-management.md](./development/eddy-version-management.md)** - Eddy多版本管理
+  - **[eddy-workflow.md](./development/eddy-workflow.md)** - Eddy工作流程
   - 环境搭建
   - API 文档
   - 开发规范
@@ -30,6 +33,7 @@
 
 ### 当前重点
 - **[current_task.md](./current_task.md)** - Eddy 管理系统设计
+- **[project-architecture.md](./development/project-architecture.md)** - 项目整体架构
 
 ### 开发进度
 - **[progress.md](./progress.md)** - 查看项目最新进度

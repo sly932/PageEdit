@@ -50,7 +50,7 @@ export class StyleService {
         return {
             id: `snapshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             elements: [...elements],
-            userQuery,
+            userQuery: userQuery || "",
             timestamp: Date.now()
         };
     }
@@ -118,11 +118,11 @@ export class StyleService {
                     } else {
                         // 创建新样式
                         const newCssText = `${modification.target} { ${modification.property}: ${modification.value}; }`;
-                        const snapshot = this.createStyleElementSnapshot(
+                        const styleElementsnapshot = this.createStyleElementSnapshot(
                             modification.target, 
                             newCssText
                         );
-                        currentElements.push(snapshot);
+                        currentElements.push(styleElementsnapshot);
                     }
                     break;
 
@@ -256,38 +256,31 @@ export class StyleService {
     /**
      * 保存当前状态快照
      */
-    static saveSnapshot(userQuery?: string): void {
-        const state = this.getGlobalState();
+    static updateSnapshot(userQuery?: string): void {
+        var state = this.getGlobalState();
         
         // 如果当前没有快照，创建一个空的
         if (!state.currentSnapshot) {
             const emptySnapshot = this.createSnapshot([], userQuery);
             this.updateGlobalState({ currentSnapshot: emptySnapshot });
-        } else if (userQuery && !state.currentSnapshot.userQuery) {
-            // 如果有用户查询但当前快照没有，更新用户查询
+        } else if (userQuery) {
+            // 如果有用户查询，总是更新用户查询（不管当前快照是否已有userQuery）
             const updatedSnapshot = {
                 ...state.currentSnapshot,
                 userQuery: userQuery
             };
             this.updateGlobalState({ currentSnapshot: updatedSnapshot });
         }
-        
         // 保存当前快照到undo栈
+        state = this.getGlobalState();
         const currentSnapshot = state.currentSnapshot!;
         state.undoStack.push(currentSnapshot);
         
         // 清空redo栈（因为有了新的操作）
         this.updateGlobalState({
-            undoStack: state.undoStack,
             redoStack: []
         });
 
-        console.log('[StyleService] Snapshot saved, undo stack size:', state.undoStack.length);
-        console.log('[StyleService] Saved snapshot:', {
-            id: currentSnapshot.id,
-            elementsCount: currentSnapshot.elements.length,
-            userQuery: currentSnapshot.userQuery
-        });
     }
 
     /**
@@ -327,8 +320,8 @@ export class StyleService {
         }
 
         //打印两个stack
-        console.log('[StyleService] Undo stack:', state.undoStack);
-        console.log('[StyleService] Redo stack:', state.redoStack);
+        console.log('[StyleService][undo] Undo stack:', state.undoStack);
+        console.log('[StyleService][undo] Redo stack:', state.redoStack);
 
         return true;
     }
@@ -405,10 +398,15 @@ export class StyleService {
      */
     static printStateInfo(): void {
         const state = this.getGlobalState();
-        console.log('[StyleService] ===== STATE INFO =====');
-        console.log('[StyleService] Current elements:', state.currentSnapshot ? state.currentSnapshot.elements.length : 0);
-        console.log('[StyleService] Undo stack size:', state.undoStack.length);
-        console.log('[StyleService] Redo stack size:', state.redoStack.length);
+        console.log('[StyleService][printStateInfo] ===== STATE INFO =====');
+        //打印currenteddy
+        const floatingBall = (window as any).__pageEditFloatingBall;
+        if (floatingBall && floatingBall.panel && floatingBall.panel.currentEddy) {
+            console.log('[StyleService][printStateInfo] Current eddy:', floatingBall.panel.currentEddy);
+        }
+        console.log('[StyleService][printStateInfo] Current snapshot:', state.currentSnapshot);
+        console.log('[StyleService][printStateInfo] Undo stack:', state.undoStack);
+        console.log('[StyleService][printStateInfo] Redo stack:', state.redoStack);
         console.log('[StyleService] ======================');
     }
 
@@ -457,15 +455,6 @@ export class StyleService {
             console.error('[StyleService] Failed to apply eddy:', error);
             return false;
         }
-    }
-
-    /**
-     * 清空redo栈
-     * 通常在用户进行新的apply操作时调用
-     */
-    static clearRedoStack(): void {
-        this.updateGlobalState({ redoStack: [] });
-        console.log('[StyleService] Redo stack cleared');
     }
 
     /**
@@ -544,7 +533,7 @@ export class StyleService {
      * @param eddy Eddy对象
      * @returns 更新后的Eddy对象
      */
-    static saveToEddy(eddy: Eddy): Eddy {
+    static updateGlobalStateToEddy(eddy: Eddy): Eddy {
         try {
             const state = this.getGlobalState();
             
@@ -554,14 +543,14 @@ export class StyleService {
             const updatedEddy: Eddy = {
                 ...eddy,
                 currentSnapshot: state.currentSnapshot,
-                undoStack: [...state.undoStack],
-                redoStack: [...state.redoStack],
+                undoStack: state.undoStack,
+                redoStack: state.redoStack,
                 updatedAt: Date.now()
             };
             
             // 保持向后兼容：同步更新currentStyleElements
             if (state.currentSnapshot) {
-                updatedEddy.currentStyleElements = [...state.currentSnapshot.elements];
+                updatedEddy.currentStyleElements = state.currentSnapshot.elements;
             } else {
                 updatedEddy.currentStyleElements = [];
             }
@@ -580,23 +569,4 @@ export class StyleService {
         }
     }
 
-    /**
-     * 清空redo栈并保存到Eddy
-     * @param eddy Eddy对象
-     * @returns 更新后的Eddy对象
-     */
-    static clearRedoStackAndSave(eddy: Eddy): Eddy {
-        try {
-            console.log('[StyleService] Clearing redo stack and saving to eddy');
-            
-            // 清空redo栈
-            this.clearRedoStack();
-            
-            // 保存到Eddy
-            return this.saveToEddy(eddy);
-        } catch (error) {
-            console.error('[StyleService] Failed to clear redo stack and save:', error);
-            return eddy;
-        }
-    }
 } 
