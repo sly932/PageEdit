@@ -41,6 +41,19 @@ export class StorageService {
         return filteredEddys;
     }
 
+    // 获取特定ID的Eddy
+    static async getEddyById(eddyId: string): Promise<Eddy | null> {
+        console.log('[StorageService] Getting eddy by ID:', eddyId);
+        const eddys = await this.getEddys();
+        const foundEddy = eddys.find(eddy => eddy.id === eddyId) || null;
+        if (foundEddy) {
+            console.log('[StorageService] Found eddy by ID:', eddyId);
+        } else {
+            console.warn('[StorageService] Eddy not found for ID:', eddyId);
+        }
+        return foundEddy;
+    }
+
     // 获取特定域名的最近使用的 Eddy
     static async getLastUsedEddy(domain: string): Promise<Eddy | null> {
         console.log('[StorageService] Getting last used eddy for domain:', domain);

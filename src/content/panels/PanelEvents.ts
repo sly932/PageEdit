@@ -11,17 +11,14 @@ export class PanelEvents {
     private static dropdownMenu: HTMLDivElement | null = null;
     private static newEddyButton: HTMLButtonElement | null = null;
     private static deleteButton: HTMLButtonElement | null = null;
-    private static currentEddy: Eddy | null = null;
-    private static isNewEddy: boolean = false;
-    private static hasUnsavedChanges: boolean = false;
     private static isDropdownOpen: boolean = false;
     
     // 回调函数
     private static onNewEddy: (() => Promise<void>) | null = null;
     private static onSaveEddy: (() => Promise<void>) | null = null;
-    private static onSwitchEddy: ((eddy: Eddy) => void) | null = null;
+    private static onSwitchEddy: ((eddyId: string) => void) | null = null;
     private static onDeleteEddy: (() => Promise<void>) | null = null;
-    private static floatingPanel: any = null; // 添加 FloatingPanel 引用
+    private static onTitleUpdate: ((newTitle: string) => Promise<void>) | null = null;
 
     static initialize(
         panel: HTMLDivElement,
@@ -33,10 +30,10 @@ export class PanelEvents {
         callbacks: {
             onNewEddy: () => Promise<void>;
             onSaveEddy: () => Promise<void>;
-            onSwitchEddy: (eddy: Eddy) => void;
+            onSwitchEddy: (eddyId: string) => void;
             onDeleteEddy: () => Promise<void>;
-        },
-        floatingPanel?: any // 添加 FloatingPanel 参数
+            onTitleUpdate: (newTitle: string) => Promise<void>;
+        }
     ) {
         PanelEvents.panel = panel;
         PanelEvents.titleElement = titleElement;
@@ -48,20 +45,15 @@ export class PanelEvents {
         PanelEvents.onSaveEddy = callbacks.onSaveEddy;
         PanelEvents.onSwitchEddy = callbacks.onSwitchEddy;
         PanelEvents.onDeleteEddy = callbacks.onDeleteEddy;
-        PanelEvents.floatingPanel = floatingPanel; // 保存 FloatingPanel 引用
+        PanelEvents.onTitleUpdate = callbacks.onTitleUpdate;
         
         PanelEvents.setupEddyEventHandlers();
     }
 
-    static setCurrentEddy(eddy: Eddy, isNew: boolean = false) {
-        PanelEvents.currentEddy = eddy;
-        PanelEvents.isNewEddy = isNew;
-        PanelEvents.hasUnsavedChanges = false;
-        PanelEvents.updateTitle();
-    }
-
-    static setHasUnsavedChanges(hasChanges: boolean) {
-        PanelEvents.hasUnsavedChanges = hasChanges;
+    static updateTitle(name: string): void {
+        if (PanelEvents.titleElement) {
+            PanelEvents.titleElement.textContent = name;
+        }
     }
 
     // 添加公共方法检查下拉菜单状态
@@ -94,9 +86,8 @@ export class PanelEvents {
         if (PanelEvents.deleteButton) {
             PanelEvents.deleteButton.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (!PanelEvents.currentEddy || PanelEvents.currentEddy.id.startsWith('temp_')) return;
 
-                const eddyName = PanelEvents.currentEddy.name;
+                const eddyName = PanelEvents.titleElement?.textContent || 'this Eddy';
                 const confirmed = await showConfirmDialog({
                     icon: 'warning',
                     title: `Delete "${eddyName}"?`,
@@ -146,33 +137,17 @@ export class PanelEvents {
             PanelEvents.titleElement?.classList.remove('editing');
             PanelEvents.panel?.querySelector('.panel-header')?.classList.remove('editing');
             
-            // 检查标题是否被修改
-            if (PanelEvents.currentEddy) {
-                const newName = PanelEvents.titleElement?.textContent?.trim() || '';
-                
-                // 验证标题不能为空（包括只包含空格的情况）
-                if (!newName) {
-                    // 如果标题为空，直接设置原名称而不调用updateTitle
-                    if (PanelEvents.titleElement) {
-                        PanelEvents.titleElement.textContent = PanelEvents.currentEddy.name;
-                    }
-                    return;
-                }
-                
-                if (newName !== PanelEvents.currentEddy.name) {
-                    console.log('[PanelEvents] Title changed from', PanelEvents.currentEddy.name, 'to', newName);
-                    PanelEvents.hasUnsavedChanges = true;
-                    // 同时设置 FloatingPanel 的状态
-                    if (PanelEvents.floatingPanel && typeof PanelEvents.floatingPanel.setHasUnsavedChanges === 'function') {
-                        PanelEvents.floatingPanel.setHasUnsavedChanges(true);
-                    }
-                    // 立即更新当前 Eddy 的名称
-                    PanelEvents.currentEddy.name = newName;
-                    if (PanelEvents.onSaveEddy) {
-                        console.log('[PanelEvents] Calling onSaveEddy callback');
-                        await PanelEvents.onSaveEddy();
-                    }
-                }
+            const newName = PanelEvents.titleElement?.textContent?.trim() || '';
+            
+            if (!newName) {
+                // Title cannot be empty, revert logic should be handled by ContentManager
+                console.warn("[PanelEvents] Title cannot be empty.");
+                // Potentially call a callback to revert the title
+                return;
+            }
+            
+            if (PanelEvents.onTitleUpdate) {
+                await PanelEvents.onTitleUpdate(newName);
             }
         });
 
@@ -198,8 +173,10 @@ export class PanelEvents {
                 PanelEvents.titleElement?.blur();
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                PanelEvents.updateTitle(); // 恢复原名称
-                PanelEvents.titleElement?.blur();
+                if (PanelEvents.titleElement) {
+                    // Revert to original title logic to be handled by ContentManager
+                    PanelEvents.titleElement.blur();
+                }
             }
         });
 
@@ -219,18 +196,6 @@ export class PanelEvents {
         });
     }
 
-    private static updateTitle(): void {
-        console.log('[PanelEvents] updateTitle called, currentEddy:', PanelEvents.currentEddy?.name, 'titleElement:', !!PanelEvents.titleElement);
-        if (PanelEvents.currentEddy && PanelEvents.titleElement) {
-            console.log('[PanelEvents] Updating title from', PanelEvents.titleElement.textContent, 'to', PanelEvents.currentEddy.name);
-            PanelEvents.titleElement.textContent = PanelEvents.currentEddy.name;
-        } else if (PanelEvents.titleElement) {
-            console.log('[PanelEvents] No current eddy, setting title to PageEdit');
-            PanelEvents.titleElement.textContent = 'PageEdit';
-        }
-    }
-
-    // 下拉菜单相关方法
     private static async toggleDropdown(): Promise<void> {
         if (PanelEvents.isDropdownOpen) {
             PanelEvents.closeDropdown();
@@ -285,53 +250,66 @@ export class PanelEvents {
     private static createDropdownItem(eddy: Eddy): HTMLDivElement {
         const item = document.createElement('div');
         item.className = 'dropdown-item';
-        
-        // 如果是当前 Eddy，添加 current 类
-        if (PanelEvents.currentEddy && PanelEvents.currentEddy.id === eddy.id) {
-            item.classList.add('current');
+        item.dataset.eddyId = eddy.id;
+
+        const icon = document.createElement('span');
+        icon.className = 'dropdown-item-icon';
+        if (eddy.lastUsed) {
+            icon.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+            `;
         }
-        
-        // 创建名称元素
-        const nameElement = document.createElement('span');
-        nameElement.className = 'dropdown-item-name';
-        nameElement.textContent = eddy.name;
-        
-        item.appendChild(nameElement);
-        
-        // 为下拉菜单项添加 tooltip，显示完整名称
-        item.addEventListener('mouseenter', () => {
-            PanelTooltip.showTooltip(item, eddy.name);
-        });
-        item.addEventListener('mouseleave', () => {
-            PanelTooltip.hideTooltip();
-        });
-        
-        // 添加点击事件
-        item.addEventListener('click', async () => {
-            if (PanelEvents.currentEddy && PanelEvents.currentEddy.id === eddy.id) {
-                // 如果点击的是当前 Eddy，只关闭下拉菜单
-                PanelEvents.closeDropdown();
-                return;
-            }
-            
-            console.log('[PanelEvents] Switching to eddy:', eddy.name, '(ID:', eddy.id, ')');
-            
+        item.appendChild(icon);
+
+        const text = document.createElement('span');
+        text.className = 'dropdown-item-text';
+        text.textContent = eddy.name;
+        item.appendChild(text);
+
+        item.addEventListener('click', () => {
             if (PanelEvents.onSwitchEddy) {
-                PanelEvents.onSwitchEddy(eddy);
+                PanelEvents.onSwitchEddy(eddy.id);
+                PanelEvents.closeDropdown();
             }
-            
-            // 关闭下拉菜单
-            PanelEvents.closeDropdown();
         });
         
         return item;
     }
 
     private static closeDropdown(): void {
-        if (PanelEvents.dropdownMenu && PanelEvents.dropdownButton) {
-            PanelEvents.dropdownMenu.style.display = 'none';
-            PanelEvents.dropdownButton.classList.remove('open');
-            PanelEvents.isDropdownOpen = false;
+        if (!PanelEvents.dropdownMenu || !PanelEvents.dropdownButton) return;
+        PanelEvents.dropdownMenu.style.display = 'none';
+        PanelEvents.dropdownButton.classList.remove('open');
+        PanelEvents.isDropdownOpen = false;
+    }
+
+    static updateDropdown(eddys: Eddy[], onSwitch: (eddyId: string) => void, activeEddyId?: string): void {
+        if (!PanelEvents.dropdownMenu) return;
+
+        PanelEvents.dropdownMenu.innerHTML = ''; // 清空
+
+        if (eddys.length === 0) {
+            const noEddyItem = document.createElement('div');
+            noEddyItem.className = 'dropdown-item no-select';
+            noEddyItem.textContent = 'No eddys for this domain';
+            PanelEvents.dropdownMenu.appendChild(noEddyItem);
+            return;
         }
+        
+        const sortedEddys = [...eddys].sort((a, b) => b.updatedAt - a.updatedAt);
+
+        sortedEddys.forEach(eddy => {
+            const item = PanelEvents.createDropdownItem(eddy);
+            item.onclick = () => {
+                onSwitch(eddy.id);
+                PanelEvents.closeDropdown();
+            };
+            if (eddy.id === activeEddyId) {
+                item.classList.add('active');
+            }
+            PanelEvents.dropdownMenu?.appendChild(item);
+        });
     }
 } 

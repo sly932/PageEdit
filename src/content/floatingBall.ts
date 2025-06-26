@@ -79,6 +79,18 @@ export class FloatingBall {
         this.panel.setHasUnsavedChanges(hasChanges);
     }
 
+    public updatePanelDisplay(name: string, id: string, isNew: boolean): void {
+        this.panel.updatePanelDisplay(name, id, isNew);
+    }
+
+    public updateInputContent(content: string): void {
+        this.panel.updateInputContent(content);
+    }
+
+    public updateEddyList(eddys: import('../types/eddy').Eddy[], activeEddyId?: string): void {
+        this.panel.updateEddyList(eddys, activeEddyId);
+    }
+
     private injectStyles(): void {
         const style = document.createElement('style');
         style.textContent = `
@@ -335,73 +347,14 @@ export class FloatingBall {
     }
 
     private handleClick(e: MouseEvent): void {
-        console.log('[FloatingBall] Click event triggered');
-        // 如果正在拖拽，不触发点击事件
         if (this.isDragging) {
-            console.log('[FloatingBall] Click event ignored due to dragging');
-            e.preventDefault();
-            e.stopPropagation();
+            this.isDragging = false;
             return;
         }
-        
-        // 检查当前域名的 lastUsedEddy
-        this.checkAndInitializeEddy();
-    }
 
-    private async checkAndInitializeEddy(): Promise<void> {
-        try {
-            const currentDomain = window.location.hostname;
-            console.log('[FloatingBall] Checking lastUsedEddy for domain:', currentDomain);
-            
-            const lastUsedEddy = await StorageService.getLastUsedEddy(currentDomain);
-            
-            if (lastUsedEddy) {
-                console.log('[FloatingBall] Found lastUsedEddy:', lastUsedEddy.name, '(ID:', lastUsedEddy.id, ')');
-                // 如果有 lastUsedEddy，设置面板为编辑模式
-                this.panel.setCurrentEddy(lastUsedEddy);
-            } else {
-                console.log('[FloatingBall] No lastUsedEddy found, creating new eddy');
-                // 如果没有 lastUsedEddy，创建新的 Eddy
-                await this.createNewEddy();
-            }
-            
-            // 更新undo/redo按钮状态
-            this.panel.updateUndoRedoButtonStates();
-            
-            // 展开面板
-            this.panel.toggle();
-        } catch (error) {
-            console.error('[FloatingBall] Error checking/initializing eddy:', error);
-            // 出错时仍然展开面板
-            this.panel.toggle();
-        }
-    }
-
-    private async createNewEddy(): Promise<void> {
-        try {
-            const currentDomain = window.location.hostname;
-            const newEddyName = 'New Eddy';
-            
-            console.log('[FloatingBall] Creating new eddy with name:', newEddyName);
-            
-            const newEddy = await StorageService.createEddy(
-                newEddyName,
-                currentDomain,
-                { currentStyleElements: [] }
-            );
-            
-            // 初始化多版本管理字段
-            newEddy.currentSnapshot = null;
-            newEddy.undoStack = [];
-            newEddy.redoStack = [];
-            
-            console.log('[FloatingBall] New eddy created with version management:', newEddy.name, '(ID:', newEddy.id, ')');
-            
-            // 设置面板为新建模式
-            this.panel.setCurrentEddy(newEddy, true);
-        } catch (error) {
-            console.error('[FloatingBall] Error creating new eddy:', error);
-        }
+        // The only responsibility of the click is to toggle the panel.
+        // The ContentManager has already handled the initialization.
+        this.panel.toggle();
     }
 
     // 计算安全的初始位置，考虑开发者工具栏

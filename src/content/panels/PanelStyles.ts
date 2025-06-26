@@ -626,10 +626,13 @@ export class PanelStyles {
                 background-color: rgba(59, 130, 246, 0.1);
             }
 
-            .dropdown-item.current {
-                background-color: rgba(59, 130, 246, 0.15);
-                color: rgb(59, 130, 246);
-                font-weight: 500;
+            .dropdown-item.active {
+                background-color: rgba(34, 197, 94, 0.15) !important;
+                color: rgb(22, 163, 74) !important;
+                font-weight: 600;
+                padding-top: 6px;
+                padding-bottom: 6px;
+                border-radius: 4px;
             }
 
             #pageedit-floating-panel.dark-mode .dropdown-item {
@@ -640,10 +643,10 @@ export class PanelStyles {
             #pageedit-floating-panel.dark-mode .dropdown-item:hover {
                 background-color: rgba(96, 165, 250, 0.1);
             }
-
-            #pageedit-floating-panel.dark-mode .dropdown-item.current {
-                background-color: rgba(96, 165, 250, 0.15);
-                color: rgb(96, 165, 250);
+            
+            #pageedit-floating-panel.dark-mode .dropdown-item.active {
+                background-color: rgba(74, 222, 128, 0.15) !important;
+                color: rgb(74, 222, 128) !important;
             }
 
             .dropdown-item-name {
@@ -661,6 +664,157 @@ export class PanelStyles {
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.2s ease;
+            }
+
+            .apply-button.processing svg {
+                animation: none;
+            }
+
+            #pageedit-floating-panel.dark-mode .apply-button {
+                background: #374151;
+                color: #9ca3af;
+            }
+
+            #pageedit-floating-panel.dark-mode .apply-button.active {
+                background: #a855f7; /* Dark mode purple */
+            }
+            
+            #pageedit-floating-panel.dark-mode .apply-button svg {
+                color: #f3f4f6;
+            }
+            
+            #pageedit-floating-panel.dark-mode .apply-button.active svg {
+                color: white;
+            }
+
+            .undo-button,
+            .redo-button,
+            .reset-button {
+                background: #f3f4f6;
+                color: #374151;
+            }
+
+            .undo-button:hover,
+            .redo-button:hover,
+            .reset-button:hover {
+                background: #e5e7eb;
+            }
+
+            /* 反馈消息 */
+            .feedback-message {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.75);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 13px;
+                white-space: nowrap;
+                opacity: 0;
+                transition: all 0.3s ease;
+                pointer-events: none;
+                margin-bottom: 8px;
+            }
+
+            .feedback-message.success {
+                background: rgba(34, 197, 94, 0.8);
+            }
+
+            .feedback-message.error {
+                background: rgba(239, 68, 68, 0.8);
+            }
+
+            .feedback-message.show {
+                opacity: 1;
+            }
+            
+            /* 新 Eddy 按钮样式 */
+            .new-eddy-button {
+                background: none;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+            }
+            
+            .new-eddy-button:hover svg {
+                color: #8952f1;
+            }
+            
+            #pageedit-floating-panel.dark-mode .new-eddy-button:hover svg {
+                color: #a855f7;
+            }
+            
+            /* 下拉菜单样式 */
+            .dropdown {
+                position: relative;
+                display: inline-block;
+            }
+            
+            .dropdown-button {
+                background: none;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .dropdown-menu {
+                display: none;
+                position: absolute;
+                background-color: #f9f9f9;
+                min-width: 160px;
+                box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+                z-index: 1000;
+                border-radius: 6px;
+                padding: 4px 0;
+                margin-top: 4px;
+                border: 1px solid rgba(0,0,0,0.1);
+            }
+            
+            .dropdown-item {
+                color: black;
+                padding: 8px 12px;
+                text-decoration: none;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            
+            .dropdown-item:hover {
+                background-color: #f1f1f1;
+            }
+
+            .dropdown-item.active {
+                background-color: rgba(34, 197, 94, 0.15) !important;
+                color: rgb(22, 163, 74) !important;
+                font-weight: 600;
+                padding-top: 6px;
+                padding-bottom: 6px;
+            }
+
+            /* 深色模式下的下拉菜单 */
+            #pageedit-floating-panel.dark-mode .dropdown-menu {
+                background-color: #2d3748;
+                border-color: #4a5568;
+            }
+            
+            #pageedit-floating-panel.dark-mode .dropdown-item {
+                color: #e2e8f0;
+            }
+            
+            #pageedit-floating-panel.dark-mode .dropdown-item:hover {
+                background-color: #4a5568;
+            }
+            
+            #pageedit-floating-panel.dark-mode .dropdown-item.active {
+                background-color: rgba(74, 222, 128, 0.15) !important;
+                color: rgb(74, 222, 128) !important;
             }
         `;
         shadowRoot.appendChild(style);

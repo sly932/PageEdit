@@ -10,9 +10,11 @@ import { PanelRenderer } from './panels/PanelRenderer';
 
 // 定义自定义事件类型
 export interface PanelEvent {
-    type: 'apply' | 'undo' | 'redo' | 'cancel' | 'reset';
+    type: 'apply' | 'undo' | 'redo' | 'cancel' | 'reset' | 'new_eddy' | 'switch_eddy' | 'delete_eddy' | 'title_update';
     data?: {
         text?: string;
+        eddyId?: string;
+        newTitle?: string;
     };
 }
 
@@ -32,7 +34,6 @@ export class FloatingPanel {
     private isProcessing: boolean = false; // 添加处理状态标记
     
     // Eddy 相关属性
-    private currentEddy: Eddy | null = null;
     private isNewEddy: boolean = false;
     private titleElement!: HTMLSpanElement;
     private newEddyButton!: HTMLButtonElement;
@@ -94,10 +95,19 @@ export class FloatingPanel {
             {
                 onNewEddy: () => this.createNewEddy(),
                 onSaveEddy: () => this.saveCurrentEddy(),
-                onSwitchEddy: (eddy: Eddy) => this.setCurrentEddy(eddy),
-                onDeleteEddy: () => this.deleteCurrentEddy()
-            },
-            this // 传递 FloatingPanel 的引用
+                onSwitchEddy: (eddyId: string) => {
+                    if (this.eventCallback) {
+                        this.eventCallback({ type: 'switch_eddy', data: { eddyId } });
+                    }
+                },
+                onDeleteEddy: () => this.deleteCurrentEddy(),
+                onTitleUpdate: (newTitle: string) => {
+                    if (this.eventCallback) {
+                        this.eventCallback({ type: 'title_update', data: { newTitle } });
+                    }
+                    return Promise.resolve();
+                }
+            }
         );
         
         // 初始化主题
@@ -155,7 +165,7 @@ export class FloatingPanel {
         
         // 为标题添加动态 tooltip，显示完整标题
         this.titleElement.addEventListener('mouseenter', () => {
-            const fullTitle = this.currentEddy ? this.currentEddy.name : 'PageEdit';
+            const fullTitle = this.titleElement.textContent || 'PageEdit';
             PanelTooltip.showTooltip(this.titleElement, fullTitle);
         });
         this.titleElement.addEventListener('mouseleave', () => PanelTooltip.hideTooltip());
@@ -320,8 +330,8 @@ export class FloatingPanel {
         this.isProcessing = true;
         this.applyButton.title = 'Cancel';
         this.applyButton.classList.add('processing');
-        this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-            <rect x="6" y="6" width="12" height="12" rx="1" fill="white"/>
+        this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="1"/>
         </svg>`;
         
         // 禁用输入框
@@ -581,53 +591,29 @@ export class FloatingPanel {
         this.panel.remove();
     }
 
-    // Eddy 相关方法
-    public setCurrentEddy(eddy: Eddy, isNew: boolean = false): void {
-        console.log('[FloatingPanel] Setting current eddy:', eddy.name, '(ID:', eddy.id, ')', 'isNew:', isNew);
-        
-        // 取消进行中的请求
-        this.cancelPendingRequests();
-        
-        this.currentEddy = eddy;
+    /**
+     * Updates the panel's display to reflect the state of a given Eddy.
+     * @param eddyName The name of the Eddy to display.
+     * @param eddyId The ID of the Eddy.
+     * @param isNew Whether this is a newly created Eddy.
+     */
+    public updatePanelDisplay(eddyName: string, eddyId: string, isNew: boolean = false): void {
         this.isNewEddy = isNew;
-        this.hasUnsavedChanges = false; // 重置未保存更改标记
+
+        console.log(`[FloatingPanel] Updating panel display for: ${eddyName} (ID: ${eddyId}, isNew: ${isNew})`);
         
-        // 设置全局当前Eddy引用，供StyleService使用
-        (window as any).__pageEditCurrentEddy = eddy;
-        
-        // 更新 PanelEvents 模块
-        PanelEvents.setCurrentEddy(eddy, isNew);
-        
-        // 从Eddy恢复GlobalState（多版本管理）
-        const restoreSuccess = StyleService.restoreFromEddy(eddy);
-        if (restoreSuccess) {
-            console.log('[FloatingPanel] Successfully restored GlobalState from eddy');
-        } else {
-            console.warn('[FloatingPanel] Failed to restore GlobalState from eddy, falling back to legacy method');
-            
-            // 向后兼容：如果没有多版本管理字段，使用原来的方法
-            if (eddy.currentStyleElements && eddy.currentStyleElements.length > 0) {
-                this.loadEddyStyleElements(eddy);
-                // 立即应用 Eddy 的所有样式元素
-                this.applyEddyStyleElements(eddy);
-            } else {
-                // 如果 Eddy 没有样式元素，直接清空页面DOM
-                StyleService.clearAllStyleElementsFromDOM();
-                console.log('[FloatingPanel] Cleared all style elements from DOM for eddy without style elements:', eddy.name);
-            }
+        // 更新标题
+        this.updateEddyTitle(eddyName);
+        if (this.titleElement) {
+            this.titleElement.dataset.eddyId = eddyId;
         }
         
-        // 加载草稿内容（如果有的话）- 这个方法会从currentSnapshot中获取userQuery
-        this.loadDraftContent(eddy);
-        
-        // 更新undo/redo按钮状态
+        // 更新按钮状态
         this.updateUndoRedoButtonStates();
         
-        // 如果不是临时Eddy，将其设置为最近使用的Eddy（后台异步执行）
-        if (!isNew && !eddy.id.startsWith('temp_')) {
-            this.setAsLastUsedEddy(eddy).catch(error => {
-                console.error('[FloatingPanel] Error setting eddy as last used:', error);
-            });
+        // 如果是新的 Eddy，清空输入框
+        if (isNew) {
+            this.clearInput();
         }
     }
 
@@ -641,157 +627,25 @@ export class FloatingPanel {
         }
     }
 
-    private loadDraftContent(eddy: Eddy): void {
-        // 优先使用currentSnapshot中的userQuery
-        const currentSnapshot = StyleService.getCurrentSnapshot();
-        if (currentSnapshot && currentSnapshot.userQuery && currentSnapshot.userQuery.trim()) {
-            console.log('[FloatingPanel] Loading query from current snapshot:', currentSnapshot.userQuery);
-            this.input.value = currentSnapshot.userQuery;
-            this.input.style.height = 'auto';
-            this.input.style.height = `${this.input.scrollHeight}px`;
-            this.updateButtonState();
-        } else if (eddy.draftContent && eddy.draftContent.trim()) {
-            // 向后兼容：如果没有快照查询，使用draftContent
-            console.log('[FloatingPanel] Loading draft content for eddy:', eddy.name);
-            this.input.value = eddy.draftContent;
-            this.input.style.height = 'auto';
-            this.input.style.height = `${this.input.scrollHeight}px`;
-            this.updateButtonState();
-        } else {
-            // 如果都没有内容，清空输入框
-            console.log('[FloatingPanel] No query or draft content found, clearing input');
-            this.clearInput();
-        }
-    }
-
     private async createNewEddy(): Promise<void> {
-        try {
-            // 保存当前 Eddy（如果有未保存更改）
-            if (this.currentEddy && this.hasUnsavedChanges) {
-                await this.saveCurrentEddy();
-            }
-
-            // 清空当前页面的所有修改（因为要切换到新的 Eddy）
-            StyleService.clearAllStyleElements();
-            console.log('[FloatingPanel] Cleared all modifications for new eddy');
-
-            const currentDomain = window.location.hostname;
-            const newEddyName = 'New Eddy';
-            
-            console.log('[FloatingPanel] Creating new eddy with name:', newEddyName);
-            
-            // 创建一个临时的Eddy对象，不立即保存到存储
-            const newEddy: Eddy = {
-                id: `temp_${Date.now()}`, // 临时ID
-                name: newEddyName,
-                domain: currentDomain,
-                currentStyleElements: [],
-                lastUsed: false,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-                // 初始化多版本管理字段
-                currentSnapshot: null,
-                undoStack: [],
-                redoStack: []
-            };
-            
-            console.log('[FloatingPanel] New temporary eddy created with version management:', newEddy.name, '(ID:', newEddy.id, ')');
-            
-            // 设置新的 Eddy
-            this.setCurrentEddy(newEddy, true);
-            
-            // 新建 Eddy 时会自动清空输入框（通过 loadDraftContent 方法）
-        } catch (error) {
-            console.error('[FloatingPanel] Error creating new eddy:', error);
+        // This logic will be moved to ContentManager.
+        // For now, it just calls the event handler.
+        if (this.eventCallback) {
+            this.eventCallback({ type: 'new_eddy' });
         }
+        console.log('[FloatingPanel] "Create New Eddy" clicked. Notifying ContentManager.');
     }
 
     private async saveCurrentEddy(): Promise<void> {
-        console.log('[FloatingPanel] saveCurrentEddy called, hasUnsavedChanges:', this.hasUnsavedChanges, 'currentEddy:', this.currentEddy?.name);
-        
-        if (!this.currentEddy) {
-            console.log('[FloatingPanel] No current eddy, skipping save');
-            return;
-        }
-        
-        // 检查是否有未保存的更改（包括标题修改）
-        const newName = this.titleElement.textContent?.trim() || this.currentEddy.name;
-        const hasTitleChanges = newName !== this.currentEddy.name;
-        const hasContentChanges = this.hasUnsavedChanges;
-        
-        console.log('[FloatingPanel] Changes check - hasTitleChanges:', hasTitleChanges, 'hasContentChanges:', hasContentChanges, 'newName:', newName, 'currentName:', this.currentEddy.name);
-        
-        if (!hasTitleChanges && !hasContentChanges) {
-            console.log('[FloatingPanel] No changes detected, skipping save');
-            return;
-        }
-        
-        try {
-            // 更新 Eddy 名称（如果用户编辑了标题）
-            if (hasTitleChanges) {
-                console.log('[FloatingPanel] Updating eddy name from', this.currentEddy.name, 'to', newName);
-                this.currentEddy.name = newName;
-            }
-            
-            // 设置为最近使用的Eddy
-            this.currentEddy.lastUsed = true;
-            
-            // 保存当前GlobalState到Eddy（多版本管理）
-            this.currentEddy = StyleService.updateGlobalStateToEddy(this.currentEddy);
-            
-            // 如果是临时Eddy，需要先创建真实的Eddy
-            if (this.isNewEddy && this.currentEddy.id.startsWith('temp_')) {
-                console.log('[FloatingPanel] Converting temporary eddy to real eddy');
-                const realEddy = await StorageService.createEddy(
-                    this.currentEddy.name,
-                    this.currentEddy.domain,
-                    { currentStyleElements: this.currentEddy.currentStyleElements || [] }
-                );
-                // 复制多版本管理字段到真实Eddy
-                realEddy.currentSnapshot = this.currentEddy.currentSnapshot;
-                realEddy.undoStack = this.currentEddy.undoStack;
-                realEddy.redoStack = this.currentEddy.redoStack;
-                this.currentEddy = realEddy;
-                this.isNewEddy = false;
-                console.log('[FloatingPanel] Temporary eddy converted to real eddy:', realEddy.id);
-                // 同步 UI 层 currentEddy
-                PanelEvents.setCurrentEddy(this.currentEddy, false);
-            } 
-            await StorageService.updateEddy(this.currentEddy);
-            
-            // 重置未保存更改标记
-            this.hasUnsavedChanges = false;
-            PanelEvents.setHasUnsavedChanges(false);
-            
-            console.log('[FloatingPanel] Current eddy saved successfully:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
-        } catch (error) {
-            console.error('[FloatingPanel] Error saving current eddy:', error);
-        }
+        // This logic is now fully in ContentManager.
+        // The panel should only care about indicating the save status.
+        console.log('[FloatingPanel] "Save" action triggered. Logic is in ContentManager.');
     }
 
     private async setAsLastUsedEddy(eddy: Eddy): Promise<void> {
-        try {
-            // 如果当前Eddy已经是lastUsed，不需要更新
-            if (eddy.lastUsed) {
-                return;
-            }
-            
-            console.log('[FloatingPanel] Setting eddy as last used:', eddy.name, '(ID:', eddy.id, ')');
-            
-            // 设置当前Eddy为lastUsed
-            eddy.lastUsed = true;
-            eddy.updatedAt = Date.now();
-            
-            // 更新存储
-            await StorageService.updateEddy(eddy);
-            
-            console.log('[FloatingPanel] Eddy set as last used successfully');
-        } catch (error) {
-            console.error('[FloatingPanel] Error setting eddy as last used:', error);
-        }
+        // This logic is now in ContentManager.
     }
 
-    // 草稿保存相关方法
     private saveDraftDebounced(): void {
         // 清除之前的定时器
         if (this.draftSaveTimeout) {
@@ -805,129 +659,97 @@ export class FloatingPanel {
     }
 
     private async saveDraft(): Promise<void> {
-        if (!this.currentEddy || this.currentEddy.id.startsWith('temp_')) {
-            // 如果是临时 Eddy，不保存草稿
-            return;
-        }
-        
-        // 现在不再保存draftContent，因为使用currentSnapshot中的userQuery
-        // 草稿内容会自动保存在currentSnapshot中
-        console.log('[FloatingPanel] Draft content is now managed through currentSnapshot');
+        // Draft saving logic needs to be re-evaluated.
+        // It should probably get the eddyId from ContentManager.
+        // if (!this.currentEddy || this.isNewEddy) {
+        //     return;
+        // }
+        // await StorageService.saveDraft(this.currentEddy.id, this.input.value);
+        // console.log('[FloatingPanel] Draft saved for eddy:', this.currentEddy.id);
     }
 
     private handleDeleteEddy(): void {
-        if (!this.currentEddy || this.currentEddy.id.startsWith('temp_')) {
-            // 如果是临时Eddy，不需要删除
+        if (this.isNewEddy) {
             return;
         }
-        
-        // 显示确认对话框
-        if (confirm(`Are you sure you want to delete "${this.currentEddy.name}"? This action cannot be undone.`)) {
+        // Show confirmation dialog
+        const confirmed = confirm('Are you sure you want to delete this Eddy? This action cannot be undone.');
+        if (confirmed) {
             this.deleteCurrentEddy();
         }
     }
 
     private async deleteCurrentEddy(): Promise<void> {
-        if (!this.currentEddy || this.currentEddy.id.startsWith('temp_')) {
-            return;
-        }
-
-        try {
-            // 取消进行中的请求
-            this.cancelPendingRequests();
-            
-            console.log('[FloatingPanel] Deleting eddy:', this.currentEddy.name, '(ID:', this.currentEddy.id, ')');
-            const domain = this.currentEddy.domain;
-            
-            // 删除 Eddy
-            await StorageService.deleteEddy(this.currentEddy.id);
-
-            // 获取当前域名下所有 Eddy
-            const eddys = await StorageService.getEddysByDomain(domain);
-            if (eddys.length > 0) {
-                // 按修改时间倒序，选择最近的
-                eddys.sort((a, b) => b.updatedAt - a.updatedAt);
-                const latestEddy = eddys[0];
-                // 设置为 lastUsed
-                latestEddy.lastUsed = true;
-                await StorageService.updateEddy(latestEddy);
-                // 切换到该 Eddy
-                this.setCurrentEddy(latestEddy, false);
-                console.log('[FloatingPanel] Switched to latest eddy:', latestEddy.name, '(ID:', latestEddy.id, ')');
-            } else {
-                // 没有 Eddy，新建
-                await this.createNewEddy();
-                console.log('[FloatingPanel] No eddy left, created new eddy');
-            }
-            
-            console.log('[FloatingPanel] Eddy deleted successfully');
-        } catch (error) {
-            console.error('[FloatingPanel] Error deleting eddy:', error);
-            this.showFeedback('删除Eddy时出错', 'error');
+        // This logic is now in ContentManager.
+        console.log('[FloatingPanel] "Delete" action triggered. Notifying ContentManager.');
+        if (this.eventCallback) {
+            this.eventCallback({ type: 'delete_eddy' });
         }
     }
 
     public setHasUnsavedChanges(hasChanges: boolean): void {
         this.hasUnsavedChanges = hasChanges;
-        console.log('[FloatingPanel] hasUnsavedChanges set to:', hasChanges);
-    }
-
-    /**
-     * 应用 Eddy 的样式元素到页面
-     * @param eddy Eddy 对象
-     */
-    private async applyEddyStyleElements(eddy: Eddy): Promise<void> {
-        try {
-            if (!eddy.currentStyleElements || eddy.currentStyleElements.length === 0) {
-                console.log('[FloatingPanel] No style elements to apply for eddy:', eddy.name);
-                return;
-            }
-
-            console.log('[FloatingPanel] Applying', eddy.currentStyleElements.length, 'style elements for eddy:', eddy.name);
-
-            // 使用 StyleService 来应用 Eddy，确保状态一致性
-            const success = await StyleService.applyEddy(eddy);
-            
-            if (success) {
-                console.log('[FloatingPanel] Successfully applied all style elements for eddy:', eddy.name);
-            } else {
-                console.error('[FloatingPanel] Failed to apply style elements for eddy:', eddy.name);
-            }
-        } catch (error) {
-            console.error('[FloatingPanel] Error applying eddy style elements:', error);
-        }
-    }
-
-    /**
-     * 应用 Eddy 中的所有修改
-     * @param eddy Eddy 对象
-     * @returns 是否全部修改成功
-     */
-    static async applyEddy(eddy: Eddy): Promise<boolean> {
-        return StyleService.applyEddy(eddy);
     }
 
     private setupPageUnloadListener(): void {
-        // 添加页面刷新前的事件监听器
         window.addEventListener('beforeunload', () => {
-            console.log('[FloatingPanel] Page unloading, cancelling pending requests');
-            this.cancelPendingRequests();
+            if (this.hasUnsavedChanges) {
+                // 这里可以调用一个同步的保存方法，如果需要的话
+                // 但通常 `beforeunload` 中不允许异步操作
+                console.log('[FloatingPanel] Page unloading with unsaved changes.');
+            }
         });
     }
 
     /**
-     * 更新Eddy标题
-     * @param title 新的标题
+     * 更新 Eddy 标题
+     * @param title 新标题
      */
     public updateEddyTitle(title: string): void {
-        if (this.titleElement) {
-            console.log('[FloatingPanel] Updating eddy title from', this.titleElement.textContent, 'to', title);
-            this.titleElement.textContent = title;
-            
-            // 如果当前有eddy，同步更新eddy的名字
-            if (this.currentEddy) {
-                this.currentEddy.name = title;
-            }
+        this.titleElement.textContent = title;
+    }
+
+    public updateEddyList(eddys: Eddy[], activeEddyId?: string): void {
+        if (!this.dropdownMenu) return;
+
+        // Sort eddies by `updatedAt` in descending order
+        eddys.sort((a, b) => b.updatedAt - a.updatedAt);
+
+        this.dropdownMenu.innerHTML = ''; // Clear previous items
+
+        if (eddys.length === 0) {
+            const noEddyItem = document.createElement('div');
+            noEddyItem.textContent = 'No eddies for this domain';
+            noEddyItem.className = 'dropdown-item disabled';
+            this.dropdownMenu.appendChild(noEddyItem);
+            return;
         }
+
+        eddys.forEach(eddy => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.dataset.eddyId = eddy.id;
+
+            // Highlight the active eddy
+            if (eddy.id === activeEddyId) {
+                item.classList.add('active');
+            }
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'dropdown-item-name';
+            nameSpan.textContent = eddy.name;
+            item.appendChild(nameSpan);
+
+            item.addEventListener('click', () => {
+                if (this.eventCallback) {
+                    this.eventCallback({ type: 'switch_eddy', data: { eddyId: eddy.id } });
+                    this.isDropdownOpen = false;
+                    this.dropdownMenu.style.display = 'none';
+                    this.dropdownButton.classList.remove('open');
+                }
+            });
+
+            this.dropdownMenu.appendChild(item);
+        });
     }
 }

@@ -6,15 +6,17 @@ import { Eddy, StyleElementSnapshot, GlobalStyleState, Snapshot } from '../../ty
  * 处理页面元素的样式修改，基于样式元素快照管理
  */
 export class StyleService {
+    private static globalState: GlobalStyleState = {
+        currentSnapshot: null,
+        undoStack: [],
+        redoStack: []
+    };
+
     /**
      * 获取全局样式状态
      */
     private static getGlobalState(): GlobalStyleState {
-        return (window as any).__pageEditGlobalStyleState || {
-            currentSnapshot: null,
-            undoStack: [],
-            redoStack: []
-        };
+        return this.globalState;
     }
 
     /**
@@ -22,7 +24,7 @@ export class StyleService {
      */
     private static updateGlobalState(state: Partial<GlobalStyleState>): void {
         const currentState = this.getGlobalState();
-        (window as any).__pageEditGlobalStyleState = { ...currentState, ...state };
+        this.globalState = { ...currentState, ...state };
     }
 
     /**
@@ -210,33 +212,36 @@ export class StyleService {
     }
 
     /**
-     * 清除所有样式元素
+     * 重置状态：清空当前快照，并将undo栈移动到redo栈
      */
-    static clearAllStyleElements(): boolean {
+    static resetState(): boolean {
         try {
-            console.log('[StyleService] Clearing all style elements');
+            console.log('[StyleService] Resetting state');
             
             // 清除所有样式元素
             this.clearAllStyleElementsFromDOM();
             
-            // 创建空白快照而不是清空所有状态
-            const emptySnapshot = this.createSnapshot([], "clear eddy");
-            
-            // 保存当前状态到undo栈
             const state = this.getGlobalState();
-            state.undoStack.push(emptySnapshot);
+            
+            // 1. 创建一个 undoStack 的副本并将其反转。
+            //    这确保了最后发生的操作 (undoStack的末尾) 会被最先重做。
+            const reversedUndoStack = [...state.undoStack].reverse();
+
+            // 2. 将反转后的 undoStack 与现有的 redoStack 合并。
+            //    现有的 redo 项应该被保留，并且更早被重做。
+            const newRedoStack = [...state.redoStack, ...reversedUndoStack];
             
             // 更新全局状态
             this.updateGlobalState({
-                currentSnapshot: state.undoStack[state.undoStack.length - 1],
-                undoStack: state.undoStack,
-                redoStack: [] // 清空redo栈，因为有了新的操作
+                currentSnapshot: null,
+                undoStack: [],
+                redoStack: newRedoStack
             });
 
-            console.log('[StyleService] Created empty snapshot, can undo to previous state');
+            console.log('[StyleService] All elements cleared. Undo stack moved to redo stack.');
             return true;
         } catch (error) {
-            console.error('[StyleService] Clear failed:', error);
+            console.error('[StyleService] Reset failed:', error);
             return false;
         }
     }
@@ -566,6 +571,29 @@ export class StyleService {
         } catch (error) {
             console.error('[StyleService] Failed to save GlobalState to eddy:', error);
             return eddy;
+        }
+    }
+
+    /**
+     * 彻底清除状态：清空所有栈和快照
+     */
+    static clearState(): void {
+        try {
+            console.log('[StyleService] Clearing state completely');
+            
+            // 1. 清除 DOM 上的所有样式元素
+            this.clearAllStyleElementsFromDOM();
+            
+            // 2. 将全局状态重置为初始空状态
+            this.updateGlobalState({
+                currentSnapshot: null,
+                undoStack: [],
+                redoStack: []
+            });
+
+            console.log('[StyleService] State cleared completely.');
+        } catch (error) {
+            console.error('[StyleService] Clear state failed:', error);
         }
     }
 
