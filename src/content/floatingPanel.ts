@@ -508,8 +508,8 @@ export class FloatingPanel {
             position: fixed;
             top: 1rem;
             right: 1rem;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
             color: white;
             background: ${type === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)'};
             opacity: 1;
@@ -519,6 +519,9 @@ export class FloatingPanel {
             font-size: 14px;
             font-weight: 500;
             pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         `;
         
         // 确保元素立即显示，而不是等待下一个渲染周期

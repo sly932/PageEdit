@@ -205,9 +205,12 @@ export class PanelEvents {
     }
 
     private static async openDropdown(): Promise<void> {
-        if (!PanelEvents.dropdownMenu || !PanelEvents.dropdownButton) return;
+        if (!PanelEvents.dropdownMenu || !PanelEvents.dropdownButton || !PanelEvents.titleElement) return;
 
         try {
+            // 从标题元素获取当前活动的 Eddy ID
+            const activeEddyId = PanelEvents.titleElement.dataset.eddyId;
+
             // 加载当前域名的所有 Eddy
             const currentDomain = window.location.hostname;
             const eddys = await StorageService.getEddysByDomain(currentDomain);
@@ -231,7 +234,7 @@ export class PanelEvents {
             } else {
                 // 添加所有 Eddy 到下拉菜单
                 sortedEddys.forEach(eddy => {
-                    const item = PanelEvents.createDropdownItem(eddy);
+                    const item = PanelEvents.createDropdownItem(eddy, activeEddyId);
                     PanelEvents.dropdownMenu?.appendChild(item);
                 });
             }
@@ -247,34 +250,27 @@ export class PanelEvents {
         }
     }
 
-    private static createDropdownItem(eddy: Eddy): HTMLDivElement {
+    private static createDropdownItem(eddy: Eddy, activeEddyId?: string): HTMLDivElement {
         const item = document.createElement('div');
         item.className = 'dropdown-item';
         item.dataset.eddyId = eddy.id;
-
-        const icon = document.createElement('span');
-        icon.className = 'dropdown-item-icon';
-        if (eddy.lastUsed) {
-            icon.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-            `;
+        
+        // 如果是当前活动的 Eddy，添加 active 类
+        if (eddy.id === activeEddyId) {
+            item.classList.add('active');
         }
-        item.appendChild(icon);
 
-        const text = document.createElement('span');
-        text.className = 'dropdown-item-text';
-        text.textContent = eddy.name;
-        item.appendChild(text);
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'dropdown-item-name';
+        nameSpan.textContent = eddy.name;
+        item.appendChild(nameSpan);
 
         item.addEventListener('click', () => {
             if (PanelEvents.onSwitchEddy) {
                 PanelEvents.onSwitchEddy(eddy.id);
-                PanelEvents.closeDropdown();
             }
+            PanelEvents.closeDropdown(); // Switch and close
         });
-        
         return item;
     }
 
@@ -287,28 +283,10 @@ export class PanelEvents {
 
     static updateDropdown(eddys: Eddy[], onSwitch: (eddyId: string) => void, activeEddyId?: string): void {
         if (!PanelEvents.dropdownMenu) return;
-
-        PanelEvents.dropdownMenu.innerHTML = ''; // 清空
-
-        if (eddys.length === 0) {
-            const noEddyItem = document.createElement('div');
-            noEddyItem.className = 'dropdown-item no-select';
-            noEddyItem.textContent = 'No eddys for this domain';
-            PanelEvents.dropdownMenu.appendChild(noEddyItem);
-            return;
-        }
-        
-        const sortedEddys = [...eddys].sort((a, b) => b.updatedAt - a.updatedAt);
-
+        PanelEvents.dropdownMenu.innerHTML = '';
+        const sortedEddys = eddys.sort((a, b) => b.updatedAt - a.updatedAt);
         sortedEddys.forEach(eddy => {
-            const item = PanelEvents.createDropdownItem(eddy);
-            item.onclick = () => {
-                onSwitch(eddy.id);
-                PanelEvents.closeDropdown();
-            };
-            if (eddy.id === activeEddyId) {
-                item.classList.add('active');
-            }
+            const item = PanelEvents.createDropdownItem(eddy, activeEddyId);
             PanelEvents.dropdownMenu?.appendChild(item);
         });
     }

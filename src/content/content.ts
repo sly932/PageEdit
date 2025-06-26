@@ -240,96 +240,6 @@ export class ContentManager {
     }
 
     /**
-     * 更新当前Eddy的样式元素
-     */
-    private async updateCurrentEddyStyleElements(): Promise<void> {
-        try {
-            if (!this.currentEddy) {
-                console.warn('[content] No current eddy found, skipping style elements update');
-                return;
-            }
-            
-            // 使用StyleService.updateGlobalStateToEddy保存完整的GlobalState
-            const updatedEddy = StyleService.updateGlobalStateToEddy(this.currentEddy);
-            this.currentEddy = updatedEddy;
-            
-            // 标记有未保存更改
-            if (this.floatingBall) {
-                this.floatingBall.setHasUnsavedChanges(true);
-            }
-
-            // 如果是临时Eddy，立即保存为真实Eddy
-            if (this.currentEddy.id.startsWith('temp_')) {
-                console.log('[content] Converting temp eddy to real eddy during apply');
-                const { StorageService } = await import('../services/storageService');
-                
-                // 根据query内容更新eddy名字（保留20个字符）
-                const currentSnapshot = StyleService.getCurrentSnapshot();
-                let newEddyName = this.currentEddy.name; // 默认使用当前名字
-                
-                console.log('[content] Current snapshot:', currentSnapshot);
-                console.log('[content] Current snapshot userQuery:', currentSnapshot?.userQuery);
-                
-                if (currentSnapshot && currentSnapshot.userQuery) {
-                    // 使用query内容作为名字，保留20个字符
-                    newEddyName = currentSnapshot.userQuery.trim().substring(0, 20);
-                    if (newEddyName.length === 20) {
-                        newEddyName += '...'; // 如果截断了，添加省略号
-                    }
-                    console.log('[content] Updated eddy name from query:', newEddyName);
-                } else {
-                    console.log('[content] No userQuery found in snapshot, keeping original name:', newEddyName);
-                }
-                
-                // 创建真实的Eddy
-                const realEddy = await StorageService.createEddy(
-                    newEddyName,
-                    this.currentEddy.domain,
-                    { currentStyleElements: this.currentEddy.currentStyleElements }
-                );
-                
-                // 复制多版本管理字段到真实Eddy
-                realEddy.currentSnapshot = this.currentEddy.currentSnapshot;
-                realEddy.undoStack = this.currentEddy.undoStack;
-                realEddy.redoStack = this.currentEddy.redoStack;
-                
-                // 更新 currentEddy 引用
-                this.currentEddy = realEddy;
-
-                // 同步更新Panel
-                if (this.floatingBall) {
-                    this.floatingBall.updatePanelDisplay(realEddy.name, realEddy.id, false);
-                }
-                
-                // d. 更新 domainEddys 列表
-                this.domainEddys.push(this.currentEddy);
-                
-                console.log('[ContentManager] Temporary eddy converted to real eddy with id:', realEddy.id);
-                
-                // e. 再次保存，以持久化版本控制信息
-                await StorageService.updateEddy(this.currentEddy);
-                
-            } else {
-                // 更新现有的Eddy
-                await this.saveEddyToStorage(this.currentEddy);
-            }
-
-            console.log('[content] Updated eddy with GlobalState:', {
-                elementsCount: this.currentEddy.currentStyleElements.length,
-                undoStackSize: this.currentEddy.undoStack?.length || 0,
-                redoStackSize: this.currentEddy.redoStack?.length || 0
-            });
-            
-            // 更新undo/redo按钮状态
-            if (this.floatingBall) {
-                this.floatingBall.updateUndoRedoButtonStates();
-            }
-        } catch (error) {
-            console.error('[content] Error updating eddy style elements:', error);
-        }
-    }
-
-    /**
      * 检查Eddy是否仍然有效
      * @param eddy Eddy对象
      * @returns 是否有效
@@ -375,28 +285,43 @@ export class ContentManager {
         if (this.currentEddy.id.startsWith('temp_')) {
             console.log('[ContentManager] Converting temporary eddy to real eddy.');
             
-            // a. 调用 createEddy 创建一个基础的真实 Eddy
+            // a. 根据 query 内容更新 eddy 名字
+            const currentSnapshot = StyleService.getCurrentSnapshot();
+            let newEddyName = this.currentEddy.name; // Default name
+
+            if (currentSnapshot && currentSnapshot.userQuery) {
+                const fullQuery = currentSnapshot.userQuery.trim();
+                newEddyName = fullQuery.substring(0, 10);
+                if (fullQuery.length > 10) {
+                    newEddyName += '...';
+                }
+                console.log(`[ContentManager] New eddy name from query: "${newEddyName}"`);
+            } else {
+                console.log('[ContentManager] No userQuery found in snapshot, using default name:', newEddyName);
+            }
+            
+            // b. 调用 createEddy 创建一个基础的真实 Eddy
             // StorageService 内部会处理 lastUsed 标志
             const realEddy = await StorageService.createEddy(
-                this.currentEddy.name, 
+                newEddyName, 
                 this.currentEddy.domain, 
                 { currentStyleElements: this.currentEddy.currentStyleElements }
             );
             
-            // b. 将版本控制信息从临时 Eddy 复制到真实 Eddy
+            // c. 将版本控制信息从临时 Eddy 复制到真实 Eddy
             realEddy.currentSnapshot = this.currentEddy.currentSnapshot;
             realEddy.undoStack = this.currentEddy.undoStack;
             realEddy.redoStack = this.currentEddy.redoStack;
 
-            // c. 用返回的真实 Eddy 替换当前 Eddy
+            // d. 用返回的真实 Eddy 替换当前 Eddy
             this.currentEddy = realEddy; 
             
-            // d. 更新 domainEddys 列表
+            // e. 更新 domainEddys 列表
             this.domainEddys.push(this.currentEddy);
             
             console.log('[ContentManager] Temporary eddy converted to real eddy with id:', realEddy.id);
             
-            // e. 再次保存，以持久化版本控制信息
+            // f. 再次保存，以持久化版本控制信息
             await StorageService.updateEddy(this.currentEddy);
             
         } else {
@@ -685,7 +610,11 @@ export class ContentManager {
                 this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false);
                 this.floatingBall.updateUndoRedoButtonStates();
                 this.updateInputWithSnapshotQuery(); // Update input with the new eddy's query
-                this.floatingBall.showFeedback(`Switched to ${this.currentEddy.name}`, 'success');
+                // 如果名称超过5个字符，则截断并添加省略号
+                const displayName = this.currentEddy.name.length > 5 
+                    ? `${this.currentEddy.name.substring(0, 5)}...` 
+                    : this.currentEddy.name;
+                this.floatingBall.showFeedback(`Switched to ${displayName}`, 'success');
             }
             
             if (this.currentEddy) {
