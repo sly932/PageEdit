@@ -10,7 +10,7 @@ import { PanelRenderer } from './panels/PanelRenderer';
 
 // 定义自定义事件类型
 export interface PanelEvent {
-    type: 'apply' | 'undo' | 'redo' | 'cancel' | 'reset' | 'new_eddy' | 'switch_eddy' | 'delete_eddy' | 'title_update' | 'toggle_eddy_enabled';
+    type: 'apply' | 'undo' | 'redo' | 'cancel' | 'reset' | 'new_eddy' | 'switch_eddy' | 'delete_eddy' | 'title_update' | 'toggle_eddy_enabled' | 'view_original_style' | 'restore_eddy_style';
     data?: {
         text?: string;
         eddyId?: string;
@@ -28,6 +28,7 @@ export class FloatingPanel {
     private undoButton!: HTMLButtonElement;
     private redoButton!: HTMLButtonElement;
     private resetButton!: HTMLButtonElement;
+    private viewOriginalButton!: HTMLButtonElement;
     private feedback!: HTMLDivElement;
     private shadowRoot: ShadowRoot;
     private eventCallback: PanelEventCallback | null = null;
@@ -75,6 +76,7 @@ export class FloatingPanel {
         this.undoButton = panelElements.undoButton;
         this.redoButton = panelElements.redoButton;
         this.resetButton = panelElements.resetButton;
+        this.viewOriginalButton = panelElements.viewOriginalButton;
         this.feedback = panelElements.feedback;
         this.titleElement = panelElements.titleElement;
         this.eddyToggleSwitch = panelElements.eddyToggleSwitch; // 新增
@@ -153,6 +155,22 @@ export class FloatingPanel {
             PanelTooltip.showTooltip(this.eddyToggleSwitch, tooltipText);
         });
         this.eddyToggleSwitch.addEventListener('mouseleave', () => PanelTooltip.hideTooltip());
+
+        // 新增: 为预览原始样式按钮添加事件
+        this.viewOriginalButton.addEventListener('mouseenter', () => {
+            if (this.eventCallback) {
+                this.eventCallback({ type: 'view_original_style' });
+            }
+            // Tooltip is managed dynamically via updateViewOriginalButtonState
+            const tooltipText = this.viewOriginalButton.title;
+            PanelTooltip.showTooltip(this.viewOriginalButton, tooltipText);
+        });
+        this.viewOriginalButton.addEventListener('mouseleave', () => {
+            if (this.eventCallback) {
+                this.eventCallback({ type: 'restore_eddy_style' });
+            }
+            PanelTooltip.hideTooltip();
+        });
 
         // 添加 Tooltip 事件监听器
         PanelTooltip.addTooltipEvents(this.undoButton, 'UNDO');
@@ -616,6 +634,7 @@ export class FloatingPanel {
      * @param eddyName The name of the Eddy to display.
      * @param eddyId The ID of the Eddy.
      * @param isNew Whether this is a newly created Eddy.
+     * @param isEnabled Whether the Eddy is currently enabled.
      */
     public updatePanelDisplay(eddyName: string, eddyId: string, isNew: boolean = false, isEnabled: boolean = true): void {
         this.isNewEddy = isNew;
@@ -630,6 +649,9 @@ export class FloatingPanel {
 
         // 更新 Eddy 开关状态
         this.updateEddyToggleState(isEnabled);
+
+        // 新增：更新预览按钮状态
+        this.updateViewOriginalButtonState(isEnabled);
         
         // 更新按钮状态
         this.updateUndoRedoButtonStates();
@@ -785,6 +807,23 @@ export class FloatingPanel {
             } else {
                 this.eddyToggleSwitch.classList.remove('enabled');
                 this.eddyToggleSwitch.title = 'Enable Eddy';
+            }
+        }
+    }
+
+    // 新增：更新预览原始按钮的UI状态
+    public updateViewOriginalButtonState(isEnabled: boolean): void {
+        if (this.viewOriginalButton) {
+            if (isEnabled) {
+                this.viewOriginalButton.disabled = false;
+                this.viewOriginalButton.style.opacity = '1';
+                this.viewOriginalButton.style.cursor = 'pointer';
+                this.viewOriginalButton.title = 'Hold to view original page';
+            } else {
+                this.viewOriginalButton.disabled = true;
+                this.viewOriginalButton.style.opacity = '0.5';
+                this.viewOriginalButton.style.cursor = 'not-allowed';
+                this.viewOriginalButton.title = 'Eddy is disabled';
             }
         }
     }

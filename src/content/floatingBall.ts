@@ -99,6 +99,12 @@ export class FloatingBall {
         }
     }
 
+    public updateViewOriginalButtonState(isEnabled: boolean): void {
+        if (this.panel) {
+            this.panel.updateViewOriginalButtonState(isEnabled);
+        }
+    }
+
     private injectStyles(): void {
         const style = document.createElement('style');
         style.textContent = `

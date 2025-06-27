@@ -106,6 +106,8 @@ export class StyleService {
 
                     if (existingIndex >= 0) {
                         // 更新现有样式
+                        console.log('[StyleService] detect existing style for modification:', modification);
+                        console.log('[StyleService] Updating existing style:', currentElements[existingIndex]);
                         const existing = currentElements[existingIndex];
                         const updatedCssText = this.mergeCSSProperties(
                             existing.cssText, 
@@ -117,6 +119,7 @@ export class StyleService {
                             cssText: updatedCssText,
                             timestamp: Date.now()
                         };
+                        console.log('[StyleService] Updated existing style:', currentElements[existingIndex]);
                     } else {
                         // 创建新样式
                         const newCssText = `${modification.target} { ${modification.property}: ${modification.value}; }`;
@@ -186,14 +189,18 @@ export class StyleService {
         property: string, 
         value: string
     ): string {
-        // 简单的CSS合并逻辑
-        // 移除现有的属性声明
-        const propertyRegex = new RegExp(`${property}\\s*:\\s*[^;]+;?`, 'g');
-        const cleanedCss = existingCss.replace(propertyRegex, '');
-        
-        // 添加新属性
-        const cssContent = cleanedCss.replace(/}$/, `  ${property}: ${value};\n}`);
-        return cssContent;
+        // 正则表达式，用于查找属性。不区分大小写，并捕获属性名部分。
+        const propertyRegex = new RegExp(`(${property}\\s*:\\s*)[^;]+`, 'i');
+
+        // 检查属性是否已存在
+        if (propertyRegex.test(existingCss)) {
+            // 如果存在，只替换其值
+            return existingCss.replace(propertyRegex, `$1${value}`);
+        } else {
+            // 如果不存在，在关闭括号前添加新属性
+            // a more robust regex to handle potential whitespace before the closing brace
+            return existingCss.replace(/(\s*)}$/, `  ${property}: ${value};\n$1}`);
+        }
     }
 
     /**
@@ -483,52 +490,31 @@ export class StyleService {
     /**
      * 从Eddy恢复GlobalState
      * @param eddy Eddy对象
-     * @returns 是否恢复成功
+     * @param options Options for the restoration, e.g., whether to apply styles to the DOM.
      */
-    static restoreFromEddy(eddy: Eddy): boolean {
+    static restoreFromEddy(eddy: Eddy, options: { applyToDOM: boolean } = { applyToDOM: true }): boolean {
         try {
-            console.log('[StyleService] Restoring GlobalState from eddy:', eddy.name);
+            console.log(`[StyleService] Restoring from eddy: ${eddy.name}, applyToDOM: ${options.applyToDOM}`);
             
-            // 先清空当前页面的所有样式元素
-            this.clearAllStyleElementsFromDOM();
-            console.log('[StyleService] Cleared current style elements from DOM');
+            // 1. Clear current state from DOM and memory
+            this.clearState();
             
-            // 构建GlobalState
-            const globalState: GlobalStyleState = {
+            // 2. Set the global state from the eddy
+            this.updateGlobalState({
                 currentSnapshot: eddy.currentSnapshot || null,
                 undoStack: eddy.undoStack || [],
                 redoStack: eddy.redoStack || []
-            };
-            
-            // 更新全局状态
-            this.updateGlobalState(globalState);
-            
-            // 如果有当前快照，应用其样式元素到页面
-            if (globalState.currentSnapshot) {
-                this.applyAllStyleElements(globalState.currentSnapshot.elements);
-                console.log('[StyleService] Applied current snapshot with', globalState.currentSnapshot.elements.length, 'elements');
-            } else {
-                // 如果没有快照但有currentStyleElements（向后兼容），创建快照并应用
-                if (eddy.currentStyleElements && eddy.currentStyleElements.length > 0) {
-                    const snapshot = this.createSnapshot(eddy.currentStyleElements);
-                    this.updateGlobalState({ currentSnapshot: snapshot });
-                    this.applyAllStyleElements(eddy.currentStyleElements);
-                    console.log('[StyleService] Created snapshot from currentStyleElements with', eddy.currentStyleElements.length, 'elements');
-                } else {
-                    // 页面已经是清空状态，不需要额外操作
-                    console.log('[StyleService] No style elements to apply, page is already cleared');
-                }
-            }
-            
-            console.log('[StyleService] GlobalState restored successfully from eddy:', {
-                currentSnapshot: globalState.currentSnapshot ? globalState.currentSnapshot.id : null,
-                undoStackSize: globalState.undoStack.length,
-                redoStackSize: globalState.redoStack.length
             });
-            
+
+            // 3. Apply the styles from the new currentSnapshot to the DOM only if specified
+            if (options.applyToDOM && this.globalState.currentSnapshot) {
+                this.applyAllStyleElements(this.globalState.currentSnapshot.elements);
+                console.log('[StyleService] Applied', this.globalState.currentSnapshot.elements.length, 'style elements from restored eddy.');
+            }
+
             return true;
         } catch (error) {
-            console.error('[StyleService] Failed to restore GlobalState from eddy:', error);
+            console.error('[StyleService] Failed to restore from eddy:', error);
             return false;
         }
     }
@@ -578,12 +564,13 @@ export class StyleService {
      * 彻底清除状态：清空所有栈和快照
      */
     static clearState(): void {
+        this.clearAllStyleElementsFromDOM();
         this.updateGlobalState({
             currentSnapshot: null,
             undoStack: [],
             redoStack: []
         });
-        this.clearAllStyleElementsFromDOM();
+        
     }
 
     /**

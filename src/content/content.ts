@@ -46,6 +46,7 @@ export class ContentManager {
                 if (this.currentEddy && !this.currentEddy.id.startsWith('temp_')) {
                     const isEnabled = this.currentEddy.isEnabled ?? true;
                     this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+                    this.floatingBall.updateViewOriginalButtonState(isEnabled);
                 }
                 this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id);
             }
@@ -125,10 +126,12 @@ export class ContentManager {
         }
         
         // 4. 更新 UI
-        if (this.floatingBall) {
-            const isEnabled = this.currentEddy?.isEnabled ?? true;
-            this.floatingBall.updatePanelDisplay(this.currentEddy?.name || 'PageEdit', this.currentEddy?.id || '', false, isEnabled);
-            this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id);
+        if (this.floatingBall && this.currentEddy) {
+            const isEnabled = this.currentEddy.isEnabled ?? true;
+            this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+            this.floatingBall.updateViewOriginalButtonState(isEnabled);
+            this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id); // Update the dropdown list
+            this.floatingBall.setHasUnsavedChanges(false);
         }
     }
 
@@ -144,15 +147,23 @@ export class ContentManager {
             console.log('[content] Loading most recent eddy:', recentEddy.name);
             this.currentEddy = recentEddy;
             
-            // Only apply styles if the eddy is enabled
+            // Always restore state to StyleService, but only apply to DOM if enabled.
             const isEnabled = this.currentEddy.isEnabled ?? true;
-            if (isEnabled) {
-                StyleService.restoreFromEddy(recentEddy);
-            }
+            StyleService.restoreFromEddy(recentEddy, { applyToDOM: isEnabled });
+
         } else {
             console.log('[content] No eddys found for this domain. Creating a new temporary one.');
             // If no eddies exist at all, create a new temporary one.
             await this.handleNewEddy(null);
+        }
+
+        // 4. 更新UI（例如，去掉未保存状态的提示）
+        if (this.floatingBall && this.currentEddy) {
+            const isEnabled = this.currentEddy.isEnabled ?? true;
+            this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+            this.floatingBall.updateViewOriginalButtonState(isEnabled);
+            this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id); // Update the dropdown list
+            this.floatingBall.setHasUnsavedChanges(false);
         }
     }
 
@@ -337,9 +348,10 @@ export class ContentManager {
         }
 
         // 4. 更新UI（例如，去掉未保存状态的提示）
-        if (this.floatingBall) {
+        if (this.floatingBall && this.currentEddy) {
             const isEnabled = this.currentEddy.isEnabled ?? true;
             this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+            this.floatingBall.updateViewOriginalButtonState(isEnabled);
             this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id); // Update the dropdown list
             this.floatingBall.setHasUnsavedChanges(false);
         }
@@ -430,7 +442,7 @@ export class ContentManager {
                     await this.redoLastModification();
                     break;
                 case 'reset':
-                    await this.resetState();
+                    await this.resetStateAndSaveToStorage();
                     break;
                 case 'new_eddy':
                     await this.handleNewEddy(event.data);
@@ -453,6 +465,16 @@ export class ContentManager {
                     break;
                 case 'toggle_eddy_enabled':
                     await this.handleToggleEddyEnabled();
+                    break;
+                case 'view_original_style':
+                    if (this.currentEddy?.isEnabled) {
+                        StyleService.clearAllAppliedStyles();
+                    }
+                    break;
+                case 'restore_eddy_style':
+                    if (this.currentEddy?.isEnabled) {
+                        StyleService.reapplyAllAppliedStyles();
+                    }
                     break;
                 default:
                     console.warn(`[ContentManager] Unknown panel event type: ${(event as any).type}`);
@@ -555,6 +577,7 @@ export class ContentManager {
 
         if (this.floatingBall) {
             this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, true, true);
+            this.floatingBall.updateViewOriginalButtonState(true);
             this.floatingBall.clearInput();
             this.floatingBall.updateUndoRedoButtonStates();
         }
@@ -572,17 +595,13 @@ export class ContentManager {
 
         this.currentEddy = targetEddy;
         
-        // Only apply styles if the eddy is enabled
+        // Always restore state, only apply to DOM if enabled.
         const isEnabled = this.currentEddy.isEnabled ?? true;
-        if (isEnabled) {
-            StyleService.restoreFromEddy(this.currentEddy);
-        } else {
-            // If switching to a disabled eddy, make sure no styles are applied
-            StyleService.clearAllAppliedStyles();
-        }
+        StyleService.restoreFromEddy(this.currentEddy, { applyToDOM: isEnabled });
 
         if (this.floatingBall) {
             this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+            this.floatingBall.updateViewOriginalButtonState(isEnabled);
             this.floatingBall.updateInputContent(this.currentEddy.draftContent || '');
             this.floatingBall.updateUndoRedoButtonStates();
         }
@@ -614,7 +633,7 @@ export class ContentManager {
             this.currentEddy = null;
             
             // Reset style service state completely
-            StyleService.clearState();
+            this.resetState();
 
             // Update the UI with the new list
             if (this.floatingBall) {
@@ -643,12 +662,48 @@ export class ContentManager {
                 await this.handleNewEddy(null);
             }
 
-            await this.resetState();
-            this.floatingBall?.showFeedback('All changes have been reset.', 'success');
-            this.floatingBall?.updateUndoRedoButtonStates();
-
+            // The call to handleSwitchEddy or handleNewEddy already handles resetting
+            // and loading the correct state. No further reset is needed here.
+            this.floatingBall?.showFeedback('delete success', 'success');
         } catch (error) {
             console.error('[ContentManager] Error deleting eddy:', error);
+        }
+    }
+
+    /**
+     * 重置状态，不保存到存储
+     */
+    private resetState(): void {
+        // This reset does NOT save to storage.
+        // It's for situations where we need a clean slate without persisting,
+        // like after deleting an eddy.
+        StyleService.clearState();
+        if (this.floatingBall) {
+            this.updateInputWithSnapshotQuery(); // This will clear the input
+            this.floatingBall.updateUndoRedoButtonStates();
+        }
+    }
+
+    private async resetStateAndSaveToStorage(): Promise<void> {
+        try {
+            // 1. Reset StyleService state by moving undo stack to redo stack
+            StyleService.resetState();
+
+            // 2. Save current Eddy to storage
+            await this.saveCurrentEddyToStorage();
+
+            // 3. Update input with snapshot query
+            this.updateInputWithSnapshotQuery();
+
+            // 4. Update UI
+            if (this.floatingBall) {
+                this.floatingBall.showFeedback('Reset eddy success', 'success');
+            }
+        } catch (error) {
+            console.error('[ContentManager] Error resetting state:', error);
+            if (this.floatingBall) {
+                this.floatingBall.showFeedback('Error resetting eddy', 'error');
+            }
         }
     }
 
@@ -662,8 +717,9 @@ export class ContentManager {
         if (!trimmedTitle) {
             console.warn('[ContentManager] Title cannot be empty. Reverting.');
             // Revert the title in the UI
-            if (this.floatingBall) {
-                this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false);
+            if (this.floatingBall && this.currentEddy) {
+                const isEnabled = this.currentEddy.isEnabled ?? true;
+                this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
             }
             return;
         }
@@ -682,35 +738,13 @@ export class ContentManager {
             if (this.floatingBall) {
                 const isEnabled = this.currentEddy.isEnabled ?? true;
                 this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+                this.floatingBall.updateViewOriginalButtonState(isEnabled);
                 this.floatingBall.showFeedback('Title updated.', 'success');
             }
         } catch (error) {
             console.error('[ContentManager] Error updating title:', error);
             if (this.floatingBall) {
                 this.floatingBall.showFeedback('Error updating title', 'error');
-            }
-        }
-    }
-
-    private async resetState(): Promise<void> {
-        try {
-            // 1. Reset StyleService state
-            StyleService.resetState();
-
-            // 2. Save current Eddy to storage
-            await this.saveCurrentEddyToStorage();
-
-            // 3. Update input with snapshot query
-            this.updateInputWithSnapshotQuery();
-
-            // 4. Update UI
-            if (this.floatingBall) {
-                this.floatingBall.showFeedback('Reset eddy success', 'success');
-            }
-        } catch (error) {
-            console.error('[ContentManager] Error resetting state:', error);
-            if (this.floatingBall) {
-                this.floatingBall.showFeedback('Error resetting eddy', 'error');
             }
         }
     }
@@ -732,6 +766,7 @@ export class ContentManager {
         }
 
         this.floatingBall?.updateEddyToggleState(newState);
+        this.floatingBall?.updateViewOriginalButtonState(newState);
         await this.saveCurrentEddyToStorage();
     }
 
@@ -744,6 +779,7 @@ export class ContentManager {
             console.log('[ContentManager] Auto-enabling eddy due to user action.');
             this.currentEddy.isEnabled = true;
             this.floatingBall?.updateEddyToggleState(true);
+            this.floatingBall?.updateViewOriginalButtonState(true);
             // We don't need to re-apply styles here, as the calling function (apply, undo, redo) will do that.
             await this.saveCurrentEddyToStorage();
         }
