@@ -351,7 +351,7 @@ export class PanelStyles {
             }
 
             .eddy-title:hover {
-                background-color: rgba(59, 130, 246, 0.05);
+                background-color: rgba(0, 0, 0, 0.05);
             }
 
             .eddy-title:focus {
@@ -375,7 +375,7 @@ export class PanelStyles {
             }
 
             #pageedit-floating-panel.dark-mode .eddy-title:hover {
-                background-color: rgba(96, 165, 250, 0.1);
+                background-color: rgba(255, 255, 255, 0.1);
             }
 
             #pageedit-floating-panel.dark-mode .eddy-title:focus {
@@ -830,7 +830,7 @@ export class PanelStyles {
             }
 
             .eddy-title:hover {
-                background-color: var(--button-hover-bg-color);
+                background-color: rgba(0, 0, 0, 0.05);
             }
             
             /* New Eddy Toggle Switch Styles */
