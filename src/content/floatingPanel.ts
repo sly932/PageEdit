@@ -10,7 +10,7 @@ import { PanelRenderer } from './panels/PanelRenderer';
 
 // 定义自定义事件类型
 export interface PanelEvent {
-    type: 'apply' | 'undo' | 'redo' | 'cancel' | 'reset' | 'new_eddy' | 'switch_eddy' | 'delete_eddy' | 'title_update';
+    type: 'apply' | 'undo' | 'redo' | 'cancel' | 'reset' | 'new_eddy' | 'switch_eddy' | 'delete_eddy' | 'title_update' | 'toggle_eddy_enabled';
     data?: {
         text?: string;
         eddyId?: string;
@@ -36,6 +36,7 @@ export class FloatingPanel {
     // Eddy 相关属性
     private isNewEddy: boolean = false;
     private titleElement!: HTMLSpanElement;
+    private eddyToggleSwitch!: HTMLButtonElement; // 新增：Eddy 启用/禁用开关
     private newEddyButton!: HTMLButtonElement;
     private deleteButton!: HTMLButtonElement;
     private hasUnsavedChanges: boolean = false; // 添加未保存更改标记
@@ -76,6 +77,7 @@ export class FloatingPanel {
         this.resetButton = panelElements.resetButton;
         this.feedback = panelElements.feedback;
         this.titleElement = panelElements.titleElement;
+        this.eddyToggleSwitch = panelElements.eddyToggleSwitch; // 新增
         this.newEddyButton = panelElements.newEddyButton;
         this.deleteButton = panelElements.deleteButton;
         this.dropdownButton = panelElements.dropdownButton;
@@ -136,6 +138,21 @@ export class FloatingPanel {
         this.redoButton.addEventListener('click', () => this.handleRedo());
         this.resetButton.addEventListener('click', () => this.handleReset());
         console.log('[FloatingPanel] Event listeners attached to buttons');
+
+        // 新增：为 Eddy 开关添加事件监听
+        this.eddyToggleSwitch.addEventListener('click', () => {
+            if (this.eventCallback) {
+                this.eventCallback({ type: 'toggle_eddy_enabled' });
+            }
+        });
+
+        // 为 Eddy 开关添加动态 Tooltip
+        this.eddyToggleSwitch.addEventListener('mouseenter', () => {
+            // The title is dynamically set in `updateEddyToggleState`
+            const tooltipText = this.eddyToggleSwitch.title;
+            PanelTooltip.showTooltip(this.eddyToggleSwitch, tooltipText);
+        });
+        this.eddyToggleSwitch.addEventListener('mouseleave', () => PanelTooltip.hideTooltip());
 
         // 添加 Tooltip 事件监听器
         PanelTooltip.addTooltipEvents(this.undoButton, 'UNDO');
@@ -600,16 +617,19 @@ export class FloatingPanel {
      * @param eddyId The ID of the Eddy.
      * @param isNew Whether this is a newly created Eddy.
      */
-    public updatePanelDisplay(eddyName: string, eddyId: string, isNew: boolean = false): void {
+    public updatePanelDisplay(eddyName: string, eddyId: string, isNew: boolean = false, isEnabled: boolean = true): void {
         this.isNewEddy = isNew;
 
-        console.log(`[FloatingPanel] Updating panel display for: ${eddyName} (ID: ${eddyId}, isNew: ${isNew})`);
+        console.log(`[FloatingPanel] Updating panel display for: ${eddyName} (ID: ${eddyId}, isNew: ${isNew}, isEnabled: ${isEnabled})`);
         
         // 更新标题
         this.updateEddyTitle(eddyName);
         if (this.titleElement) {
             this.titleElement.dataset.eddyId = eddyId;
         }
+
+        // 更新 Eddy 开关状态
+        this.updateEddyToggleState(isEnabled);
         
         // 更新按钮状态
         this.updateUndoRedoButtonStates();
@@ -754,5 +774,18 @@ export class FloatingPanel {
 
             this.dropdownMenu.appendChild(item);
         });
+    }
+
+    // 新增：更新 Eddy 启用/禁用开关的UI状态
+    public updateEddyToggleState(isEnabled: boolean): void {
+        if (this.eddyToggleSwitch) {
+            if (isEnabled) {
+                this.eddyToggleSwitch.classList.add('enabled');
+                this.eddyToggleSwitch.title = 'Disable Eddy';
+            } else {
+                this.eddyToggleSwitch.classList.remove('enabled');
+                this.eddyToggleSwitch.title = 'Enable Eddy';
+            }
+        }
     }
 }

@@ -578,23 +578,34 @@ export class StyleService {
      * 彻底清除状态：清空所有栈和快照
      */
     static clearState(): void {
-        try {
-            console.log('[StyleService] Clearing state completely');
-            
-            // 1. 清除 DOM 上的所有样式元素
-            this.clearAllStyleElementsFromDOM();
-            
-            // 2. 将全局状态重置为初始空状态
-            this.updateGlobalState({
-                currentSnapshot: null,
-                undoStack: [],
-                redoStack: []
-            });
-
-            console.log('[StyleService] State cleared completely.');
-        } catch (error) {
-            console.error('[StyleService] Clear state failed:', error);
-        }
+        this.updateGlobalState({
+            currentSnapshot: null,
+            undoStack: [],
+            redoStack: []
+        });
+        this.clearAllStyleElementsFromDOM();
     }
 
+    /**
+     * Clears all applied styles from the DOM without affecting the state history.
+     * This is used for temporarily viewing the original page.
+     */
+    public static clearAllAppliedStyles(): void {
+        console.log('[StyleService] Temporarily clearing all applied styles from DOM.');
+        this.clearAllStyleElementsFromDOM();
+    }
+
+    /**
+     * Re-applies all styles from the current snapshot to the DOM.
+     * This is used to restore styles after temporarily viewing the original page.
+     */
+    public static reapplyAllAppliedStyles(): void {
+        const state = this.getGlobalState();
+        if (state.currentSnapshot && state.currentSnapshot.elements.length > 0) {
+            console.log('[StyleService] Re-applying all styles from current snapshot.');
+            this.applyAllStyleElements(state.currentSnapshot.elements);
+        } else {
+            console.log('[StyleService] No styles in current snapshot to re-apply.');
+        }
+    }
 } 

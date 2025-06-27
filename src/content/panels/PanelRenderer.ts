@@ -18,6 +18,7 @@ export class PanelRenderer {
     private static deleteButton: HTMLButtonElement | null = null;
     private static dropdownButton: HTMLButtonElement | null = null;
     private static dropdownMenu: HTMLDivElement | null = null;
+    private static eddyToggleSwitch: HTMLButtonElement | null = null;
 
     static initialize(shadowRoot: ShadowRoot) {
         PanelRenderer.shadowRoot = shadowRoot;
@@ -32,6 +33,7 @@ export class PanelRenderer {
         resetButton: HTMLButtonElement;
         feedback: HTMLDivElement;
         titleElement: HTMLSpanElement;
+        eddyToggleSwitch: HTMLButtonElement;
         newEddyButton: HTMLButtonElement;
         deleteButton: HTMLButtonElement;
         dropdownButton: HTMLButtonElement;
@@ -58,6 +60,15 @@ export class PanelRenderer {
         titleElement.style.borderRadius = '4px';
         titleElement.style.padding = '2px 4px';
         titleElement.style.transition = 'background-color 0.2s';
+
+        // 新增：创建 Eddy 开关
+        const eddyToggleSwitch = document.createElement('button');
+        eddyToggleSwitch.className = 'eddy-toggle-switch';
+        eddyToggleSwitch.title = 'Disable Eddy';
+        // 开关的视觉样式 (圆圈) 将由 CSS 控制
+        eddyToggleSwitch.innerHTML = `
+            <div class="toggle-handle"></div>
+        `;
 
         // 创建标题容器
         const titleContainer = document.createElement('div');
@@ -155,7 +166,8 @@ export class PanelRenderer {
         
         closeButtonContainer.appendChild(closeButton);
 
-        // 第一行：标题容器 + 新建 Eddy 按钮 + 删除 Eddy 按钮 + 主题切换按钮 + close 按钮
+        // 第一行：开关 + 标题容器 + 新建 Eddy 按钮 + 删除 Eddy 按钮 + 主题切换按钮 + close 按钮
+        headerRow1.appendChild(eddyToggleSwitch);
         headerRow1.appendChild(titleContainer);
         headerRow1.appendChild(newEddyButton);
         headerRow1.appendChild(deleteButton);
@@ -233,6 +245,7 @@ export class PanelRenderer {
         PanelRenderer.deleteButton = deleteButton;
         PanelRenderer.dropdownButton = dropdownButton;
         PanelRenderer.dropdownMenu = dropdownMenu;
+        PanelRenderer.eddyToggleSwitch = eddyToggleSwitch;
 
         return {
             panel,
@@ -243,6 +256,7 @@ export class PanelRenderer {
             resetButton,
             feedback,
             titleElement,
+            eddyToggleSwitch,
             newEddyButton,
             deleteButton,
             dropdownButton,

@@ -44,7 +44,8 @@ export class ContentManager {
             // If a new eddy was created, the panel display is already updated in handleNewEddy.
             if (this.floatingBall) {
                 if (this.currentEddy && !this.currentEddy.id.startsWith('temp_')) {
-                    this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false);
+                    const isEnabled = this.currentEddy.isEnabled ?? true;
+                    this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
                 }
                 this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id);
             }
@@ -125,7 +126,8 @@ export class ContentManager {
         
         // 4. 更新 UI
         if (this.floatingBall) {
-            this.floatingBall.updatePanelDisplay(this.currentEddy?.name || 'PageEdit', this.currentEddy?.id || '', false);
+            const isEnabled = this.currentEddy?.isEnabled ?? true;
+            this.floatingBall.updatePanelDisplay(this.currentEddy?.name || 'PageEdit', this.currentEddy?.id || '', false, isEnabled);
             this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id);
         }
     }
@@ -141,7 +143,12 @@ export class ContentManager {
         if (recentEddy) {
             console.log('[content] Loading most recent eddy:', recentEddy.name);
             this.currentEddy = recentEddy;
-            StyleService.restoreFromEddy(recentEddy);
+            
+            // Only apply styles if the eddy is enabled
+            const isEnabled = this.currentEddy.isEnabled ?? true;
+            if (isEnabled) {
+                StyleService.restoreFromEddy(recentEddy);
+            }
         } else {
             console.log('[content] No eddys found for this domain. Creating a new temporary one.');
             // If no eddies exist at all, create a new temporary one.
@@ -331,7 +338,8 @@ export class ContentManager {
 
         // 4. 更新UI（例如，去掉未保存状态的提示）
         if (this.floatingBall) {
-            this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false);
+            const isEnabled = this.currentEddy.isEnabled ?? true;
+            this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
             this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id); // Update the dropdown list
             this.floatingBall.setHasUnsavedChanges(false);
         }
@@ -364,31 +372,18 @@ export class ContentManager {
      * @param payload 事件负载，包含用户输入的文本
      */
     private async handleApplyModificationEvent(payload: { text: string }): Promise<void> {
-        this.currentApplyId = `apply_${Date.now()}`;
-        const applyId = this.currentApplyId;
+        if (!this.currentEddy) {
+            this.floatingBall?.showFeedback('No active Eddy. Cannot apply changes.', 'error');
+            return;
+        }
+
+        // Auto-enable eddy if it's disabled
+        await this.ensureEddyIsEnabled();
+
+        const applyId = `apply_${Date.now()}`;
+        this.currentApplyId = applyId;
 
         try {
-            // 如果当前没有 Eddy，先创建一个临时的
-            if (!this.currentEddy) {
-                console.log('[content] No current eddy, creating a temp one');
-                // 1. Clear current page styles and reset StyleService state
-                StyleService.resetState();
-
-                // 2. Create a temporary Eddy object in memory
-                this.currentEddy = {
-                    id: 'temp_eddy_' + Date.now(),
-                    name: "New unsaved eddy",
-                    domain: window.location.hostname,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                    lastUsed: true,
-                    currentStyleElements: [],
-                    currentSnapshot: null,
-                    undoStack: [],
-                    redoStack: [],
-                };
-            }
-            
             // 异步处理页面修改
             this.handleModifyPage({
                 type: 'MODIFY_PAGE',
@@ -454,10 +449,13 @@ export class ContentManager {
                     }
                     break;
                 case 'cancel':
-                    this.currentApplyId = null;
+                    this.currentApplyId = null; // 取消正在进行的 apply
+                    break;
+                case 'toggle_eddy_enabled':
+                    await this.handleToggleEddyEnabled();
                     break;
                 default:
-                    console.warn('[content] Unknown panel event type:', event.type);
+                    console.warn(`[ContentManager] Unknown panel event type: ${(event as any).type}`);
             }
         } catch (error) {
             console.error('[content] Error handling panel event:', error);
@@ -476,24 +474,20 @@ export class ContentManager {
      * @returns 是否成功撤销
      */
     private async undoLastModification(): Promise<boolean> {
-        try {
-            console.log('[content] === UNDO OPERATION START ===');
+        // Auto-enable eddy if it's disabled
+        await this.ensureEddyIsEnabled();
+
+        const success = StyleService.undo();
+        if (success) {
+            await this.saveCurrentEddyToStorage();
             
-            const success = StyleService.undo();
-            if (success) {
-                await this.saveCurrentEddyToStorage();
-                
-                this.updateInputWithSnapshotQuery();
-                
-                console.log('[content] === UNDO OPERATION SUCCESS ===');
-            } else {
-                console.log('[content] === UNDO OPERATION FAILED ===');
-            }
-            return success;
-        } catch (error) {
-            console.error('[content] Error undoing modification:', error);
-            return false;
+            this.updateInputWithSnapshotQuery();
+            
+            console.log('[content] === UNDO OPERATION SUCCESS ===');
+        } else {
+            console.log('[content] === UNDO OPERATION FAILED ===');
         }
+        return success;
     }
 
     /**
@@ -501,24 +495,20 @@ export class ContentManager {
      * @returns 是否成功重做
      */
     private async redoLastModification(): Promise<boolean> {
-        try {
-            console.log('[content] === REDO OPERATION START ===');
+        // Auto-enable eddy if it's disabled
+        await this.ensureEddyIsEnabled();
+
+        const success = StyleService.redo();
+        if (success) {
+            await this.saveCurrentEddyToStorage();
             
-            const success = StyleService.redo();
-            if (success) {
-                await this.saveCurrentEddyToStorage();
-                
-                this.updateInputWithSnapshotQuery();
-                
-                console.log('[content] === REDO OPERATION SUCCESS ===');
-            } else {
-                console.log('[content] === REDO OPERATION FAILED ===');
-            }
-            return success;
-        } catch (error) {
-            console.error('[content] Error redoing modification:', error);
-            return false;
+            this.updateInputWithSnapshotQuery();
+            
+            console.log('[content] === REDO OPERATION SUCCESS ===');
+        } else {
+            console.log('[content] === REDO OPERATION FAILED ===');
         }
+        return success;
     }
 
     /**
@@ -547,85 +537,61 @@ export class ContentManager {
     }
 
     private async handleNewEddy(data: any): Promise<void> {
-        try {
-            console.log('[ContentManager] Handling "New Eddy" request...');
+        const tempEddy: Eddy = {
+            id: `temp_${Date.now()}`,
+            name: 'New Unsaved Eddy',
+            domain: window.location.hostname,
+            lastUsed: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            currentStyleElements: [],
+            currentSnapshot: null,
+            undoStack: [],
+            redoStack: [],
+            isEnabled: true
+        };
+        this.currentEddy = tempEddy;
+        StyleService.clearState(); // Clear any existing styles from previous eddy
 
-            // 1. 在创建新的 Eddy 之前，清空当前状态
-            StyleService.resetState();
-
-            // 2. 在内存中创建一个临时的 Eddy 对象
-            const tempEddy: Eddy = {
-                id: `temp_${Date.now()}`, // 临时 ID
-                name: 'New unsaved eddy', // 默认名
-                domain: window.location.hostname,
-                lastUsed: true, 
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-                currentStyleElements: [],
-                currentSnapshot: null,
-                undoStack: [],
-                redoStack: [],
-            };
-            
-            // 3. 将这个临时 Eddy 设为当前活动的 Eddy
-            this.currentEddy = tempEddy;
-            console.log('[ContentManager] New temporary eddy created and set as current:', tempEddy.name);
-
-            // 4. 更新 UI 以反映这个新的临时 Eddy
-            if (this.floatingBall) {
-                this.floatingBall.updatePanelDisplay(tempEddy.name, tempEddy.id, true);
-                this.floatingBall.updateUndoRedoButtonStates();
-                this.floatingBall.updateInputContent(''); // 为新的 Eddy 清空输入框
-            }
-        } catch (error) {
-            console.error('[ContentManager] Error creating new temporary eddy:', error);
+        if (this.floatingBall) {
+            this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, true, true);
+            this.floatingBall.clearInput();
+            this.floatingBall.updateUndoRedoButtonStates();
         }
     }
 
     private async handleSwitchEddy(eddyId: string): Promise<void> {
-        try {
-            console.log(`[ContentManager] Switching to eddy with id: ${eddyId}`);
-            
-            // 1. Get the selected Eddy from storage
-            const selectedEddy = await StorageService.getEddyById(eddyId);
-            if (!selectedEddy) {
-                throw new Error(`Eddy with id ${eddyId} not found.`);
-            }
+        console.log(`[ContentManager] Switching to eddy: ${eddyId}`);
+        const targetEddy = this.domainEddys.find(e => e.id === eddyId);
 
-            // 2. Set it as the current Eddy
-            this.currentEddy = selectedEddy;
-
-            // 3. Clear the state first
-            StyleService.clearState();
-            
-            // 4. Restore its state and apply styles
-            StyleService.restoreFromEddy(this.currentEddy);
-            
-            // 5. Mark as last used and save to update timestamp
-            this.currentEddy.lastUsed = true;
-            await this.saveCurrentEddyToStorage();
-
-            // 6. Update the UI
-            if (this.floatingBall && this.currentEddy) {
-                this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false);
-                this.floatingBall.updateUndoRedoButtonStates();
-                this.updateInputWithSnapshotQuery(); // Update input with the new eddy's query
-                // 如果名称超过5个字符，则截断并添加省略号
-                const displayName = this.currentEddy.name.length > 5 
-                    ? `${this.currentEddy.name.substring(0, 5)}...` 
-                    : this.currentEddy.name;
-                this.floatingBall.showFeedback(`Switched to ${displayName}`, 'success');
-            }
-            
-            if (this.currentEddy) {
-                console.log(`[ContentManager] Successfully switched to eddy: ${this.currentEddy.name}`);
-            }
-        } catch (error) {
-            console.error('[ContentManager] Error switching eddy:', error);
-            if (this.floatingBall) {
-                this.floatingBall.showFeedback('Error switching Eddy', 'error');
-            }
+        if (!targetEddy) {
+            console.error(`[ContentManager] Eddy with ID ${eddyId} not found.`);
+            this.floatingBall?.showFeedback('Could not switch Eddy.', 'error');
+            return;
         }
+
+        this.currentEddy = targetEddy;
+        
+        // Only apply styles if the eddy is enabled
+        const isEnabled = this.currentEddy.isEnabled ?? true;
+        if (isEnabled) {
+            StyleService.restoreFromEddy(this.currentEddy);
+        } else {
+            // If switching to a disabled eddy, make sure no styles are applied
+            StyleService.clearAllAppliedStyles();
+        }
+
+        if (this.floatingBall) {
+            this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+            this.floatingBall.updateInputContent(this.currentEddy.draftContent || '');
+            this.floatingBall.updateUndoRedoButtonStates();
+        }
+        
+        // Set this eddy as the last used one
+        this.currentEddy.lastUsed = true;
+        await StorageService.updateEddy(this.currentEddy);
+
+        console.log(`[ContentManager] Switched to ${this.currentEddy.name}`);
     }
 
     private async handleDeleteEddy(): Promise<void> {
@@ -677,6 +643,10 @@ export class ContentManager {
                 await this.handleNewEddy(null);
             }
 
+            await this.resetState();
+            this.floatingBall?.showFeedback('All changes have been reset.', 'success');
+            this.floatingBall?.updateUndoRedoButtonStates();
+
         } catch (error) {
             console.error('[ContentManager] Error deleting eddy:', error);
         }
@@ -710,7 +680,9 @@ export class ContentManager {
             console.log(`[ContentManager] Eddy title updated to "${trimmedTitle}" and saved.`);
             
             if (this.floatingBall) {
-                this.floatingBall.showFeedback('Title updated', 'success');
+                const isEnabled = this.currentEddy.isEnabled ?? true;
+                this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
+                this.floatingBall.showFeedback('Title updated.', 'success');
             }
         } catch (error) {
             console.error('[ContentManager] Error updating title:', error);
@@ -740,6 +712,40 @@ export class ContentManager {
             if (this.floatingBall) {
                 this.floatingBall.showFeedback('Error resetting eddy', 'error');
             }
+        }
+    }
+
+    private async handleToggleEddyEnabled(): Promise<void> {
+        if (!this.currentEddy) return;
+
+        // Default to true if isEnabled is undefined, then toggle
+        const currentState = this.currentEddy.isEnabled ?? true;
+        const newState = !currentState;
+        this.currentEddy.isEnabled = newState;
+
+        console.log(`[ContentManager] Toggling Eddy "${this.currentEddy.name}" to ${newState ? 'ENABLED' : 'DISABLED'}`);
+
+        if (newState) {
+            StyleService.reapplyAllAppliedStyles();
+        } else {
+            StyleService.clearAllAppliedStyles();
+        }
+
+        this.floatingBall?.updateEddyToggleState(newState);
+        await this.saveCurrentEddyToStorage();
+    }
+
+    /**
+     * Ensures the current Eddy is enabled. If not, it enables it,
+     * updates the UI, and saves the state.
+     */
+    private async ensureEddyIsEnabled(): Promise<void> {
+        if (this.currentEddy && (this.currentEddy.isEnabled === false)) {
+            console.log('[ContentManager] Auto-enabling eddy due to user action.');
+            this.currentEddy.isEnabled = true;
+            this.floatingBall?.updateEddyToggleState(true);
+            // We don't need to re-apply styles here, as the calling function (apply, undo, redo) will do that.
+            await this.saveCurrentEddyToStorage();
         }
     }
 }

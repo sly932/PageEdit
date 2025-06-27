@@ -37,4 +37,5 @@ export interface Eddy {
     currentSnapshot?: Snapshot | null; // 当前快照
     undoStack?: Snapshot[]; // 撤销栈
     redoStack?: Snapshot[]; // 重做栈
+    isEnabled?: boolean; // 新增字段：此 Eddy 是否启用。设为可选以兼容旧数据。
 } 

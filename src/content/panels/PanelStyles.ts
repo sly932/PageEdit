@@ -543,9 +543,8 @@ export class PanelStyles {
             .title-container {
                 display: flex;
                 align-items: center;
-                gap: 4px;
-                position: relative;
-                flex: 1;
+                gap: 8px; /* Spacing between title, toggle, and dropdown */
+                flex-grow: 1;
                 min-width: 0;
             }
 
@@ -815,6 +814,56 @@ export class PanelStyles {
             #pageedit-floating-panel.dark-mode .dropdown-item.active {
                 background-color: rgba(74, 222, 128, 0.15) !important;
                 color: rgb(74, 222, 128) !important;
+            }
+
+            /* Eddy Title and Dropdown */
+            .eddy-title {
+                font-size: 14px;
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                cursor: text;
+                padding: 4px 6px;
+                border-radius: 4px;
+                transition: background-color 0.2s;
+            }
+
+            .eddy-title:hover {
+                background-color: var(--button-hover-bg-color);
+            }
+            
+            /* New Eddy Toggle Switch Styles */
+            .eddy-toggle-switch {
+                position: relative;
+                display: inline-block;
+                width: 38px;
+                height: 22px;
+                background-color: var(--toggle-bg-color, #ccc);
+                border-radius: 22px;
+                border: 1px solid var(--border-color);
+                cursor: pointer;
+                transition: background-color 0.2s ease-in-out;
+                flex-shrink: 0; /* Prevent shrinking */
+            }
+
+            .eddy-toggle-switch .toggle-handle {
+                position: absolute;
+                top: 2px;
+                left: 2px;
+                width: 18px;
+                height: 18px;
+                background-color: white;
+                border-radius: 50%;
+                transition: transform 0.2s ease-in-out;
+            }
+
+            .eddy-toggle-switch.enabled {
+                background-color: var(--accent-color, #4CAF50); /* Green when enabled */
+            }
+
+            .eddy-toggle-switch.enabled .toggle-handle {
+                transform: translateX(16px);
             }
         `;
         shadowRoot.appendChild(style);

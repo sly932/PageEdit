@@ -79,8 +79,10 @@ export class FloatingBall {
         this.panel.setHasUnsavedChanges(hasChanges);
     }
 
-    public updatePanelDisplay(name: string, id: string, isNew: boolean): void {
-        this.panel.updatePanelDisplay(name, id, isNew);
+    public updatePanelDisplay(name: string, id: string, isNew: boolean, isEnabled: boolean = true): void {
+        if (this.panel) {
+            this.panel.updatePanelDisplay(name, id, isNew, isEnabled);
+        }
     }
 
     public updateInputContent(content: string): void {
@@ -89,6 +91,12 @@ export class FloatingBall {
 
     public updateEddyList(eddys: import('../types/eddy').Eddy[], activeEddyId?: string): void {
         this.panel.updateEddyList(eddys, activeEddyId);
+    }
+
+    public updateEddyToggleState(isEnabled: boolean): void {
+        if (this.panel) {
+            this.panel.updateEddyToggleState(isEnabled);
+        }
     }
 
     private injectStyles(): void {
