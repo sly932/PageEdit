@@ -191,7 +191,7 @@ export class FloatingPanel {
         }
         
         // 为关闭按钮添加 Tooltip（从 PanelRenderer 获取）
-        const closeButton = this.shadowRoot.querySelector('.close-button') as HTMLButtonElement;
+        const closeButton = this.shadowRoot.querySelector('.icon-button--close') as HTMLButtonElement;
         if (closeButton) {
             PanelTooltip.addTooltipEvents(closeButton, 'CLOSE');
             // 添加关闭事件

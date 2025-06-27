@@ -1,5 +1,6 @@
 import { FloatingPanel, PanelEvent } from './floatingPanel';
 import { StorageService } from '../services/storageService';
+import { PanelTooltip } from './panels/PanelTooltip';
 
 export class FloatingBall {
     private ball: HTMLDivElement;
@@ -180,51 +181,12 @@ export class FloatingBall {
             #pageedit-floating-ball svg {
                 width: 1.5rem !important;
                 height: 1.5rem !important;
-                color: rgb(55, 65, 81);
+                color: rgb(0, 0, 0);
             }
 
             @media (prefers-color-scheme: dark) {
                 #pageedit-floating-ball svg {
-                    color: rgb(229, 231, 235);
-                }
-            }
-
-            /* 自定义 Tooltip 样式 */
-            .custom-tooltip {
-                position: absolute;
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
-                -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
-                color: rgb(17, 24, 39);
-                padding: 6px 10px;
-                border-radius: 6px;
-                font-size: 11px;
-                font-weight: 600;
-                white-space: nowrap;
-                pointer-events: none;
-                opacity: 0;
-                transform: translateY(4px);
-                transition: all 0.1s ease;
-                z-index: 2147483646;
-                font-family: inherit;
-                border: 1px solid rgba(0, 0, 0, 0.15);
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-
-            .custom-tooltip.show {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            /* 深色模式下的 Tooltip */
-            @media (prefers-color-scheme: dark) {
-                .custom-tooltip {
-                    background: rgba(31, 41, 55, 0.7);
-                    color: rgb(229, 231, 235);
-                    border-color: rgba(75, 85, 99, 0.4);
-                    backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
-                    -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                    color: rgb(255, 255, 255);
                 }
             }
         `;
@@ -239,7 +201,7 @@ export class FloatingBall {
         
         // 更现代的图标设计
         ball.innerHTML = `
-            <svg style="width: 1.5rem; height: 1.5rem; color: rgb(55, 65, 81);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg style="width: 1.5rem; height: 1.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
             </svg>
         `;
@@ -259,7 +221,7 @@ export class FloatingBall {
             this.ball.addEventListener('click', this.handleClick.bind(this));
             
             // 添加 Tooltip 事件监听器
-            this.addTooltipEvents(this.ball, 'EDIT');
+            PanelTooltip.addTooltipEvents(this.ball, 'EDIT');
             
             console.log('[FloatingBall] Event listeners added successfully');
         } catch (error) {
@@ -411,126 +373,13 @@ export class FloatingBall {
         this.ball.style.top = `${newTop}px`;
     }
 
-    // 创建 Tooltip
-    private createTooltip(text: string): HTMLDivElement {
-        const tooltip = document.createElement('div');
-        tooltip.className = 'custom-tooltip';
-        tooltip.textContent = text;
-        return tooltip;
-    }
-
-    // 显示 Tooltip
-    private showTooltip(element: HTMLElement, text: string): void {
-        // 移除现有的 tooltip
-        this.hideTooltip();
-
-        const tooltip = this.createTooltip(text);
-
-        const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (isDarkMode) {
-            tooltip.style.background = 'rgba(31, 41, 55, 0.95)';
-            tooltip.style.color = 'rgb(229, 231, 235)';
-            tooltip.style.borderColor = 'rgba(75, 85, 99, 0.3)';
-        } else {
-            tooltip.style.background = 'rgba(255, 255, 255, 0.95)';
-            tooltip.style.color = 'rgb(17, 24, 39)';
-            tooltip.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-        }
-
-        this.shadowRoot.appendChild(tooltip);
-
-        // --- 智能定位逻辑 ---
-        tooltip.style.position = 'absolute';
-        tooltip.classList.add('show');
-        tooltip.style.visibility = 'hidden'; // 隐藏以获取尺寸
-
-        const ballRect = element.getBoundingClientRect();
-        const tooltipRect = tooltip.getBoundingClientRect();
-        const margin = 10; // 图标与tooltip的间距
-
-        const positions = {
-            top: {
-                top: ballRect.top - tooltipRect.height - margin,
-                left: ballRect.left + (ballRect.width - tooltipRect.width) / 2
-            },
-            bottom: {
-                top: ballRect.bottom + margin,
-                left: ballRect.left + (ballRect.width - tooltipRect.width) / 2
-            },
-            left: {
-                top: ballRect.top + (ballRect.height - tooltipRect.height) / 2,
-                left: ballRect.left - tooltipRect.width - margin
-            },
-            right: {
-                top: ballRect.top + (ballRect.height - tooltipRect.height) / 2,
-                left: ballRect.right + margin
-            }
-        };
-
-        const viewport = {
-            width: window.innerWidth,
-            height: window.innerHeight
-        };
-
-        const fits = (pos: { top: number; left: number }) => {
-            return (
-                pos.top >= margin &&
-                pos.left >= margin &&
-                pos.top + tooltipRect.height <= viewport.height - margin &&
-                pos.left + tooltipRect.width <= viewport.width - margin
-            );
-        };
-
-        let finalPosition: { top: number; left: number } | null = null;
-
-        // 优先级: top > bottom > right > left
-        if (fits(positions.top)) {
-            finalPosition = positions.top;
-        } else if (fits(positions.bottom)) {
-            finalPosition = positions.bottom;
-        } else if (fits(positions.right)) {
-            finalPosition = positions.right;
-        } else if (fits(positions.left)) {
-            finalPosition = positions.left;
-        } else {
-            // Fallback: 强制放置在上方并调整
-            finalPosition = positions.top;
-            if (finalPosition.left < margin) {
-                finalPosition.left = margin;
-            }
-            if (finalPosition.left + tooltipRect.width > viewport.width - margin) {
-                finalPosition.left = viewport.width - tooltipRect.width - margin;
-            }
-            if (finalPosition.top < margin) {
-                finalPosition.top = margin;
-            }
-        }
-
-        tooltip.style.top = `${finalPosition.top}px`;
-        tooltip.style.left = `${finalPosition.left}px`;
-        tooltip.style.visibility = 'visible'; // 定位后显示
-
-        // 存储当前 tooltip 引用
-        (this as any).currentTooltip = tooltip;
-    }
-
-    // 隐藏 Tooltip
-    private hideTooltip(): void {
-        const currentTooltip = (this as any).currentTooltip;
-        if (currentTooltip) {
-            currentTooltip.remove();
-            (this as any).currentTooltip = null;
-        }
-    }
-
-    // 添加 Tooltip 事件监听器
-    private addTooltipEvents(element: HTMLElement, text: string): void {
-        element.addEventListener('mouseenter', () => this.showTooltip(element, text));
-        element.addEventListener('mouseleave', () => this.hideTooltip());
-    }
-
     public destroy(): void {
-        this.rootElement.remove();
+        if (this.ball && this.ball.parentNode) {
+            this.ball.remove();
+        }
+        if (this.rootElement && this.rootElement.parentNode) {
+            this.rootElement.remove();
+        }
         this.panel.destroy();
     }
 }

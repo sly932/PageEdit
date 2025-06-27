@@ -1,24 +1,35 @@
 // 样式管理模块
+import { generatePanelCSSVariables } from './PanelStyleVariables';
+
 export class PanelStyles {
     static injectStyles(shadowRoot: ShadowRoot) {
         const style = document.createElement('style');
         style.textContent = `
             @import url('https://fonts.googleapis.com/css2?family=PT+Mono:ital,wght@0,400;1,400&display=swap');
             
-            /* Panel 基础样式 */
+            /* Panel 样式变量 */
             #pageedit-floating-panel {
+                ${generatePanelCSSVariables()}
+                
+                --icon-color: #000;
+                --icon-color-disabled: #9ca3af;
+                --button-size: 32px;
+                --button-radius: var(--panel-button-border-radius);
+                --button-bg-hover: rgba(0, 0, 0, 0.05);
+                --icon-size: 20px;
+
                 position: fixed;
-                right: 96px;
-                bottom: 96px;
-                width: 320px !important;
-                max-width: 320px !important;
-                min-width: 320px !important;
-                background: rgba(255, 255, 255, 0.6);
-                border-radius: 12px;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
-                -webkit-backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
-                border: 1px solid rgba(255, 255, 255, 0.4);
+                right: var(--panel-right);
+                bottom: var(--panel-bottom);
+                width: var(--panel-width) !important;
+                max-width: var(--panel-width) !important;
+                min-width: var(--panel-width) !important;
+                background: rgba(255, 255, 255, var(--panel-background-opacity));
+                border-radius: var(--panel-border-radius);
+                box-shadow: var(--panel-shadow);
+                backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturation)) contrast(var(--panel-contrast));
+                -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturation)) contrast(var(--panel-contrast));
+                border: 1px solid rgba(255, 255, 255, var(--panel-border-opacity));
                 overflow: visible;
                 pointer-events: auto;
                 display: none;
@@ -30,11 +41,11 @@ export class PanelStyles {
 
             /* 面板内容 */
             .panel-content {
-                padding: 0 16px 16px 16px;
+                padding: 0 var(--panel-padding) var(--panel-padding) var(--panel-padding);
                 position: relative;
                 z-index: 1;
                 box-sizing: border-box;
-                border-radius: 0 0 12px 12px;
+                border-radius: 0 0 var(--panel-border-radius) var(--panel-border-radius);
             }
 
             .input-wrapper {
@@ -48,14 +59,14 @@ export class PanelStyles {
                 width: 100%;
                 min-height: 54px !important;
                 max-height: 200px !important;
-                padding: 16px 20px 48px 20px;
+                padding: var(--panel-textarea-padding);
                 border: 1px solid rgba(0, 0, 0, 0.15);
-                border-radius: 27px;
-                background: rgba(255, 255, 255, 0.5);
-                backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
-                -webkit-backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
+                border-radius: var(--panel-textarea-border-radius);
+                background: rgba(255, 255, 255, var(--panel-textarea-background-opacity));
+                backdrop-filter: blur(var(--panel-textarea-blur)) saturate(var(--panel-textarea-saturation)) contrast(var(--panel-textarea-contrast));
+                -webkit-backdrop-filter: blur(var(--panel-textarea-blur)) saturate(var(--panel-textarea-saturation)) contrast(var(--panel-textarea-contrast));
                 color: rgb(17, 24, 39);
-                font-size: 14px;
+                font-size: var(--panel-font-size);
                 line-height: 1.5;
                 resize: none;
                 overflow: hidden;
@@ -78,25 +89,29 @@ export class PanelStyles {
 
             /* 深色模式 */
             #pageedit-floating-panel.dark-mode {
-                background: rgba(30, 30, 30, 0.6);
-                border-color: rgba(75, 85, 99, 0.4);
-                backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
-                -webkit-backdrop-filter: blur(30px) saturate(200%) contrast(1.1);
+                --icon-color: #fff;
+                --icon-color-disabled: #6b7280;
+                --button-bg-hover: rgba(255, 255, 255, 0.1);
+
+                background: rgba(30, 30, 30, var(--panel-background-opacity));
+                border-color: rgba(75, 85, 99, var(--panel-border-opacity));
+                backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturation)) contrast(var(--panel-contrast));
+                -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturation)) contrast(var(--panel-contrast));
             }
             
             #pageedit-floating-panel.dark-mode .panel-textarea {
-                background: rgba(52, 53, 55, 0.5);
+                background: rgba(52, 53, 55, var(--panel-textarea-background-opacity));
                 border-color: rgba(60, 60, 60, 0.9);
                 color: rgb(240, 240, 240);
-                backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
-                -webkit-backdrop-filter: blur(20px) saturate(170%) contrast(1.08);
+                backdrop-filter: blur(var(--panel-textarea-blur)) saturate(var(--panel-textarea-saturation)) contrast(var(--panel-textarea-contrast));
+                -webkit-backdrop-filter: blur(var(--panel-textarea-blur)) saturate(var(--panel-textarea-saturation)) contrast(var(--panel-textarea-contrast));
             }
 
             /* 面板头部 - 移除独立背景，与主体融为一体 */
             .panel-header {
                 display: flex;
                 flex-direction: column;
-                padding: 12px 16px 8px 16px;
+                padding: var(--panel-header-padding);
                 position: relative;
                 z-index: 2;
                 gap: 8px;
@@ -176,12 +191,6 @@ export class PanelStyles {
                 color: rgb(229, 231, 235);
             }
 
-            /* 关闭按钮容器 */
-            .close-button-container {
-                display: flex;
-                align-items: center;
-            }
-
             /* 按钮行 */
             .button-row {
                 display: none;
@@ -238,7 +247,7 @@ export class PanelStyles {
             .apply-button svg {
                 width: 20px;
                 height: 20px;
-                color: #333; /* Arrow color */
+                color: var(--icon-color); /* Arrow color */
             }
 
             .apply-button.active svg {
@@ -328,6 +337,7 @@ export class PanelStyles {
             .header-button svg {
                 width: 20px;
                 height: 20px;
+                color: var(--icon-color);
             }
 
             /* Eddy 标题编辑样式 */
@@ -450,45 +460,16 @@ export class PanelStyles {
                 color: rgb(156, 163, 175) !important;
             }
 
-            /* 关闭按钮特殊样式 */
-            .close-button {
-                color: rgb(156, 163, 175) !important;
-            }
-
-            .close-button:hover {
-                background: rgba(239, 68, 68, 0.1) !important;
-                color: rgb(239, 68, 68) !important;
-            }
-
-            .close-button:disabled:hover {
-                background: transparent !important;
-                color: rgb(156, 163, 175) !important;
-            }
-
-            #pageedit-floating-panel.dark-mode .close-button {
-                color: rgb(156, 163, 175) !important;
-            }
-
-            #pageedit-floating-panel.dark-mode .close-button:hover {
-                background: rgba(248, 113, 113, 0.1) !important;
-                color: rgb(248, 113, 113) !important;
-            }
-
-            #pageedit-floating-panel.dark-mode .close-button:disabled:hover {
-                background: transparent !important;
-                color: rgb(156, 163, 175) !important;
-            }
-
             /* 自定义 Tooltip 样式 */
             .custom-tooltip {
                 position: absolute;
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
-                -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                background: rgba(255, 255, 255, var(--panel-tooltip-background-opacity));
+                backdrop-filter: blur(var(--panel-tooltip-blur)) saturate(var(--panel-tooltip-saturation)) contrast(var(--panel-tooltip-contrast));
+                -webkit-backdrop-filter: blur(var(--panel-tooltip-blur)) saturate(var(--panel-tooltip-saturation)) contrast(var(--panel-tooltip-contrast));
                 color: rgb(17, 24, 39);
                 padding: 6px 10px;
-                border-radius: 6px;
-                font-size: 11px;
+                border-radius: var(--panel-button-border-radius);
+                font-size: var(--panel-tooltip-font-size);
                 font-weight: 600;
                 white-space: nowrap;
                 pointer-events: none;
@@ -509,164 +490,22 @@ export class PanelStyles {
 
             /* 深色模式下的 Tooltip */
             #pageedit-floating-panel.dark-mode .custom-tooltip {
-                background: rgba(31, 41, 55, 0.7);
+                background: rgba(31, 41, 55, var(--panel-tooltip-background-opacity));
                 color: rgb(229, 231, 235);
                 border-color: rgba(75, 85, 99, 0.4);
-                backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
-                -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                backdrop-filter: blur(var(--panel-tooltip-blur)) saturate(var(--panel-tooltip-saturation)) contrast(var(--panel-tooltip-contrast));
+                -webkit-backdrop-filter: blur(var(--panel-tooltip-blur)) saturate(var(--panel-tooltip-saturation)) contrast(var(--panel-tooltip-contrast));
             }
 
             /* 系统主题适配 */
             @media (prefers-color-scheme: dark) {
                 .custom-tooltip {
-                    background: rgba(31, 41, 55, 0.7);
+                    background: rgba(31, 41, 55, var(--panel-tooltip-background-opacity));
                     color: rgb(229, 231, 235);
                     border-color: rgba(75, 85, 99, 0.4);
-                    backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
-                    -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.08);
+                    backdrop-filter: blur(var(--panel-tooltip-blur)) saturate(var(--panel-tooltip-saturation)) contrast(var(--panel-tooltip-contrast));
+                    -webkit-backdrop-filter: blur(var(--panel-tooltip-blur)) saturate(var(--panel-tooltip-saturation)) contrast(var(--panel-tooltip-contrast));
                 }
-            }
-
-            #pageedit-floating-panel.dark-mode .apply-button {
-                background: #3c4043; /* Google's dark gray */
-            }
-
-            #pageedit-floating-panel.dark-mode .apply-button:hover {
-                background: #4a4e51;
-            }
-
-            #pageedit-floating-panel.dark-mode .apply-button svg {
-                color: #e8eaed; /* Light gray for icon */
-            }
-
-            /* 标题容器样式 */
-            .title-container {
-                display: flex;
-                align-items: center;
-                gap: 8px; /* Spacing between title, toggle, and dropdown */
-                flex-grow: 1;
-                min-width: 0;
-            }
-
-            /* 控制按钮容器样式 */
-            .controls-container {
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                flex-shrink: 0;
-            }
-
-            /* 下拉按钮样式 */
-            .dropdown-button {
-                color: rgb(156, 163, 175) !important;
-                transition: transform 0.2s ease;
-                position: relative;
-            }
-
-            .dropdown-button:hover {
-                background: rgba(0, 0, 0, 0.05) !important;
-                color: rgb(75, 85, 99) !important;
-            }
-
-            .dropdown-button.open {
-                transform: rotate(180deg);
-            }
-
-            #pageedit-floating-panel.dark-mode .dropdown-button {
-                color: rgb(156, 163, 175) !important;
-            }
-
-            #pageedit-floating-panel.dark-mode .dropdown-button:hover {
-                background: rgba(255, 255, 255, 0.1) !important;
-                color: rgb(209, 213, 219) !important;
-            }
-
-            /* 下拉菜单样式 */
-            .dropdown-menu {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
-                -webkit-backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
-                border: 1px solid rgba(0, 0, 0, 0.15);
-                border-radius: 8px;
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-                z-index: 2147483648;
-                max-height: 200px;
-                overflow-y: auto;
-                margin-top: 4px;
-                min-width: 200px;
-            }
-
-            #pageedit-floating-panel.dark-mode .dropdown-menu {
-                background: rgba(31, 41, 55, 0.7);
-                border-color: rgba(75, 85, 99, 0.4);
-                backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
-                -webkit-backdrop-filter: blur(25px) saturate(190%) contrast(1.1);
-            }
-
-            .dropdown-item {
-                padding: 8px 12px;
-                cursor: pointer;
-                font-size: 14px;
-                color: rgb(55, 65, 81);
-                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-                transition: background-color 0.2s;
-                display: flex;
-                align-items: center;
-            }
-
-            .dropdown-item:last-child {
-                border-bottom: none;
-            }
-
-            .dropdown-item:hover {
-                background-color: rgba(59, 130, 246, 0.1);
-            }
-
-            .dropdown-item.active {
-                background-color: rgba(34, 197, 94, 0.15) !important;
-                color: rgb(22, 163, 74) !important;
-                font-weight: 600;
-                padding-top: 6px;
-                padding-bottom: 6px;
-                border-radius: 4px;
-            }
-
-            #pageedit-floating-panel.dark-mode .dropdown-item {
-                color: rgb(229, 231, 235);
-                border-bottom-color: rgba(75, 85, 99, 0.3);
-            }
-
-            #pageedit-floating-panel.dark-mode .dropdown-item:hover {
-                background-color: rgba(96, 165, 250, 0.1);
-            }
-            
-            #pageedit-floating-panel.dark-mode .dropdown-item.active {
-                background-color: rgba(74, 222, 128, 0.15) !important;
-                color: rgb(74, 222, 128) !important;
-            }
-
-            .dropdown-item-name {
-                flex: 1;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 200px;
-            }
-
-            /* 编辑时隐藏第一行工具栏 */
-            .panel-header.editing .header-row-1 .header-button,
-            .panel-header.editing .header-row-1 .close-button-container,
-            .panel-header.editing .header-row-1 .dropdown-menu {
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.2s ease;
-            }
-
-            .apply-button.processing svg {
-                animation: none;
             }
 
             #pageedit-floating-panel.dark-mode .apply-button {
@@ -674,12 +513,16 @@ export class PanelStyles {
                 color: #9ca3af;
             }
 
-            #pageedit-floating-panel.dark-mode .apply-button.active {
-                background: #a855f7; /* Dark mode purple */
+            #pageedit-floating-panel.dark-mode .apply-button:hover {
+                background: #4b5563;
+            }
+
+            #pageedit-floating-panel.dark-mode .apply-button svg {
+                color: #fff;
             }
             
-            #pageedit-floating-panel.dark-mode .apply-button svg {
-                color: #f3f4f6;
+            #pageedit-floating-panel.dark-mode .apply-button.active {
+                background: #a855f7; /* Dark mode purple */
             }
             
             #pageedit-floating-panel.dark-mode .apply-button.active svg {
@@ -752,41 +595,50 @@ export class PanelStyles {
             }
             
             .dropdown-button {
-                background: none;
-                border: none;
-                padding: 0;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 4px;
+                color: rgb(156, 163, 175) !important;
+                transition: transform 0.2s ease;
+                position: relative;
+            }
+            
+            .dropdown-button:hover {
+                background: rgba(0, 0, 0, 0.05) !important;
+                color: rgb(75, 85, 99) !important;
             }
             
             .dropdown-menu {
-                display: none;
                 position: absolute;
-                background-color: #f9f9f9;
-                min-width: 160px;
-                box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-                z-index: 1000;
-                border-radius: 6px;
-                padding: 4px 0;
+                top: 100%;
+                left: 0;
+                background: rgba(255, 255, 255, var(--panel-dropdown-background-opacity));
+                backdrop-filter: blur(var(--panel-dropdown-blur)) saturate(var(--panel-dropdown-saturation)) contrast(var(--panel-dropdown-contrast));
+                -webkit-backdrop-filter: blur(var(--panel-dropdown-blur)) saturate(var(--panel-dropdown-saturation)) contrast(var(--panel-dropdown-contrast));
+                border: 1px solid rgba(0, 0, 0, 0.15);
+                border-radius: 8px;
+                box-shadow: var(--panel-dropdown-shadow);
+                z-index: 2147483648;
+                max-height: 200px;
+                overflow-y: auto;
                 margin-top: 4px;
-                border: 1px solid rgba(0,0,0,0.1);
+                min-width: 200px;
             }
             
             .dropdown-item {
-                color: black;
                 padding: 8px 12px;
-                text-decoration: none;
+                cursor: pointer;
+                font-size: 14px;
+                color: rgb(55, 65, 81);
+                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+                transition: background-color 0.2s;
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                font-size: 13px;
-                cursor: pointer;
             }
             
+            .dropdown-item:last-child {
+                border-bottom: none;
+            }
+
             .dropdown-item:hover {
-                background-color: #f1f1f1;
+                background-color: rgba(59, 130, 246, 0.1);
             }
 
             .dropdown-item.active {
@@ -797,18 +649,13 @@ export class PanelStyles {
                 padding-bottom: 6px;
             }
 
-            /* 深色模式下的下拉菜单 */
-            #pageedit-floating-panel.dark-mode .dropdown-menu {
-                background-color: #2d3748;
-                border-color: #4a5568;
-            }
-            
             #pageedit-floating-panel.dark-mode .dropdown-item {
-                color: #e2e8f0;
+                color: rgb(229, 231, 235);
+                border-bottom-color: rgba(75, 85, 99, 0.3);
             }
-            
+
             #pageedit-floating-panel.dark-mode .dropdown-item:hover {
-                background-color: #4a5568;
+                background-color: rgba(96, 165, 250, 0.1);
             }
             
             #pageedit-floating-panel.dark-mode .dropdown-item.active {
@@ -816,54 +663,75 @@ export class PanelStyles {
                 color: rgb(74, 222, 128) !important;
             }
 
-            /* Eddy Title and Dropdown */
-            .eddy-title {
-                font-size: 14px;
-                font-weight: 600;
+            .dropdown-item-name {
+                flex: 1;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                cursor: text;
-                padding: 4px 6px;
-                border-radius: 4px;
-                transition: background-color 0.2s;
-            }
-
-            .eddy-title:hover {
-                background-color: rgba(0, 0, 0, 0.05);
+                max-width: 200px;
             }
             
-            /* New Eddy Toggle Switch Styles */
-            .eddy-toggle-switch {
-                position: relative;
-                display: inline-block;
-                width: 38px;
-                height: 22px;
-                background-color: var(--toggle-bg-color, #ccc);
-                border-radius: 22px;
-                border: 1px solid var(--border-color);
+            .apply-button.processing {
+                background: #8952f1;
+                color: white;
+            }
+
+            /* 统一的图标按钮样式 */
+            .icon-button {
+                width: var(--button-size);
+                height: var(--button-size);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: none;
+                background: transparent;
                 cursor: pointer;
-                transition: background-color 0.2s ease-in-out;
-                flex-shrink: 0; /* Prevent shrinking */
+                border-radius: var(--button-radius);
+                transition: all 0.2s ease;
+                color: var(--icon-color);
+                padding: 0;
+                position: relative;
+                z-index: 3;
             }
 
-            .eddy-toggle-switch .toggle-handle {
-                position: absolute;
-                top: 2px;
-                left: 2px;
-                width: 18px;
-                height: 18px;
-                background-color: white;
-                border-radius: 50%;
-                transition: transform 0.2s ease-in-out;
+            .icon-button:hover {
+                background: var(--button-bg-hover);
             }
 
-            .eddy-toggle-switch.enabled {
-                background-color: var(--accent-color, #4CAF50); /* Green when enabled */
+            .icon-button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
             }
 
-            .eddy-toggle-switch.enabled .toggle-handle {
-                transform: translateX(16px);
+            .icon-button:disabled:hover {
+                background: transparent !important;
+            }
+
+            .icon-button svg {
+                width: var(--icon-size);
+                height: var(--icon-size);
+                color: var(--icon-color);
+            }
+
+            /* 特殊按钮的 Hover 状态 */
+            .icon-button--create:hover {
+                background: rgba(34, 197, 94, 0.1) !important;
+                color: rgb(34, 197, 94) !important;
+            }
+            #pageedit-floating-panel.dark-mode .icon-button--create:hover {
+                background: rgba(74, 222, 128, 0.1) !important;
+                color: rgb(74, 222, 128) !important;
+            }
+
+            .icon-button--delete:hover,
+            .icon-button--close:hover {
+                background: rgba(239, 68, 68, 0.1) !important;
+                color: rgb(239, 68, 68) !important;
+            }
+            #pageedit-floating-panel.dark-mode .icon-button--delete:hover,
+            #pageedit-floating-panel.dark-mode .icon-button--close:hover {
+                background: rgba(248, 113, 113, 0.1) !important;
+                color: rgb(248, 113, 113) !important;
             }
         `;
         shadowRoot.appendChild(style);
