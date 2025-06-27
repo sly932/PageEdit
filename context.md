@@ -49,6 +49,26 @@
 2.  **依赖注入**: 我们创建了 `Main` 类，并使用 `setFloatingBall` 方法将 `FloatingBall` 的实例注入到 `ContentManager` 中，彻底解决了初始化顺序问题和组件间的耦合。
 3.  **事件驱动**: `Panel` 的所有操作都被重构为向 `ContentManager` 发送事件的回调函数，剥离了其内部的业务逻辑。
 4.  **清晰命名**: 我们将容易引起误解的 `setCurrentEddy` 方法重命名为 `updatePanelDisplay`，明确了其职责仅仅是更新 UI 显示。
-5.  **文档同步**: 所有的最终设计决策都已更新并同步到了 `src/react-plans/refactor-content-script-architecture.md` 文档中。
+5.  **文档同步**: 所有的最终设计决策都已更新并同步到了 `docs/development/project-architecture.md` (原 `refactor-content-script-architecture.md`) 文档中。
 
-我们目前的架构是清晰、稳健且易于维护的。 
+我们目前的架构是清晰、稳健且易于维护的。
+
+### 5. 功能实现与健壮性修复 (Feature Implementation & Robustness Fixes)
+
+在重构后的稳健架构基础上，我们成功实现了两个核心功能，并在此过程中修复了多个关键bug，进一步增强了系统的健壮性。
+
+**新功能**:
+1.  **持久化启用/禁用开关**: 为每个 Eddy 添加了一个 `isEnabled` 状态。禁用的 Eddy 会从页面上移除其样式，但配置会被保留，用户可以随时重新启用。
+2.  **临时查看原始样式**: 提供一个"眼睛"按钮，用户按住时可以临时移除当前 Eddy 的所有样式，以查看页面原始样貌，松开后样式恢复。
+
+**架构增强与关键 Bug 修复**:
+- **`StyleService` 功能扩展**:
+  - 新增 `clearAllAppliedStyles` 和 `reapplyAllAppliedStyles` 方法，允许在不影响撤销/重做历史记录的前提下，对 DOM 进行样式的移除和恢复。这是上述两个新功能的实现基础。
+  - 重构了 `restoreFromEddy` 方法，增加了 `applyToDOM` 选项。这**将数据加载到内存与将样式应用到 DOM 中这两个行为解耦**，是修复"刷新后数据丢失" bug 的核心。
+
+- **关键 Bug 修复**:
+  - **修复了刷新导致的数据丢失问题**: 通过上述 `applyToDOM` 的重构，确保了即使是禁用的 Eddy，其数据也会被加载到内存中，从而避免了在下一次保存时其数据被空状态覆盖的严重 bug。
+  - **修复了删除 Eddy 导致的数据污染问题**: 移除了 `handleDeleteEddy` 中一个多余的 `resetState()` 调用，该调用会错误地清空下一个被选中 Eddy 的状态。
+  - **修复了删除最后一个 Eddy 时的逻辑错误**: 将 `resetState` 拆分为 `resetState()` (不保存) 和 `resetStateAndSaveToStorage()` (保存) 两个方法，避免了在创建临时 Eddy 时将其错误地保存到存储中。
+  - **增强了 CSS 合并逻辑**: 重写了 `mergeCSSProperties` 方法，使其能更可靠地处理和更新元素的 `style` 属性。
+- **文档同步**: 所有新功能的设计、实现细节和 Bug 修复过程都已详细记录在 `docs/development/feature-plan-enable-disable-view-original.md` 中。 
