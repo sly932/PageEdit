@@ -201,7 +201,7 @@ export class PanelRenderer {
 
         // 创建反馈消息区域
         const feedback = document.createElement('div');
-        feedback.className = 'feedback-message';
+        // 注意：反馈消息的样式通过 showFeedback 方法的内联样式设置
 
         panel.appendChild(header);
         panel.appendChild(content);
