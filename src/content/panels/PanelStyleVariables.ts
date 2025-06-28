@@ -198,6 +198,12 @@ export interface PanelStyleConfig {
         };
     };
 
+    // 字体配置 / Font Configuration
+    fonts: {
+        primary: string;                    // 主要字体族（面板中大部分文字使用的字体）/ Primary font family (font used for most text in panel)
+        monospace: string;                  // 等宽字体族（代码和特殊文本使用）/ Monospace font family (used for code and special text)
+    };
+
     // 通用配置 / Common Configuration
     common: {
         fontSize: string;                   // 基础字体大小（面板中大部分文字的大小）/ Base font size (size of most text in panel)
@@ -294,7 +300,7 @@ export const defaultPanelConfig: PanelStyleConfig = {
 
     // Panel 主体配置 / Panel Main Configuration
     panel: {
-        backgroundOpacity: 0.6,                                // 背景透明度 60%（40%透明，60%不透明）/ Background opacity 60% (40% transparent, 60% opaque)
+        backgroundOpacity: 0.3,                                // 背景透明度 60%（40%透明，60%不透明）/ Background opacity 60% (40% transparent, 60% opaque)
         borderOpacity: 0.4,                                   // 边框透明度 40%（边框较淡）/ Border opacity 40% (border is quite faint)
         blur: '30px',                                         // 背景模糊 30px（强磨砂玻璃效果）/ Background blur 30px (strong frosted glass effect)
         saturation: '200%',                                   // 饱和度 200%（色彩鲜艳度翻倍）/ Saturation 200% (color vibrancy doubled)
@@ -372,6 +378,12 @@ export const defaultPanelConfig: PanelStyleConfig = {
             button: 'all 0.2s ease',                          // 按钮过渡动画（所有属性0.2秒缓动过渡）/ Button transition animation (all properties 0.2s ease transition)
             opacity: 'opacity 0.3s ease',                    // 透明度过渡动画（透明度0.3秒缓动过渡）/ Opacity transition animation (opacity 0.3s ease transition)
         },
+    },
+
+    // 字体配置 / Font Configuration
+    fonts: {
+        primary: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"', // 主要字体族（确保 Shadow DOM 隔离，不受外部字体影响）/ Primary font family (ensures Shadow DOM isolation, unaffected by external fonts)
+        monospace: '"PT Mono", "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace', // 等宽字体族（用于代码、占位符等特殊文本）/ Monospace font family (for code, placeholders, and special text)
     },
 
     // 通用配置 / Common Configuration
@@ -518,6 +530,8 @@ export function generatePanelCSSVariables(): string {
         --panel-header-padding: ${config.header.padding};
         
         /* 字体设置 / Font Settings */
+        --font-family-primary: ${config.fonts.primary};
+        --font-family-monospace: ${config.fonts.monospace};
         --panel-font-size: ${config.common.fontSize};
         --panel-header-font-size: ${config.header.fontSize};
         --panel-tooltip-font-size: ${config.tooltip.fontSize};

@@ -60,7 +60,7 @@ export class PanelRenderer {
         // 新增：创建 Eddy 开关
         const eddyToggleSwitch = document.createElement('button');
         eddyToggleSwitch.className = 'eddy-toggle-switch';
-        eddyToggleSwitch.title = 'Enable Eddy'; // 设置默认 tooltip 文本
+        eddyToggleSwitch.dataset.tooltip = 'Enable Eddy'; // 使用 data-tooltip 属性存储 tooltip 文本
         // 开关的视觉样式 (圆圈) 将由 CSS 控制
         eddyToggleSwitch.innerHTML = `
             <div class="toggle-handle"></div>
@@ -119,7 +119,7 @@ export class PanelRenderer {
         // 创建预览原始样式按钮
         const viewOriginalButton = document.createElement('button');
         viewOriginalButton.className = 'icon-button';
-        viewOriginalButton.title = 'VIEW ORIGINAL'; // 设置默认 tooltip 文本
+        viewOriginalButton.dataset.tooltip = 'VIEW ORIGINAL'; // 使用 data-tooltip 属性存储 tooltip 文本
         viewOriginalButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

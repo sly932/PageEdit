@@ -7,13 +7,13 @@ export class PanelStyles {
         style.textContent = `
             @import url('https://fonts.googleapis.com/css2?family=PT+Mono:ital,wght@0,400;1,400&display=swap');
             
-            /* Panel 样式变量 */
-            #pageedit-floating-panel {
+            /* 全局样式变量 - 在根级别定义，所有元素都能访问 */
+            :host {
                 ${generatePanelCSSVariables()}
-                
-                /* 这些变量现在由 generatePanelCSSVariables() 生成 */
-                /* --icon-color, --icon-color-disabled, --button-bg-hover 等已移至变量系统 */
-
+            }
+            
+            /* Panel 主体样式 */
+            #pageedit-floating-panel {
                 position: fixed;
                 right: var(--panel-right);
                 bottom: var(--panel-bottom);
@@ -30,7 +30,7 @@ export class PanelStyles {
                 pointer-events: auto;
                 display: none;
                 z-index: 2147483646;
-                font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+                font-family: var(--font-family-primary);
                 user-select: none;
                 box-sizing: border-box;
             }
@@ -68,12 +68,12 @@ export class PanelStyles {
                 overflow: hidden;
                 transition: all var(--panel-transition-duration);
                 box-sizing: border-box;
-                font-family: inherit;
+                font-family: var(--font-family-primary);
             }
 
             .panel-textarea::placeholder {
                 color: var(--color-placeholder-light);
-                font-family: 'PT Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+                font-family: var(--font-family-monospace);
                 font-weight: 400;
                 font-style: italic;
                 letter-spacing: 0.2px;
@@ -514,7 +514,7 @@ export class PanelStyles {
                 transform: translateY(4px);
                 transition: all var(--panel-tooltip-transition-duration) ease;
                 z-index: 2147483646;
-                font-family: inherit;
+                font-family: var(--font-family-primary);
                 border: 1px solid var(--border-primary);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
@@ -740,7 +740,7 @@ export class PanelStyles {
             const ptMonoStyle = document.createElement('style');
             ptMonoStyle.textContent = `
                 .panel-textarea::placeholder {
-                    font-family: 'PT Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+                    font-family: var(--font-family-monospace) !important;
                 }
             `;
             shadowRoot.appendChild(ptMonoStyle);

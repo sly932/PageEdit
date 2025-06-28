@@ -31,6 +31,7 @@ export class PanelTooltip {
         const panel = PanelTooltip.shadowRoot.querySelector('#pageedit-floating-panel');
         const isDarkMode = panel?.classList.contains('dark-mode') || false;
         
+        // 现在只需要设置主题相关的颜色，字体大小等通过CSS类自动应用
         if (isDarkMode) {
             tooltip.style.background = 'rgba(31, 41, 55, 0.95)';
             tooltip.style.color = 'rgb(229, 231, 235)';
@@ -94,8 +95,7 @@ export class PanelTooltip {
 
     // 更新 Tooltip 主题样式（当主题切换时调用）
     static updateTheme(isDarkMode: boolean): void {
-        // 由于每次显示tooltip都会重新检测主题并设置样式，
-        // 这个方法现在主要用于处理已经显示的tooltip的主题切换
+        // 现在只需要更新主题相关的颜色，字体等通过CSS类自动应用
         if (PanelTooltip.currentTooltip) {
             if (isDarkMode) {
                 PanelTooltip.currentTooltip.style.background = 'rgba(31, 41, 55, 0.95)';

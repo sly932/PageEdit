@@ -150,8 +150,8 @@ export class FloatingPanel {
 
         // 为 Eddy 开关添加动态 Tooltip
         this.eddyToggleSwitch.addEventListener('mouseenter', () => {
-            // The title is dynamically set in `updateEddyToggleState`
-            const tooltipText = this.eddyToggleSwitch.title;
+            // The tooltip text is dynamically set in `updateEddyToggleState`
+            const tooltipText = this.eddyToggleSwitch.dataset.tooltip || '';
             PanelTooltip.showTooltip(this.eddyToggleSwitch, tooltipText);
         });
         this.eddyToggleSwitch.addEventListener('mouseleave', () => PanelTooltip.hideTooltip());
@@ -162,7 +162,7 @@ export class FloatingPanel {
                 this.eventCallback({ type: 'view_original_style' });
             }
             // Tooltip is managed dynamically via updateViewOriginalButtonState
-            const tooltipText = this.viewOriginalButton.title;
+            const tooltipText = this.viewOriginalButton.dataset.tooltip || '';
             PanelTooltip.showTooltip(this.viewOriginalButton, tooltipText);
         });
         this.viewOriginalButton.addEventListener('mouseleave', () => {
@@ -343,11 +343,11 @@ export class FloatingPanel {
                 position: absolute;
                 bottom: 8px;
                 left: 20px;
-                font-size: 11px;
+                font-size: var(--panel-tooltip-font-size);
                 color: #999;
                 pointer-events: none;
                 z-index: 5;
-                font-family: inherit;
+                font-family: var(--font-family-primary);
             `;
             
             // 将提示元素添加到输入框容器中
@@ -399,7 +399,6 @@ export class FloatingPanel {
 
         // 开始处理状态
         this.isProcessing = true;
-        this.applyButton.title = 'Cancel';
         this.applyButton.classList.add('processing');
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <rect x="6" y="6" width="12" height="12" rx="1"/>
@@ -425,7 +424,6 @@ export class FloatingPanel {
     // 取消处理
     private cancelProcessing(): void {
         this.isProcessing = false;
-        this.applyButton.title = 'Apply';
         this.applyButton.classList.remove('processing');
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
         
@@ -494,7 +492,6 @@ export class FloatingPanel {
         this.setElementState(this.applyButton, 'normal-scale');
         this.setElementOpacity(this.applyButton, 'normal');
         this.applyButton.style.cursor = 'pointer';
-        this.applyButton.title = 'Apply';
         this.applyButton.classList.remove('processing');
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
         this.applyButton.classList.remove('active');
@@ -586,8 +583,8 @@ export class FloatingPanel {
             opacity: 1;
             transition: opacity 0.3s;
             z-index: 2147483647;
-            font-family: inherit;
-            font-size: 14px;
+            font-family: var(--font-family-primary);
+            font-size: var(--panel-font-size);
             font-weight: 500;
             pointer-events: none;
             display: flex;
@@ -839,10 +836,10 @@ export class FloatingPanel {
         if (this.eddyToggleSwitch) {
             if (isEnabled) {
                 this.eddyToggleSwitch.classList.add('enabled');
-                this.eddyToggleSwitch.title = 'Disable Eddy';
+                this.eddyToggleSwitch.dataset.tooltip = 'Disable Eddy';
             } else {
                 this.eddyToggleSwitch.classList.remove('enabled');
-                this.eddyToggleSwitch.title = 'Enable Eddy';
+                this.eddyToggleSwitch.dataset.tooltip = 'Enable Eddy';
             }
         }
     }
@@ -854,12 +851,12 @@ export class FloatingPanel {
                 this.viewOriginalButton.disabled = false;
                 this.setElementOpacity(this.viewOriginalButton, 'normal');
                 this.viewOriginalButton.style.cursor = 'pointer';
-                this.viewOriginalButton.title = 'VIEW ORIGINAL'; // 启用状态的 tooltip
+                this.viewOriginalButton.dataset.tooltip = 'VIEW ORIGINAL'; // 启用状态的 tooltip
             } else {
                 this.viewOriginalButton.disabled = true;
                 this.setElementOpacity(this.viewOriginalButton, 'disabled');
                 this.viewOriginalButton.style.cursor = 'not-allowed';
-                this.viewOriginalButton.title = 'EDDY DISABLED'; // 禁用状态的 tooltip
+                this.viewOriginalButton.dataset.tooltip = 'EDDY DISABLED'; // 禁用状态的 tooltip
             }
         }
     }
