@@ -71,4 +71,37 @@
   - **修复了删除 Eddy 导致的数据污染问题**: 移除了 `handleDeleteEddy` 中一个多余的 `resetState()` 调用，该调用会错误地清空下一个被选中 Eddy 的状态。
   - **修复了删除最后一个 Eddy 时的逻辑错误**: 将 `resetState` 拆分为 `resetState()` (不保存) 和 `resetStateAndSaveToStorage()` (保存) 两个方法，避免了在创建临时 Eddy 时将其错误地保存到存储中。
   - **增强了 CSS 合并逻辑**: 重写了 `mergeCSSProperties` 方法，使其能更可靠地处理和更新元素的 `style` 属性。
-- **文档同步**: 所有新功能的设计、实现细节和 Bug 修复过程都已详细记录在 `docs/development/feature-plan-enable-disable-view-original.md` 中。 
+- **文档同步**: 所有新功能的设计、实现细节和 Bug 修复过程都已详细记录在 `docs/development/feature-plan-enable-disable-view-original.md` 中。
+
+### 6. Shadow DOM 样式隔离机制优化 (Shadow DOM Style Isolation Improvements)
+
+在功能稳定后，我们进一步优化了 Shadow DOM 的样式隔离机制，解决了外部样式影响插件UI的问题。
+
+**核心问题**:
+- 外部字体修改插件会影响插件按钮字体，即使使用了 Shadow DOM
+- CSS变量作用域限制导致 Tooltip 字体大小配置无法生效
+- 硬编码样式值分散在代码中，难以维护
+
+**技术改进**:
+1. **CSS变量作用域修复**:
+   - 将CSS变量定义从 `#pageedit-floating-panel` 移动到 `:host` 级别
+   - 确保所有 Shadow DOM 内的元素都能访问CSS变量
+   - 解决了 Tooltip 无法读取字体大小变量的问题
+
+2. **字体继承问题修复**:
+   - 移除所有 `font-family: inherit` 使用，避免继承外部字体设置
+   - 统一使用 `--font-family-primary` 和 `--font-family-monospace` CSS变量
+   - 确保插件字体完全隔离，不受外部页面字体插件影响
+
+3. **代码重构与优化**:
+   - 简化 `PanelTooltip.ts` 实现，移除复杂的CSS变量手动获取逻辑
+   - 将硬编码的字体大小值统一使用CSS变量管理
+   - 所有样式配置集中在 `PanelStyleVariables.ts` 中统一管理
+
+**架构改进效果**:
+- **完全样式隔离**: 插件UI不再受任何外部样式或字体插件影响
+- **配置统一管理**: 所有样式值在单一文件中配置，易于维护和修改
+- **性能优化**: Tooltip等组件直接使用CSS类，无需JavaScript动态计算样式
+- **代码简化**: 移除复杂的样式获取逻辑，代码更简洁可维护
+
+这次优化进一步增强了系统的健壮性和可维护性，确保了在任何网页环境下的一致用户体验。 

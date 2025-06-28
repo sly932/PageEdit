@@ -198,10 +198,25 @@ src/
 
 - **前端框架**：原生JavaScript + TypeScript
 - **UI组件**：自定义Web Components + Shadow DOM
+- **样式隔离**：Shadow DOM + CSS变量系统，完全隔离外部字体影响
 - **状态管理**：自定义GlobalState管理
 - **存储**：Chrome Extension Storage API
 - **NLP处理**：自定义NLPProcessor + LLM集成
 - **构建工具**：Webpack + TypeScript
+
+### Shadow DOM 样式隔离机制
+
+项目使用 Shadow DOM 提供完全的样式隔离，确保插件UI不受外部页面样式影响：
+
+**CSS变量作用域**：
+- 所有CSS变量定义在 `:host` 级别，确保整个Shadow DOM内的元素都能访问
+- 通过 `PanelStyleVariables.ts` 统一管理所有样式配置
+- 字体系统使用 `--font-family-primary` 和 `--font-family-monospace` 变量
+
+**字体隔离**：
+- 移除所有 `font-family: inherit` 避免继承外部字体设置
+- 使用预定义的字体栈确保跨平台一致性
+- Tooltip等组件通过CSS类自动应用样式变量
 
 ## 扩展性考虑
 

@@ -305,7 +305,7 @@ export const defaultPanelConfig: PanelStyleConfig = {
         blur: '30px',                                         // 背景模糊 30px（强磨砂玻璃效果）/ Background blur 30px (strong frosted glass effect)
         saturation: '200%',                                   // 饱和度 200%（色彩鲜艳度翻倍）/ Saturation 200% (color vibrancy doubled)
         contrast: '1.1',                                      // 对比度 1.1（稍微增强对比度）/ Contrast 1.1 (slightly enhanced contrast)
-        width: '320px',                                       // 面板宽度 320px（中等宽度）/ Panel width 320px (medium width)
+        width: '360px',                                       // 面板宽度 320px（中等宽度）/ Panel width 320px (medium width)
         borderRadius: '12px',                                 // 圆角 12px（适中的圆角）/ Border radius 12px (moderate rounded corners)
         shadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',     // 阴影效果（较深的投影，增强立体感）/ Shadow effect (deep drop shadow, enhances depth)
         padding: '16px',                                      // 内边距 16px（舒适的内容间距）/ Padding 16px (comfortable content spacing)

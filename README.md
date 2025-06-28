@@ -143,6 +143,7 @@ PageEdit/
 
 ### 技术栈
 - **前端**: Chrome Extension (原生JavaScript/TypeScript)
+- **UI组件**: Shadow DOM + CSS变量系统（完全样式隔离）
 - **AI模型**: 自然语言处理 + CSS生成
 - **存储**: Chrome Storage API
 - **开发工具**: VS Code, Chrome DevTools
