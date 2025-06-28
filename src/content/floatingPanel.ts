@@ -120,9 +120,9 @@ export class FloatingPanel {
         // 设置事件监听器
         this.setupEventListeners();
         
-        // 添加页面刷新前的事件监听器
+        // 设置页面卸载监听器
         this.setupPageUnloadListener();
-
+        
         console.log('[FloatingPanel] FloatingPanel initialized successfully');
     }
 
@@ -260,6 +260,43 @@ export class FloatingPanel {
         }
     }
 
+    // UI状态管理工具方法
+    private setElementState(element: HTMLElement, state: 'disabled' | 'processing' | 'normal' | 'hover-scale' | 'normal-scale'): void {
+        // 移除所有状态类
+        element.classList.remove('ui-state--disabled', 'ui-state--processing', 'ui-state--normal', 'ui-state--hover-scale', 'ui-state--normal-scale');
+        
+        // 添加新状态类
+        element.classList.add(`ui-state--${state}`);
+    }
+
+    private setElementOpacity(element: HTMLElement, opacity: 'disabled' | 'processing' | 'normal'): void {
+        // 移除所有透明度状态
+        element.classList.remove('ui-state--disabled', 'ui-state--processing', 'ui-state--normal');
+        
+        // 添加新透明度状态
+        switch (opacity) {
+            case 'disabled':
+                element.classList.add('ui-state--disabled');
+                break;
+            case 'processing':
+                element.classList.add('ui-state--processing');
+                break;
+            case 'normal':
+                element.classList.add('ui-state--normal');
+                break;
+        }
+    }
+
+    private showDropdownMenu(): void {
+        this.dropdownMenu.classList.remove('dropdown-menu--hidden');
+        this.dropdownMenu.style.display = 'block';
+    }
+
+    private hideDropdownMenu(): void {
+        this.dropdownMenu.classList.add('dropdown-menu--hidden');
+        this.dropdownMenu.style.display = 'none';
+    }
+
     // 更新按钮状态
     private updateButtonState(): void {
         const hasContent = this.input.value.trim().length > 0;
@@ -272,10 +309,9 @@ export class FloatingPanel {
         if (hasContent) {
             // 有内容时，启用按钮并显示提示
             this.applyButton.disabled = false;
-            this.applyButton.style.opacity = '1';
+            this.setElementState(this.applyButton, 'hover-scale');
+            this.setElementOpacity(this.applyButton, 'normal');
             this.applyButton.style.cursor = 'pointer';
-            this.applyButton.style.transform = 'scale(1.1)';
-            this.applyButton.style.transition = 'all 0.2s ease';
             this.applyButton.classList.add('active');
             
             // 显示提示文字
@@ -283,9 +319,9 @@ export class FloatingPanel {
         } else {
             // 无内容时，禁用按钮并隐藏提示
             this.applyButton.disabled = true;
-            this.applyButton.style.opacity = '0.5';
+            this.setElementState(this.applyButton, 'normal-scale');
+            this.setElementOpacity(this.applyButton, 'disabled');
             this.applyButton.style.cursor = 'default';
-            this.applyButton.style.transform = 'scale(1)';
             this.applyButton.classList.remove('active');
             
             // 隐藏提示文字
@@ -371,7 +407,7 @@ export class FloatingPanel {
         
         // 禁用输入框
         this.input.disabled = true;
-        this.input.style.opacity = '0.7';
+        this.setElementOpacity(this.input, 'processing');
         this.input.style.cursor = 'default';
 
         // 更新undo/redo/reset按钮状态（禁用）
@@ -395,7 +431,7 @@ export class FloatingPanel {
         
         // 重新启用输入框
         this.input.disabled = false;
-        this.input.style.opacity = '1';
+        this.setElementOpacity(this.input, 'normal');
         this.input.style.cursor = 'text';
         
         // 更新undo/redo/reset按钮状态（重新启用）
@@ -455,15 +491,15 @@ export class FloatingPanel {
     public resetApplyButton(): void {
         this.isProcessing = false;
         this.applyButton.disabled = false;
-        this.applyButton.style.opacity = '1';
+        this.setElementState(this.applyButton, 'normal-scale');
+        this.setElementOpacity(this.applyButton, 'normal');
         this.applyButton.style.cursor = 'pointer';
-        this.applyButton.style.transform = 'scale(1)';
         this.applyButton.title = 'Apply';
         this.applyButton.classList.remove('processing');
         this.applyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
         this.applyButton.classList.remove('active');
         this.input.disabled = false;
-        this.input.style.opacity = '1';
+        this.setElementOpacity(this.input, 'normal');
         this.input.style.cursor = 'text';
         
         // 更新undo/redo/reset按钮状态
@@ -483,9 +519,9 @@ export class FloatingPanel {
             this.resetButton.disabled = true;
             
             // 设置按钮样式为禁用状态
-            this.undoButton.style.opacity = '0.5';
-            this.redoButton.style.opacity = '0.5';
-            this.resetButton.style.opacity = '0.5';
+            this.setElementOpacity(this.undoButton, 'disabled');
+            this.setElementOpacity(this.redoButton, 'disabled');
+            this.setElementOpacity(this.resetButton, 'disabled');
             
             // 设置鼠标样式为禁止
             this.undoButton.style.cursor = 'not-allowed';
@@ -502,9 +538,9 @@ export class FloatingPanel {
         this.resetButton.disabled = false; // reset按钮总是可用的（除了处理中）
         
         // 更新按钮样式
-        this.undoButton.style.opacity = stateInfo.canUndo ? '1' : '0.5';
-        this.redoButton.style.opacity = stateInfo.canRedo ? '1' : '0.5';
-        this.resetButton.style.opacity = '1';
+        this.setElementOpacity(this.undoButton, stateInfo.canUndo ? 'normal' : 'disabled');
+        this.setElementOpacity(this.redoButton, stateInfo.canRedo ? 'normal' : 'disabled');
+        this.setElementOpacity(this.resetButton, 'normal');
         
         // 设置鼠标样式
         this.undoButton.style.cursor = stateInfo.canUndo ? 'pointer' : 'not-allowed';
@@ -816,14 +852,14 @@ export class FloatingPanel {
         if (this.viewOriginalButton) {
             if (isEnabled) {
                 this.viewOriginalButton.disabled = false;
-                this.viewOriginalButton.style.opacity = '1';
+                this.setElementOpacity(this.viewOriginalButton, 'normal');
                 this.viewOriginalButton.style.cursor = 'pointer';
-                this.viewOriginalButton.title = 'Hold to view original page';
+                this.viewOriginalButton.title = 'VIEW ORIGINAL'; // 启用状态的 tooltip
             } else {
                 this.viewOriginalButton.disabled = true;
-                this.viewOriginalButton.style.opacity = '0.5';
+                this.setElementOpacity(this.viewOriginalButton, 'disabled');
                 this.viewOriginalButton.style.cursor = 'not-allowed';
-                this.viewOriginalButton.title = 'Eddy is disabled';
+                this.viewOriginalButton.title = 'EDDY DISABLED'; // 禁用状态的 tooltip
             }
         }
     }

@@ -196,9 +196,54 @@ export class PanelStyles {
             .title-container {
                 display: flex;
                 align-items: center;
-                gap: 4px;
+                gap: var(--title-container-gap);
                 position: relative;
                 flex: 1;
+            }
+            
+            /* 标题编辑样式 */
+            .eddy-title--editable {
+                cursor: pointer;
+                min-width: var(--title-min-width);
+                outline: none;
+                border-radius: var(--title-border-radius);
+                padding: var(--title-padding);
+                transition: background-color var(--panel-transition-duration);
+            }
+            
+            /* 下拉菜单初始状态 */
+            .dropdown-menu--hidden {
+                display: none;
+            }
+            
+            /* UI 状态类 */
+            .ui-state--disabled {
+                opacity: var(--state-opacity-disabled);
+                cursor: not-allowed;
+            }
+            
+            .ui-state--processing {
+                opacity: var(--state-opacity-processing);
+                cursor: default;
+            }
+            
+            .ui-state--normal {
+                opacity: var(--state-opacity-normal);
+                cursor: pointer;
+            }
+            
+            .ui-state--hover-scale {
+                transform: scale(var(--state-scale-hover));
+                transition: var(--state-transition-button);
+            }
+            
+            .ui-state--normal-scale {
+                transform: scale(var(--state-scale-normal));
+                transition: var(--state-transition-button);
+            }
+            
+            .ui-state--opacity-transition {
+                transition: var(--state-transition-opacity);
             }
 
             .panel-header::before {

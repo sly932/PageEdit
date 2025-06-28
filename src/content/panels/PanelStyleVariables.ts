@@ -173,6 +173,31 @@ export interface PanelStyleConfig {
         size: string;                       // 按钮尺寸（如"32px"，按钮的宽高）/ Button size (like "32px", button width and height)
     };
     
+    // 标题配置 / Title Configuration
+    title: {
+        minWidth: string;                   // 标题最小宽度（如"60px"，确保标题有足够空间）/ Title minimum width (like "60px", ensures title has enough space)
+        borderRadius: string;               // 标题编辑状态圆角（如"4px"，编辑时的圆角效果）/ Title edit state border radius (like "4px", rounded corners when editing)
+        padding: string;                    // 标题内边距（如"2px 4px"，标题文字的内边距）/ Title padding (like "2px 4px", title text inner spacing)
+        containerGap: string;               // 标题容器间距（如"4px"，标题元素之间的间距）/ Title container gap (like "4px", spacing between title elements)
+    };
+    
+    // UI 状态配置 / UI State Configuration
+    states: {
+        opacity: {
+            disabled: number;               // 禁用状态透明度（如0.5，按钮禁用时的透明度）/ Disabled state opacity (like 0.5, button opacity when disabled)
+            processing: number;             // 处理中状态透明度（如0.7，输入框处理时的透明度）/ Processing state opacity (like 0.7, input opacity when processing)
+            normal: number;                 // 正常状态透明度（如1.0，元素正常状态的透明度）/ Normal state opacity (like 1.0, element opacity in normal state)
+        };
+        scale: {
+            hover: string;                  // 悬停状态缩放（如"1.1"，按钮悬停时的缩放比例）/ Hover state scale (like "1.1", button scale when hovered)
+            normal: string;                 // 正常状态缩放（如"1.0"，元素正常状态的缩放）/ Normal state scale (like "1.0", element scale in normal state)
+        };
+        transitions: {
+            button: string;                 // 按钮过渡动画（如"all 0.2s ease"，按钮状态变化的动画）/ Button transition animation (like "all 0.2s ease", button state change animation)
+            opacity: string;                // 透明度过渡动画（用于淡入淡出效果）/ Opacity transition animation (for fade in/out effects)
+        };
+    };
+
     // 通用配置 / Common Configuration
     common: {
         fontSize: string;                   // 基础字体大小（面板中大部分文字的大小）/ Base font size (size of most text in panel)
@@ -324,6 +349,31 @@ export const defaultPanelConfig: PanelStyleConfig = {
         size: '32px',                                         // 按钮尺寸 32px（宽高都是32px的正方形按钮）/ Button size 32px (32px x 32px square buttons)
     },
     
+    // 标题配置 / Title Configuration
+    title: {
+        minWidth: '60px',                                     // 标题最小宽度 60px（确保标题有足够的显示空间）/ Title minimum width 60px (ensures title has enough display space)
+        borderRadius: '4px',                                  // 标题编辑状态圆角 4px（编辑时的圆角效果）/ Title edit state border radius 4px (rounded corners when editing)
+        padding: '2px 4px',                                   // 标题内边距（上下2px，左右4px）/ Title padding (2px top/bottom, 4px left/right)
+        containerGap: '4px',                                  // 标题容器间距 4px（标题元素之间的间距）/ Title container gap 4px (spacing between title elements)
+    },
+    
+    // UI 状态配置 / UI State Configuration
+    states: {
+        opacity: {
+            disabled: 0.5,                                    // 禁用状态透明度 50%（按钮禁用时的半透明效果）/ Disabled state opacity 50% (semi-transparent effect when button is disabled)
+            processing: 0.7,                                  // 处理中状态透明度 70%（输入框处理时的透明度）/ Processing state opacity 70% (input opacity when processing)
+            normal: 1.0,                                      // 正常状态透明度 100%（元素正常状态完全不透明）/ Normal state opacity 100% (element fully opaque in normal state)
+        },
+        scale: {
+            hover: '1.1',                                     // 悬停状态缩放 110%（按钮悬停时轻微放大）/ Hover state scale 110% (button slightly enlarged when hovered)
+            normal: '1.0',                                    // 正常状态缩放 100%（元素正常大小）/ Normal state scale 100% (element normal size)
+        },
+        transitions: {
+            button: 'all 0.2s ease',                          // 按钮过渡动画（所有属性0.2秒缓动过渡）/ Button transition animation (all properties 0.2s ease transition)
+            opacity: 'opacity 0.3s ease',                    // 透明度过渡动画（透明度0.3秒缓动过渡）/ Opacity transition animation (opacity 0.3s ease transition)
+        },
+    },
+
     // 通用配置 / Common Configuration
     common: {
         fontSize: '14px',                                     // 基础字体大小 14px（面板中大部分文字的标准大小）/ Base font size 14px (standard size for most text in panel)
@@ -477,6 +527,21 @@ export function generatePanelCSSVariables(): string {
         --panel-transition-duration: ${config.common.transitionDuration};
         --panel-hover-transition-duration: ${config.common.hoverTransitionDuration};
         --panel-tooltip-transition-duration: ${config.common.tooltipTransitionDuration};
+        
+        /* 标题相关变量 / Title Related Variables */
+        --title-min-width: ${config.title.minWidth};
+        --title-border-radius: ${config.title.borderRadius};
+        --title-padding: ${config.title.padding};
+        --title-container-gap: ${config.title.containerGap};
+        
+        /* UI 状态变量 / UI State Variables */
+        --state-opacity-disabled: ${config.states.opacity.disabled};
+        --state-opacity-processing: ${config.states.opacity.processing};
+        --state-opacity-normal: ${config.states.opacity.normal};
+        --state-scale-hover: ${config.states.scale.hover};
+        --state-scale-normal: ${config.states.scale.normal};
+        --state-transition-button: ${config.states.transitions.button};
+        --state-transition-opacity: ${config.states.transitions.opacity};
         
         /* 动态颜色变量 / Dynamic Color Variables */
         /* 这些变量会根据主题自动切换 / These variables will switch automatically based on theme */

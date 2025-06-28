@@ -54,18 +54,13 @@ export class PanelRenderer {
 
         const titleElement = document.createElement('span');
         titleElement.textContent = 'PageEdit';
-        titleElement.className = 'eddy-title';
+        titleElement.className = 'eddy-title eddy-title--editable';
         titleElement.contentEditable = 'true';
-        titleElement.style.cursor = 'pointer';
-        titleElement.style.minWidth = '60px';
-        titleElement.style.outline = 'none';
-        titleElement.style.borderRadius = '4px';
-        titleElement.style.padding = '2px 4px';
-        titleElement.style.transition = 'background-color 0.2s';
 
         // 新增：创建 Eddy 开关
         const eddyToggleSwitch = document.createElement('button');
         eddyToggleSwitch.className = 'eddy-toggle-switch';
+        eddyToggleSwitch.title = 'Enable Eddy'; // 设置默认 tooltip 文本
         // 开关的视觉样式 (圆圈) 将由 CSS 控制
         eddyToggleSwitch.innerHTML = `
             <div class="toggle-handle"></div>
@@ -74,10 +69,6 @@ export class PanelRenderer {
         // 创建标题容器
         const titleContainer = document.createElement('div');
         titleContainer.className = 'title-container';
-        titleContainer.style.display = 'flex';
-        titleContainer.style.alignItems = 'center';
-        titleContainer.style.gap = '4px';
-        titleContainer.style.position = 'relative';
 
         // 创建下拉按钮
         const dropdownButton = document.createElement('button');
@@ -88,8 +79,7 @@ export class PanelRenderer {
 
         // 创建下拉菜单
         const dropdownMenu = document.createElement('div');
-        dropdownMenu.className = 'dropdown-menu';
-        dropdownMenu.style.display = 'none';
+        dropdownMenu.className = 'dropdown-menu dropdown-menu--hidden';
 
         titleContainer.appendChild(titleElement);
         titleContainer.appendChild(dropdownButton);
@@ -129,6 +119,7 @@ export class PanelRenderer {
         // 创建预览原始样式按钮
         const viewOriginalButton = document.createElement('button');
         viewOriginalButton.className = 'icon-button';
+        viewOriginalButton.title = 'VIEW ORIGINAL'; // 设置默认 tooltip 文本
         viewOriginalButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
