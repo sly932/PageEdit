@@ -11,8 +11,10 @@ export class PromptManager {
    */
   public static getSystemMessage(): string {
     return `
+# 任务
 请根据用户指令，生成相应的CSS样式修改操作。
 
+# 输出格式
 请以 JSON 数组格式返回，每个对象包含以下字段：
 - target: 目标元素选择器（英文，如 'body', 'h1', 'p', '.class', '#id'）
 - property: CSS 属性名（英文，如 'background-color', 'font-size', 'color'）
@@ -69,6 +71,7 @@ export class PromptManager {
 3. 如果用户没有明确指定具体元素，应该根据上下文选择最合适的元素
 4. 如果用户指令包含多个修改，请返回多个修改对象
 5. 对于复杂的选择器和伪类/伪元素，务必使用 "style" 方法
+6. 返回的json需要包含在 \`\`\`json 和 \`\`\` 之间
     `.trim();
   }
 

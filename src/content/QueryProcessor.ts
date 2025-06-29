@@ -100,13 +100,35 @@ export class QueryProcessor {
      * @returns NLP结果数组
      */
     private static parseLLMResponse(response: string): NLPResult[] {
+        let parsedResults: any;
+        
         try {
-            // 清理响应文本，移除可能的markdown代码块标记
-            let cleanedResponse = response.replace(/```json/g, '').replace(/```/g, '').trim();
+            // 1. 首先尝试直接解析原始响应
+            console.log("[QueryProcessor][parseLLMResponse] trying direct JSON parse...");
+            parsedResults = JSON.parse(response.trim());
+            console.log("[QueryProcessor][parseLLMResponse] direct parse successful");
             
-            // 解析JSON
-            const parsedResults = JSON.parse(cleanedResponse);
+        } catch (directParseError) {
+            console.log("[QueryProcessor][parseLLMResponse] direct parse failed, trying markdown extraction...");
             
+            try {
+                // 2. 如果直接解析失败，尝试从markdown中提取JSON内容
+                const jsonContent = this.extractJsonFromMarkdown(response);
+                console.log("[QueryProcessor][parseLLMResponse] extracted JSON content:", jsonContent);
+                
+                parsedResults = JSON.parse(jsonContent);
+                console.log("[QueryProcessor][parseLLMResponse] markdown extraction parse successful");
+                
+            } catch (extractParseError) {
+                console.error('[QueryProcessor] Both direct parse and markdown extraction failed:', {
+                    directError: directParseError,
+                    extractError: extractParseError
+                });
+                return [];
+            }
+        }
+        
+        try {
             if (!Array.isArray(parsedResults)) {
                 console.warn('[QueryProcessor] LLM response is not an array');
                 return [];
@@ -122,9 +144,47 @@ export class QueryProcessor {
             }));
 
         } catch (error) {
-            console.error('[QueryProcessor] Failed to parse LLM response:', error);
+            console.error('[QueryProcessor] Failed to process parsed results:', error);
             return [];
         }
+    }
+
+    /**
+     * 从markdown格式的响应中提取JSON内容
+     * @param response 原始响应
+     * @returns 提取的JSON字符串
+     */
+    private static extractJsonFromMarkdown(response: string): string {
+        // 1. 首先尝试提取```json...```代码块
+        const jsonCodeBlockRegex = /```json\s*([\s\S]*?)\s*```/i;
+        const jsonMatch = response.match(jsonCodeBlockRegex);
+        
+        if (jsonMatch && jsonMatch[1]) {
+            return jsonMatch[1].trim();
+        }
+        
+        // 2. 如果没有json标记，尝试提取普通的```...```代码块
+        const codeBlockRegex = /```\s*([\s\S]*?)\s*```/;
+        const codeMatch = response.match(codeBlockRegex);
+        
+        if (codeMatch && codeMatch[1]) {
+            const content = codeMatch[1].trim();
+            // 检查内容是否看起来像JSON（以[或{开始）
+            if (content.startsWith('[') || content.startsWith('{')) {
+                return content;
+            }
+        }
+        
+        // 3. 如果没有代码块，尝试直接查找JSON结构
+        const jsonStructureRegex = /(\[[\s\S]*\]|\{[\s\S]*\})/;
+        const structureMatch = response.match(jsonStructureRegex);
+        
+        if (structureMatch && structureMatch[1]) {
+            return structureMatch[1].trim();
+        }
+        
+        // 4. 最后，返回清理后的原始响应
+        return response.trim();
     }
 
     /**

@@ -54,6 +54,8 @@
 
     -   **`ConfigManager.ts` (配置管理器)**
         -   管理LLM相关的所有配置，提供统一的配置读取和写入接口。
+        -   **模型配置体系**：支持69个模型，覆盖5个主要提供商，按输出价格排序
+        -   **价格信息管理**：集成完整的输入/输出价格信息，支持实时价格显示
         -   配置结构：
             ```typescript
             interface LLMConfig {
@@ -61,19 +63,24 @@
               model: string;
               maxTokens: number;
               temperature: number;
-              // 自定义提供商额外配置
-              customConfig?: {
-                baseUrl: string;
-                apiKey: string;
-                customModels: string[]; // 用户自定义的模型列表
-              };
+              customConfig?: CustomConfig;
+            }
+            
+            interface ModelConfig {
+              displayName: string;
+              maxTokens: number;
+              inputPrice: number;  // $/1M tokens
+              outputPrice: number; // $/1M tokens
             }
             
             class ConfigManager {
               static async getLLMConfig(): Promise<LLMConfig>
               static async saveLLMConfig(config: LLMConfig): Promise<void>
               static getAvailableModels(provider: string): string[]
+              static getModelDisplayName(provider: string, model: string): string
               static getMaxTokensForModel(provider: string, model: string): number
+              static getModelPricing(provider: string, model: string): {inputPrice, outputPrice}
+              static formatPricing(inputPrice: number, outputPrice: number): string
             }
             ```
 
@@ -103,7 +110,7 @@
             ```
 
     -   **`services/ILLMService.ts` (统一接口)**
-        -   定义所有LLM服务必须实现的统一接口：
+        -   定义所有LLM服务必须实现的统一接口，专注于核心功能：
             ```typescript
             interface LLMRequestConfig {
               model: string;
@@ -114,10 +121,9 @@
             interface ILLMService {
               chat(request: LLMRequest, config: LLMRequestConfig): Promise<string>;
               getProviderName(): string;
-              getSupportedModels(): string[];
-              getMaxTokensForModel(model: string): number;
             }
             ```
+        -   **架构说明**: 移除了 `getSupportedModels()` 和 `getMaxTokensForModel()` 方法，避免与 `ConfigManager` 重复。模型列表和配置统一由 `ConfigManager` 管理，Service只负责API调用。
 
     -   **`services/*.ts` (具体服务实现)**
         -   每个文件对应一个LLM提供商（如 `OpenAIService.ts`）。
@@ -138,7 +144,6 @@
               }
               
               getProviderName(): string { return "OpenAI"; }
-              getSupportedModels(): string[] { return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]; }
             }
             
             class AnthropicService implements ILLMService {
@@ -170,9 +175,7 @@
                 });
               }
               
-              getSupportedModels(): string[] { 
-                return this.customConfig.customModels || []; 
-              }
+
             }
             ```
 
@@ -241,7 +244,7 @@
 13. ❌ **端到端测试**: 确保用户可以配置不同参数并正常工作，测试自定义提供商功能。
 14. ❌ **移除旧代码**: 删除旧的 `llmService.ts` 和相关冗余代码。
 
-### 📊 完成进度: 10/14 (71%)
+### 📊 完成进度: 11/14 (79%)
 
 **✅ 已完成的核心功能**:
 - 消息格式重构 - 支持多轮对话和不同LLM的role定义
@@ -249,25 +252,33 @@
 - 统一服务接口 - 所有LLM使用相同的调用方式
 - 配置管理系统 - 支持全局存储和自定义配置
 - OpenAI服务实现 - 完整支持新消息格式
+- SiliconFlow服务实现 - 支持39个模型，完整价格信息
 - 自定义服务实现 - 支持用户自定义LLM服务
 - 业务逻辑重构 - QueryProcessor使用新架构
 - Popup界面设计 - 完整的LLM Settings UI，支持所有配置选项
 - Popup交互逻辑 - 配置读取、保存、自定义模型管理、主题适配
+- 显示名称与真实模型名分离 - 用户友好的界面显示与API标准兼容
+- 价格信息集成 - 69个模型的完整价格体系，实时价格显示
 
 **❌ 待完成的功能**:
 - 其他LLM服务实现 - Anthropic, DeepSeek, Google服务
 - 端到端功能测试 - 验证所有功能正常工作
 - 旧代码清理 - 移除nlpProcessor.ts和llmService.ts
 
-## 5. 最新完成的Popup界面功能
+## 5. 最新完成的Popup界面功能 (包含价格系统)
 
 ### 5.1 界面设计特点
 - **完整的LLM Settings区域**: 在popup.html中添加了可折叠的LLM配置面板
-- **Provider选择**: 支持OpenAI、Anthropic、DeepSeek、Google、Self Define五种选项
-- **动态模型选择**: Model下拉框根据选择的Provider动态更新模型列表
-- **智能参数显示**: Max Token根据选择的模型自动显示对应的最大Token数
+- **Provider选择**: 支持OpenAI、Anthropic、DeepSeek、Google、SiliconFlow、Self Define六种选项
+- **智能模型选择**: Model下拉框动态显示模型列表，包含显示名称和价格信息
+  - 格式：`显示名称 - $输入价格(I)/$输出价格(O)`
+  - 按输出价格从低到高排序，便于预算选择
+- **实时参数显示**: 
+  - Max Token：根据选择的模型自动显示对应的最大Token数
+  - Price：实时显示当前模型的价格信息，格式为 `$a(I)/$b(O)`
 - **Temperature控制**: 数字输入框，支持0.0-2.0范围的温度设置
-- **自定义配置区域**: 当选择"Self Define"时显示：
+- **标准化配置**: 所有内置提供商（OpenAI、SiliconFlow等）使用硬编码API密钥，用户无需配置
+- **自定义配置区域**: 仅当选择"Self Define"时显示：
   - Base URL输入框
   - API Key密码输入框  
   - 自定义模型标签管理（可添加/删除）
@@ -285,39 +296,80 @@
 - **类型安全**: TypeScript类型定义确保配置数据的正确性
 - **异步处理**: 使用async/await处理存储操作，保证数据一致性
 - **CSS动画**: 平滑的折叠展开动画和状态变化效果
+- **显示名称分离**: 界面友好名称与API标准模型名完全分离
+- **智能价格系统**: 实时价格计算、格式化显示、按价格排序
+- **标准化配置**: 内置提供商统一使用硬编码API密钥，简化用户体验
+- **69模型支持**: 覆盖主流LLM提供商的完整模型生态 (OpenAI 20+Anthropic 7+DeepSeek 1+Google 2+SiliconFlow 39)
 
 ## 6. LLM提供商与模型配置
 
--   **OpenAI**:
-    - 模型: gpt-4, gpt-4-turbo, gpt-3.5-turbo
-    - Max Tokens: 4096, 4096, 4096
+### 6.1 完整模型配置体系
+
+-   **OpenAI (20个模型)**:
+    - 价格范围: $0.60 - $66.00 (输出)
+    - Max Tokens: 128,000
     - 消息处理: 系统消息放在messages数组首位
+    - 推荐模型: GPT-4o (性价比), o1 (推理强)
+    - 经济型: GPT-4o Mini ($0.60)
 
--   **Anthropic**:
-    - 模型: claude-3-opus, claude-3-sonnet, claude-3-haiku
-    - Max Tokens: 4096, 4096, 4096
+-   **Anthropic (7个模型)**:
+    - 价格范围: $1.25 - $75.00 (输出) 
+    - Max Tokens: 200,000
     - 消息处理: 系统消息使用单独的system字段
+    - 推荐模型: Claude-3.5 Sonnet (平衡), Claude-3 Opus (最强)
+    - 经济型: Claude-3 Haiku ($1.25)
 
--   **DeepSeek**:
-    - 模型: deepseek-chat, deepseek-coder
-    - Max Tokens: 4096, 4096
+-   **DeepSeek (1个模型)**:
+    - DeepSeek R1: $2.48 (输出)
+    - Max Tokens: 64,000
+    - 特色: 推理能力强
     - 消息处理: 类似OpenAI格式
 
--   **Google**:
-    - 模型: gemini-pro, gemini-pro-vision
-    - Max Tokens: 4096, 4096
+-   **Google (2个模型)**:
+    - 价格范围: $0.60 - $10.00 (输出)
+    - Max Tokens: 1,000,000
+    - 推荐模型: Gemini 2.5 Pro (强大), Gemini 2.5 Flash (快速)
     - 消息处理: 需要转换为Gemini格式
+
+-   **SiliconFlow (39个模型)**:
+    - 价格范围: ¥0.00 - ¥16.00 (输出，人民币)
+    - Max Tokens: 32,000 - 128,000 (视模型而定)
+    - 推荐模型: DeepSeek-R1 (推理之王), Qwen3系列 (性价比高)
+    - 经济型: 6个免费模型 (Qwen3-8B, DeepSeek系列等)
+    - 消息处理: OpenAI兼容格式
+    - API配置: 硬编码API密钥，用户无需配置
+    - 特色: 涵盖DeepSeek和Qwen全系列模型，价格优势明显
 
 -   **Self Define**:
     - 模型: 用户自定义列表
     - Max Tokens: 用户配置或默认4096
+    - 价格: 无显示 (N/A)
     - 消息处理: 假设使用OpenAI兼容格式
+
+### 6.2 价格体系设计
+
+**价格分级策略**:
+- **免费型** (¥0): SiliconFlow 6个免费模型 (DeepSeek系列, Qwen3-8B等)
+- **经济型** (输出<$5): GPT-4o Mini, Claude-3 Haiku, SiliconFlow大部分付费模型
+- **标准型** ($5-$20): GPT-4o, Claude-3.5 Sonnet, Gemini 2.5 Pro  
+- **高性能** ($20-$50): GPT-4 Turbo
+- **顶级** (>$50): o1, Claude-3 Opus
+
+**排序逻辑**: 每个provider内按输出价格从低到高排序，方便用户根据预算选择。
 
 ## 7. 后续优化计划
 
--   **动态配置**: 将硬编码的API密钥改为可配置管理。
--   **功能扩展**: 支持更多LLM厂商和自定义模型。
--   **错误处理**: 增加统一的错误重试和请求超时机制。
--   **流式输出**: 为需要的功能实现流式输出支持 (Streaming)。
--   **类型完善**: 完善类型定义和参数校验。
--   **历史对话**: 支持多轮对话历史记录和上下文管理。 
+### 7.1 高优先级
+-   **其他LLM服务实现**: 完成Anthropic、DeepSeek、Google服务的具体实现
+-   **端到端功能测试**: 验证所有69个模型的正常工作
+-   **旧代码清理**: 移除nlpProcessor.ts和llmService.ts等冗余文件
+
+### 7.2 中优先级  
+-   **动态配置优化**: 将硬编码的API密钥改为可配置管理
+-   **错误处理增强**: 增加统一的错误重试和请求超时机制
+-   **价格监控**: 实时价格更新和费用统计功能
+
+### 7.3 低优先级
+-   **流式输出**: 为需要的功能实现流式输出支持 (Streaming)
+-   **历史对话**: 支持多轮对话历史记录和上下文管理
+-   **性能优化**: 模型切换缓存、请求并发控制等 

@@ -1,5 +1,10 @@
 import { ILLMService } from './services/ILLMService';
 import { OpenAIService } from './services/OpenAIService';
+import { SiliconFlowService } from './services/SiliconFlowService';
+import { AnthropicService } from './services/AnthropicService';
+import { DeepSeekService } from './services/DeepSeekService';
+import { GoogleService } from './services/GoogleService';
+import { QwenService } from './services/QwenService';
 import { SelfDefineService } from './services/SelfDefineService';
 import { CustomConfig } from './types';
 
@@ -38,17 +43,25 @@ export class LLMFactory {
         service = new OpenAIService();
         break;
       
+      case 'siliconflow':
+        service = new SiliconFlowService();
+        break;
+      
       case 'anthropic':
-        // TODO: 实现AnthropicService
-        throw new Error('Anthropic service not implemented yet');
+        service = new AnthropicService();
+        break;
       
       case 'deepseek':
-        // TODO: 实现DeepSeekService
-        throw new Error('DeepSeek service not implemented yet');
+        service = new DeepSeekService();
+        break;
       
       case 'google':
-        // TODO: 实现GoogleService
-        throw new Error('Google service not implemented yet');
+        service = new GoogleService();
+        break;
+      
+      case 'qwen':
+        service = new QwenService();
+        break;
       
       default:
         // 默认返回OpenAI服务
@@ -67,7 +80,7 @@ export class LLMFactory {
    * @returns 提供商名称数组
    */
   public static getSupportedProviders(): string[] {
-    return ['openai', 'anthropic', 'deepseek', 'google', 'self-define'];
+    return ['openai', 'anthropic', 'deepseek', 'google', 'siliconflow', 'qwen', 'self-define'];
   }
 
   /**

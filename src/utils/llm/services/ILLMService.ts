@@ -27,17 +27,4 @@ export interface ILLMService {
    * @returns 提供商名称
    */
   getProviderName(): string;
-
-  /**
-   * 获取支持的模型列表
-   * @returns 模型名称数组
-   */
-  getSupportedModels(): string[];
-
-  /**
-   * 获取指定模型的最大Token数
-   * @param model 模型名称
-   * @returns 最大Token数
-   */
-  getMaxTokensForModel(model: string): number;
 } 

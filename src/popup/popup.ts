@@ -21,6 +21,7 @@ class PopupManager {
     private modelSelect: HTMLSelectElement;
     private maxTokensDisplay: HTMLInputElement;
     private temperatureInput: HTMLInputElement;
+    private priceDisplay: HTMLInputElement;
     private customConfig: HTMLElement;
     private baseUrlInput: HTMLInputElement;
     private apiKeyInput: HTMLInputElement;
@@ -44,6 +45,7 @@ class PopupManager {
         this.modelSelect = document.getElementById('modelSelect') as HTMLSelectElement;
         this.maxTokensDisplay = document.getElementById('maxTokensDisplay') as HTMLInputElement;
         this.temperatureInput = document.getElementById('temperatureInput') as HTMLInputElement;
+        this.priceDisplay = document.getElementById('priceDisplay') as HTMLInputElement;
         this.customConfig = document.getElementById('customConfig') as HTMLElement;
         this.baseUrlInput = document.getElementById('baseUrlInput') as HTMLInputElement;
         this.apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement;
@@ -140,10 +142,10 @@ class PopupManager {
             // 设置temperature
             this.temperatureInput.value = config.temperature.toString();
             
-            // 更新max tokens显示
-            this.updateMaxTokensDisplay();
+            // 更新模型信息显示
+            this.updateModelInfo();
             
-            // 显示/隐藏自定义配置
+            // 显示/隐藏配置区域
             this.toggleCustomConfig();
             
             // 如果是自定义配置，加载自定义值
@@ -180,7 +182,7 @@ class PopupManager {
     private async handleProviderChange(): Promise<void> {
         try {
             await this.updateModelList();
-            this.updateMaxTokensDisplay();
+            this.updateModelInfo();
             this.toggleCustomConfig();
             await this.saveCurrentConfig();
             
@@ -194,7 +196,7 @@ class PopupManager {
      * 处理Model变更
      */
     private handleModelChange(): void {
-        this.updateMaxTokensDisplay();
+        this.updateModelInfo();
         this.saveCurrentConfig();
         console.log('[popup] Model changed to:', this.modelSelect.value);
     }
@@ -221,8 +223,20 @@ class PopupManager {
         // 添加模型选项
         models.forEach(model => {
             const option = document.createElement('option');
-            option.value = model;
-            option.textContent = model;
+            option.value = model; // 使用真实模型名作为value
+            
+            // 获取显示名称，如果是自定义提供商则直接使用模型名
+            if (provider === 'self-define') {
+                option.textContent = model;
+            } else {
+                const displayName = ConfigManager.getModelDisplayName(provider, model);
+                const pricing = ConfigManager.getModelPricing(provider, model);
+                const priceStr = ConfigManager.formatPricing(pricing.inputPrice, pricing.outputPrice);
+                
+                // 在显示名称后面拼接价格信息
+                option.textContent = priceStr ? `${displayName} - ${priceStr}` : displayName;
+            }
+            
             this.modelSelect.appendChild(option);
         });
         
@@ -233,22 +247,30 @@ class PopupManager {
     }
 
     /**
-     * 更新Max Tokens显示
+     * 更新模型信息显示（Max Tokens和价格）
      */
-    private updateMaxTokensDisplay(): void {
+    private updateModelInfo(): void {
         const provider = this.providerSelect.value;
         const model = this.modelSelect.value;
         
+        // 更新Max Tokens
         const maxTokens = ConfigManager.getMaxTokensForModel(provider, model);
         this.maxTokensDisplay.value = maxTokens.toString();
+        
+        // 更新价格显示
+        const pricing = ConfigManager.getModelPricing(provider, model);
+        const priceStr = ConfigManager.formatPricing(pricing.inputPrice, pricing.outputPrice);
+        this.priceDisplay.value = priceStr || 'N/A';
     }
 
     /**
      * 切换自定义配置显示
      */
     private toggleCustomConfig(): void {
-        const isCustom = this.providerSelect.value === 'self-define';
+        const provider = this.providerSelect.value;
+        const isCustom = provider === 'self-define';
         
+        // 显示/隐藏自定义配置
         if (isCustom) {
             this.customConfig.classList.add('show');
         } else {
@@ -347,8 +369,6 @@ class PopupManager {
      */
     private async saveCurrentConfig(): Promise<void> {
         try {
-            const currentConfig = await ConfigManager.getLLMConfig();
-            
             const config: LLMConfig = {
                 provider: this.providerSelect.value as any,
                 model: this.modelSelect.value,

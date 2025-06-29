@@ -69,18 +69,4 @@ export class SelfDefineService implements ILLMService {
     return 'Self Define';
   }
 
-  /**
-   * 获取支持的模型列表
-   */
-  public getSupportedModels(): string[] {
-    return this.customConfig.customModels || [];
-  }
-
-  /**
-   * 获取指定模型的最大Token数
-   */
-  public getMaxTokensForModel(model: string): number {
-    // 自定义服务默认返回4096，用户可以根据需要调整
-    return 4096;
-  }
 } 

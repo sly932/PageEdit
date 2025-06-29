@@ -137,6 +137,12 @@ export class NLPProcessor {
                 model: process.env.SILICONFLOW_MODEL || 'qwen2.5-72b-instruct',
                 baseUrl: process.env.SILICONFLOW_API_BASE_URL
             }
+            const qwenConfig = {
+                provider: (process.env.LLM_PROVIDER || 'qwen') as LLMProvider,
+                apiKey: process.env.QWEN_API_KEY || '',
+                model: process.env.QWEN_MODEL || 'qwen-plus',
+                baseUrl: process.env.QWEN_API_BASE_URL
+            }
             
             let config;
             switch (provider) {
@@ -151,6 +157,9 @@ export class NLPProcessor {
                     break;
                 case 'siliconflow':
                     config = siliconflowConfig;
+                    break;
+                case 'qwen':
+                    config = qwenConfig;
                     break;
                 default:
                     config = openaiConfig;
