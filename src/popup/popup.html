@@ -241,6 +241,188 @@
             border-color: var(--btn-hover-border);
         }
 
+        /* LLM Settings Section - LLM设置部分 */
+        .llm-settings {
+            margin-bottom: 18px;
+        }
+
+        /* Settings Header - 设置标题 */
+        .settings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Settings Title - 设置标题 */
+        .settings-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-title);
+            letter-spacing: 1px;
+        }
+
+        /* Settings Toggle Icon - 设置切换图标 */
+        .settings-toggle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+        }
+
+        .settings-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        /* Settings Content - 设置内容 */
+        .settings-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .settings-content.expanded {
+            max-height: 400px;
+        }
+
+        /* Settings Form - 设置表单 */
+        .settings-form {
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 16px;
+            border: 1.5px solid var(--border-card);
+        }
+
+        /* Setting Row - 设置行 */
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Setting Label - 设置标签 */
+        .setting-label {
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--text);
+            min-width: 80px;
+        }
+
+        /* Setting Input Container - 设置输入容器 */
+        .setting-input {
+            flex: 1;
+            margin-left: 12px;
+        }
+
+        /* Select and Input Styles - 选择框和输入框样式 */
+        .setting-select, .setting-input-field {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .setting-select:focus, .setting-input-field:focus {
+            border-color: var(--btn-hover-border);
+        }
+
+        /* Readonly Input - 只读输入框 */
+        .setting-input-field[readonly] {
+            background: var(--bg-top);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        /* Custom Config Section - 自定义配置部分 */
+        .custom-config {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-card);
+            display: none;
+        }
+
+        .custom-config.show {
+            display: block;
+        }
+
+        /* Custom Models Container - 自定义模型容器 */
+        .custom-models {
+            max-height: 80px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+        }
+
+        /* Model Tag - 模型标签 */
+        .model-tag {
+            display: inline-flex;
+            align-items: center;
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin: 2px;
+            font-size: 12px;
+            color: var(--btn-text);
+        }
+
+        /* Model Tag Remove Button - 模型标签删除按钮 */
+        .model-tag .remove {
+            margin-left: 4px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: bold;
+        }
+
+        .model-tag .remove:hover {
+            color: #d7263d;
+        }
+
+        /* Add Model Input - 添加模型输入框 */
+        .add-model-container {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .add-model-input {
+            flex: 1;
+            padding: 4px 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 12px;
+            font-family: inherit;
+        }
+
+        .add-model-btn {
+            padding: 4px 8px;
+            border: 1px solid var(--btn-border);
+            border-radius: 4px;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .add-model-btn:hover {
+            background: var(--btn-bg-hover);
+        }
+
         /* History Section - 历史记录部分 */
         .history-section {
             margin-top: 8px;
@@ -362,6 +544,97 @@
             <button class="main-btn" id="applyButton">应用</button>
             <button class="main-btn" id="undoButton">撤销</button>
         </div>
+
+        <!-- LLM Settings Section - LLM设置部分 -->
+        <div class="llm-settings">
+            <div class="settings-header" id="settingsHeader">
+                <span class="settings-title">LLM Settings</span>
+                <span class="settings-toggle" id="settingsToggle">▼</span>
+            </div>
+            <div class="settings-content" id="settingsContent">
+                <div class="settings-form">
+                    <!-- Provider Selection - 提供商选择 -->
+                    <div class="setting-row">
+                        <label class="setting-label">Provider</label>
+                        <div class="setting-input">
+                            <select class="setting-select" id="providerSelect">
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="deepseek">DeepSeek</option>
+                                <option value="google">Google</option>
+                                <option value="self-define">Self Define</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Model Selection - 模型选择 -->
+                    <div class="setting-row">
+                        <label class="setting-label">Model</label>
+                        <div class="setting-input">
+                            <select class="setting-select" id="modelSelect">
+                                <option value="gpt-4">gpt-4</option>
+                                <option value="gpt-4-turbo">gpt-4-turbo</option>
+                                <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Max Tokens Display - 最大Token显示 -->
+                    <div class="setting-row">
+                        <label class="setting-label">Max Token</label>
+                        <div class="setting-input">
+                            <input type="text" class="setting-input-field" id="maxTokensDisplay" readonly value="4096">
+                        </div>
+                    </div>
+
+                    <!-- Temperature Input - 温度输入 -->
+                    <div class="setting-row">
+                        <label class="setting-label">Temperature</label>
+                        <div class="setting-input">
+                            <input type="number" class="setting-input-field" id="temperatureInput" 
+                                   min="0" max="2" step="0.1" value="0.7">
+                        </div>
+                    </div>
+
+                    <!-- Custom Configuration - 自定义配置 -->
+                    <div class="custom-config" id="customConfig">
+                        <!-- Base URL - 基础URL -->
+                        <div class="setting-row">
+                            <label class="setting-label">Base URL</label>
+                            <div class="setting-input">
+                                <input type="text" class="setting-input-field" id="baseUrlInput" 
+                                       placeholder="https://api.example.com/v1">
+                            </div>
+                        </div>
+
+                        <!-- API Key - API密钥 -->
+                        <div class="setting-row">
+                            <label class="setting-label">API Key</label>
+                            <div class="setting-input">
+                                <input type="password" class="setting-input-field" id="apiKeyInput" 
+                                       placeholder="sk-...">
+                            </div>
+                        </div>
+
+                        <!-- Custom Models - 自定义模型 -->
+                        <div class="setting-row">
+                            <label class="setting-label">Models</label>
+                            <div class="setting-input">
+                                <div class="custom-models" id="customModelsContainer">
+                                    <!-- Model tags will be dynamically added here - 模型标签将动态添加到这里 -->
+                                </div>
+                                <div class="add-model-container">
+                                    <input type="text" class="add-model-input" id="addModelInput" 
+                                           placeholder="输入模型名称">
+                                    <button class="add-model-btn" id="addModelBtn">添加</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- History Section - 历史记录部分 -->
         <div class="history-section">
             <div class="history-title">历史记录</div>

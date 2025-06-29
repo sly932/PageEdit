@@ -2,7 +2,7 @@ import { Message, Modification, UserInput, ElementLocation, ParseResult, Modific
 import { Eddy } from '../types/eddy';
 import { StyleService } from './services/styleService';
 import { StorageService } from '../services/storageService';
-import { NLPProcessor } from '../utils/nlp/nlpProcessor';
+import { QueryProcessor } from './QueryProcessor';
 import { FloatingBall } from './floatingBall';
 import { PanelEvent } from './floatingPanel';
 
@@ -181,9 +181,8 @@ export class ContentManager {
 
             // 记录开始时间
             const startTime = Date.now();
-            // 使用 NLPProcessor 处理用户输入
-            const result = await NLPProcessor.processInput(text, htmlContext, {
-                preferLLM: true,  // 优先使用 LLM
+            // 使用 QueryProcessor 处理用户输入
+            const result = await QueryProcessor.processInput(text, htmlContext, {
                 minConfidence: 0.6 // 最小置信度
             });
             // 记录结束时间
