@@ -13,8 +13,8 @@ interface OpenAIResponse {
  * OpenAI服务实现
  */
 export class OpenAIService implements ILLMService {
-  private readonly apiKey = 'sk-your-openai-api-key'; // TODO: 硬编码，后续需要配置化
-  private readonly baseUrl = 'https://api.openai.com/v1';
+  private readonly apiKey = 'sk-DGg062ba2abd660cc4f6c6602d49343a00f24a78ed5g9lPH'; // TODO: 硬编码，后续需要配置化
+  private readonly baseUrl = 'https://api.gptsapi.net/v1';
 
   /**
    * 发送聊天请求到OpenAI
