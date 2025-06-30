@@ -111,43 +111,24 @@ export class StyleService {
      * 抽取了不同的方法，方便切换
      */
     private static applyScriptSnapshot(snapshot: ScriptSnapshot): void {
-        this.applyScriptSnapshotByExecuteScript(snapshot);
+        this.applyScriptSnapshotByDirectExecution(snapshot);
     }
 
     /**
-     * 应用script快照到页面(通过直接执行)
+     * 应用script快照到页面(直接执行)
      */
     private static applyScriptSnapshotByDirectExecution(snapshot: ScriptSnapshot): void {
-        // 直接创建script元素并添加到页面
-        const script = document.createElement('script');
-        script.id = snapshot.id;
-        script.textContent = snapshot.code;
-        document.head.appendChild(script);
-
-        console.log('[StyleService] Applied script directly:', {
-            id: snapshot.id,
-            code: snapshot.code
-        });
-    }
-    /**
-     * 应用script快照到页面(通过executeScript)
-     */
-    private static applyScriptSnapshotByExecuteScript(snapshot: ScriptSnapshot): void {
         try {
-            // 在content script中，chrome.scripting不可用，需要通过background script执行
-            chrome.runtime.sendMessage({
-                type: 'EXECUTE_SCRIPT',
-                data: {
-                    tabId: (window as any).__pageEditTabId,
-                    code: snapshot.code,
-                    scriptId: snapshot.id
-                }
-            }, (response) => {
-                if (response && response.success) {
-                    console.log('[StyleService] Script executed successfully via background:', snapshot.id);
-                } else {
-                    console.error('[StyleService] Failed to execute script via background:', response?.error);
-                }
+            // 直接创建script元素并添加到页面
+            const script = document.createElement('script');
+            script.id = snapshot.id;
+            script.textContent = snapshot.code;
+            script.setAttribute('data-pageedit', 'true');
+            document.head.appendChild(script);
+
+            console.log('[StyleService] Applied script directly:', {
+                id: snapshot.id,
+                code: snapshot.code
             });
         } catch (error) {
             console.error('[StyleService] Failed to execute script:', error);
@@ -184,20 +165,14 @@ export class StyleService {
      */
     private static removeScript(snapshot: ScriptSnapshot): void {
         try {
-            // 通过background script移除脚本
-            chrome.runtime.sendMessage({
-                type: 'REMOVE_SCRIPT',
-                data: {
-                    tabId: (window as any).__pageEditTabId,
-                    scriptId: snapshot.id
-                }
-            }, (response) => {
-                if (response && response.success) {
-                    console.log('[StyleService] Script removed successfully via background:', snapshot.id);
-                } else {
-                    console.error('[StyleService] Failed to remove script via background:', response?.error);
-                }
-            });
+            // 直接移除script元素
+            const script = document.getElementById(snapshot.id) as HTMLScriptElement;
+            if (script && script.getAttribute('data-pageedit') === 'true') {
+                script.remove();
+                console.log('[StyleService] Script removed successfully:', snapshot.id);
+            } else {
+                console.log('[StyleService] Script element not found or not a PageEdit script:', snapshot.id);
+            }
         } catch (error) {
             console.error('[StyleService] Failed to remove script:', error);
         }
