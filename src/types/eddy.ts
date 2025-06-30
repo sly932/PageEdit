@@ -9,10 +9,19 @@ export interface StyleElementSnapshot {
     timestamp: number; // 创建时间
 }
 
+// 脚本快照
+export interface ScriptSnapshot {
+    id: string; // script的唯一标识符
+    target?: string; // 应用该script的目标元素选择器（可选）
+    code: string; // JavaScript代码片段
+    timestamp: number; // 创建时间
+}
+
 // 新的Snapshot类，包含样式元素和用户查询
 export interface Snapshot {
     id: string; // 唯一标识符
     elements: StyleElementSnapshot[]; // 样式元素快照数组
+    scripts: ScriptSnapshot[]; // 脚本快照数组
     userQuery?: string; // 对应的用户查询（可选）
     timestamp: number; // 创建时间
 }
@@ -28,7 +37,6 @@ export interface Eddy {
     id: string;
     name: string;
     domain: string;
-    currentStyleElements: StyleElementSnapshot[]; // 当前应用的样式元素快照（保持向后兼容）
     lastUsed: boolean;
     createdAt: number;
     updatedAt: number;

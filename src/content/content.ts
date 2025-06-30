@@ -321,8 +321,7 @@ export class ContentManager {
             // StorageService 内部会处理 lastUsed 标志
             const realEddy = await StorageService.createEddy(
                 newEddyName, 
-                this.currentEddy.domain, 
-                { currentStyleElements: this.currentEddy.currentStyleElements }
+                this.currentEddy.domain
             );
             
             // c. 将版本控制信息从临时 Eddy 复制到真实 Eddy
@@ -565,7 +564,6 @@ export class ContentManager {
             lastUsed: true,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            currentStyleElements: [],
             currentSnapshot: null,
             undoStack: [],
             redoStack: [],

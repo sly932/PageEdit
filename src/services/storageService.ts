@@ -1,7 +1,6 @@
 import { Eddy } from '../types/eddy';
 import { Modification } from '../types/index';
 import { v4 as uuidv4 } from 'uuid';
-import { migrateEddyToNewFormat, migrateEddysToNewFormat } from '../utils/migration';
 
 export class StorageService {
     private static readonly STORAGE_KEY = 'eddy_eddys';
@@ -17,16 +16,6 @@ export class StorageService {
     static async getEddys(): Promise<Eddy[]> {
         const result = await chrome.storage.local.get(this.STORAGE_KEY);
         const eddys = result[this.STORAGE_KEY] || [];
-        
-        // 检查是否需要迁移
-        const needsMigration = eddys.some((eddy: any) => eddy.currentStyleElements === undefined);
-        if (needsMigration) {
-            console.log('[StorageService] Detected old format eddys, migrating...');
-            const migratedEddys = migrateEddysToNewFormat(eddys);
-            await this.saveEddys(migratedEddys);
-            console.log('[StorageService] Migration completed');
-            return migratedEddys;
-        }
         
         console.log('[StorageService][getEddys] Retrieved eddys:', eddys);
         return eddys;
@@ -98,7 +87,7 @@ export class StorageService {
     }
 
     // 创建新的 Eddy
-    static async createEddy(name: string, domain: string, options: { currentStyleElements?: any[] } = {}): Promise<Eddy> {
+    static async createEddy(name: string, domain: string): Promise<Eddy> {
         console.log('[StorageService] Creating new eddy:', name, 'for domain:', domain);
         const eddys = await this.getEddys();
         
@@ -118,10 +107,12 @@ export class StorageService {
             id: uuidv4(),
             name,
             domain,
-            currentStyleElements: options.currentStyleElements || [],
             lastUsed: true, // 新创建的Eddy总是设置为lastUsed
             createdAt: Date.now(),
-            updatedAt: Date.now()
+            updatedAt: Date.now(),
+            currentSnapshot: null,
+            undoStack: [],
+            redoStack: []
         };
 
         eddys.push(newEddy);

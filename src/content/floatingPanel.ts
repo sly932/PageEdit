@@ -695,16 +695,6 @@ export class FloatingPanel {
         }
     }
 
-    private loadEddyStyleElements(eddy: Eddy): void {
-        // 这里可以根据需要加载 Eddy 的样式元素内容
-        // 目前保持输入内容不变，后续可以扩展
-        if (eddy.currentStyleElements) {
-            console.log('[FloatingPanel] Loaded eddy style elements:', eddy.currentStyleElements.length, 'items');
-        } else {
-            console.log('[FloatingPanel] No style elements found in eddy');
-        }
-    }
-
     private async createNewEddy(): Promise<void> {
         // This logic will be moved to ContentManager.
         // For now, it just calls the event handler.

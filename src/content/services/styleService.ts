@@ -73,6 +73,7 @@ export class StyleService {
         return {
             id: `snapshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             elements: [...elements],
+            scripts: [],
             userQuery: userQuery || "",
             timestamp: Date.now()
         };
@@ -412,14 +413,6 @@ export class StyleService {
     }
 
     /**
-     * 获取当前样式元素
-     */
-    static getCurrentStyleElements(): StyleElementSnapshot[] {
-        const state = this.getGlobalState();
-        return state.currentSnapshot ? [...state.currentSnapshot.elements] : [];
-    }
-
-    /**
      * 获取当前快照
      */
     static getCurrentSnapshot(): Snapshot | null {
@@ -455,52 +448,6 @@ export class StyleService {
         console.log('[StyleService] ======================');
     }
 
-    /**
-     * 应用 Eddy 中的所有修改
-     * @param eddy Eddy 对象
-     * @returns 是否全部修改成功
-     */
-    static async applyEddy(eddy: Eddy): Promise<boolean> {
-        try {
-            // 清空当前页面的所有样式元素
-            this.clearAllStyleElementsFromDOM();
-            
-            // 重置GlobalState为新eddy的状态
-            const globalState: GlobalStyleState = {
-                currentSnapshot: eddy.currentSnapshot || null,
-                undoStack: eddy.undoStack || [],
-                redoStack: eddy.redoStack || []
-            };
-            
-            // 更新全局状态
-            this.updateGlobalState(globalState);
-
-            if (!eddy.currentStyleElements || eddy.currentStyleElements.length === 0) {
-                console.log('[StyleService] No style elements to apply for eddy:', eddy.name);
-                return true;
-            }
-
-            console.log('[StyleService] Applying', eddy.currentStyleElements.length, 'style elements for eddy:', eddy.name);
-
-            // 如果有当前快照，应用其样式元素到页面
-            if (globalState.currentSnapshot) {
-                this.applyAllStyleElements(globalState.currentSnapshot.elements);
-                console.log('[StyleService] Applied current snapshot with', globalState.currentSnapshot.elements.length, 'elements');
-            } else {
-                // 如果没有快照但有currentStyleElements（向后兼容），创建快照并应用
-                const snapshot = this.createSnapshot(eddy.currentStyleElements);
-                this.updateGlobalState({ currentSnapshot: snapshot });
-                this.applyAllStyleElements(eddy.currentStyleElements);
-                console.log('[StyleService] Created snapshot from currentStyleElements with', eddy.currentStyleElements.length, 'elements');
-            }
-
-            console.log('[StyleService] Successfully applied all style elements for eddy:', eddy.name);
-            return true;
-        } catch (error) {
-            console.error('[StyleService] Failed to apply eddy:', error);
-            return false;
-        }
-    }
 
     /**
      * 获取redo栈状态
@@ -572,18 +519,11 @@ export class StyleService {
                 updatedAt: Date.now()
             };
             
-            // 保持向后兼容：同步更新currentStyleElements
-            if (state.currentSnapshot) {
-                updatedEddy.currentStyleElements = state.currentSnapshot.elements;
-            } else {
-                updatedEddy.currentStyleElements = [];
-            }
-            
             console.log('[StyleService] GlobalState saved to eddy:', {
                 currentSnapshot: state.currentSnapshot ? state.currentSnapshot.id : null,
                 undoStackSize: state.undoStack.length,
                 redoStackSize: state.redoStack.length,
-                elementsCount: updatedEddy.currentStyleElements.length
+                elementsCount: updatedEddy.currentSnapshot?.elements.length || 0
             });
             
             return updatedEddy;
