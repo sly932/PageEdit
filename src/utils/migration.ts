@@ -25,10 +25,12 @@ export function migrateEddyToNewFormat(eddy: Eddy): Eddy {
         
         for (const [selector, modifications] of Object.entries(groupedModifications)) {
             const cssText = generateCSSText(selector, modifications);
+            const cssPropertyMap = generateCSSPropertyMap(modifications);
             const snapshot: StyleElementSnapshot = {
                 id: `migrated_${eddy.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 selector,
                 cssText,
+                cssPropertyMap,
                 timestamp: eddy.createdAt
             };
             styleElements.push(snapshot);
@@ -61,10 +63,12 @@ export function migrateEddyToNewFormat(eddy: Eddy): Eddy {
             
             for (const [selector, modifications] of Object.entries(groupedModifications)) {
                 const cssText = generateCSSText(selector, modifications);
+                const cssPropertyMap = generateCSSPropertyMap(modifications);
                 const snapshot: StyleElementSnapshot = {
                     id: `migrated_${eddy.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                     selector,
                     cssText,
+                    cssPropertyMap,
                     timestamp: eddy.createdAt
                 };
                 styleElements.push(snapshot);
@@ -114,6 +118,21 @@ function groupModificationsBySelector(modifications: Modification[]): Record<str
 function generateCSSText(selector: string, modifications: Modification[]): string {
     const properties = modifications.map(mod => `${mod.property}: ${mod.value};`).join(' ');
     return `${selector} { ${properties} }`;
+}
+
+/**
+ * 生成CSS属性映射
+ * @param modifications 修改数组
+ * @returns CSS属性映射
+ */
+function generateCSSPropertyMap(modifications: Modification[]): Record<string, string> {
+    const cssPropertyMap: Record<string, string> = {};
+    
+    modifications.forEach(mod => {
+        cssPropertyMap[mod.property] = mod.value;
+    });
+    
+    return cssPropertyMap;
 }
 
 /**

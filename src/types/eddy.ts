@@ -4,7 +4,8 @@ import { Modification, ModificationMethod } from './index';
 export interface StyleElementSnapshot {
     id: string; // 唯一标识符
     selector: string; // CSS选择器
-    cssText: string; // 完整的CSS文本
+    cssText: string; // 完整的CSS文本（保留向后兼容，但不再使用）
+    cssPropertyMap: Record<string, string>; // CSS属性映射：property -> value
     timestamp: number; // 创建时间
 }
 

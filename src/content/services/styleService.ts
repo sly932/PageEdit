@@ -32,12 +32,33 @@ export class StyleService {
      */
     private static createStyleElementSnapshot(
         selector: string, 
-        cssText: string
+        cssText: string,
+        cssPropertyMap?: Record<string, string>
     ): StyleElementSnapshot {
+        // 如果没有提供cssPropertyMap，从cssText解析
+        let propertyMap: Record<string, string> = {};
+        if (cssPropertyMap) {
+            propertyMap = cssPropertyMap;
+        } else {
+            // 从cssText解析属性映射
+            const cssContent = cssText.replace(/^\s*\{|\}\s*$/g, '').trim();
+            const properties = cssContent.split(';').filter(prop => prop.trim());
+            properties.forEach(prop => {
+                const [property, value] = prop.split(':').map(s => s.trim());
+                if (property && value) {
+                    propertyMap[property] = value;
+                }
+            });
+        }
+
+        // 从propertyMap生成cssText（保持向后兼容）
+        const generatedCssText = `${selector} {\n${Object.entries(propertyMap).map(([prop, val]) => `  ${prop}: ${val};`).join('\n')}\n}`;
+
         return {
             id: `style_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             selector,
-            cssText,
+            cssText: generatedCssText,
+            cssPropertyMap: propertyMap,
             timestamp: Date.now()
         };
     }
@@ -63,13 +84,18 @@ export class StyleService {
     private static applyStyleElementSnapshot(snapshot: StyleElementSnapshot): HTMLStyleElement {
         const styleElement = document.createElement('style');
         styleElement.id = snapshot.id;
-        styleElement.textContent = snapshot.cssText;
+        
+        // 使用cssPropertyMap生成CSS文本
+        const cssText = `${snapshot.selector} {\n${Object.entries(snapshot.cssPropertyMap).map(([prop, val]) => `  ${prop}: ${val};`).join('\n')}\n}`;
+        styleElement.textContent = cssText;
+        
         document.head.appendChild(styleElement);
         
         console.log('[StyleService] Applied style element:', {
             id: snapshot.id,
             selector: snapshot.selector,
-            cssText: snapshot.cssText
+            cssText: cssText,
+            propertyCount: Object.keys(snapshot.cssPropertyMap).length
         });
         
         return styleElement;
@@ -109,23 +135,24 @@ export class StyleService {
                         console.log('[StyleService] detect existing style for modification:', modification);
                         console.log('[StyleService] Updating existing style:', currentElements[existingIndex]);
                         const existing = currentElements[existingIndex];
-                        const updatedCssText = this.mergeCSSProperties(
-                            existing.cssText, 
-                            modification.property, 
-                            modification.value
-                        );
+                        
+                        // 更新属性映射
+                        const updatedPropertyMap = { ...existing.cssPropertyMap };
+                        updatedPropertyMap[modification.property] = modification.value;
+                        
                         currentElements[existingIndex] = {
                             ...existing,
-                            cssText: updatedCssText,
+                            cssPropertyMap: updatedPropertyMap,
                             timestamp: Date.now()
                         };
                         console.log('[StyleService] Updated existing style:', currentElements[existingIndex]);
                     } else {
                         // 创建新样式
-                        const newCssText = `${modification.target} { ${modification.property}: ${modification.value}; }`;
+                        const propertyMap = { [modification.property]: modification.value };
                         const styleElementsnapshot = this.createStyleElementSnapshot(
                             modification.target, 
-                            newCssText
+                            '', // cssText不再使用
+                            propertyMap
                         );
                         currentElements.push(styleElementsnapshot);
                     }
@@ -189,18 +216,24 @@ export class StyleService {
         property: string, 
         value: string
     ): string {
-        // 正则表达式，用于查找属性。不区分大小写，并捕获属性名部分。
-        const propertyRegex = new RegExp(`(${property}\\s*:\\s*)[^;]+`, 'i');
+        // 从现有CSS解析属性映射
+        const cssContent = existingCss.replace(/^\s*\{|\}\s*$/g, '').trim();
+        const propertyMap: Record<string, string> = {};
+        
+        const properties = cssContent.split(';').filter(prop => prop.trim());
+        properties.forEach(prop => {
+            const [propName, propValue] = prop.split(':').map(s => s.trim());
+            if (propName && propValue) {
+                propertyMap[propName] = propValue;
+            }
+        });
 
-        // 检查属性是否已存在
-        if (propertyRegex.test(existingCss)) {
-            // 如果存在，只替换其值
-            return existingCss.replace(propertyRegex, `$1${value}`);
-        } else {
-            // 如果不存在，在关闭括号前添加新属性
-            // a more robust regex to handle potential whitespace before the closing brace
-            return existingCss.replace(/(\s*)}$/, `  ${property}: ${value};\n$1}`);
-        }
+        // 更新或添加新属性
+        propertyMap[property] = value;
+
+        // 重新生成CSS文本
+        const selector = existingCss.match(/^[^{]+/)?.[0]?.trim() || '';
+        return `${selector} {\n${Object.entries(propertyMap).map(([prop, val]) => `  ${prop}: ${val};`).join('\n')}\n}`;
     }
 
     /**
