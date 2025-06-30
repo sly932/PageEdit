@@ -1,7 +1,3 @@
-/**
- * 修改类型
- */
-export type ModificationType = 'style' | 'layout';
 
 /**
  * 修改方法
@@ -43,11 +39,13 @@ export interface LayoutOptions {
  */
 export interface Modification {
     id?: string;           // 可选，因为创建时可能还没有
-    target: string;        // CSS 选择器
-    property: string;      // 样式属性
-    value: string;         // 样式值
-    originalValue?: string;
-    options?: LayoutOptions;
+    target: string;        // style：CSS 选择器
+    property: string;      // style：样式属性
+    value: string;         // style：样式值
+    newTargets: string[]; // script：新建元素的名称数组
+    code: string;         // script：JavaScript代码片段
+    desc: string;         // script：描述
+    blobUrl: string;     // script：脚本文件的blobUrl（可选）
     timestamp?: number;    // 可选，因为创建时可能还没有
     method: ModificationMethod;
 }

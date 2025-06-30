@@ -7,11 +7,14 @@ import { LLMFactory } from '../utils/llm/LLMFactory';
  * 自然语言处理结果接口
  */
 interface NLPResult {
-    target: string;          // 目标元素选择器
-    property: string;        // CSS属性
-    value: string;          // 属性值
+    target: string;          // style: 目标元素选择器
+    property: string;        // style: CSS属性
+    value: string;          // style: 属性值
+    newTargets: string[]; // script: 新建元素的名称数组
+    code: string;         // script: JavaScript代码片段
+    desc: string;         // script & style: 描述
     confidence: number;     // 置信度 (0-1)
-    method: ModificationMethod;
+    method: ModificationMethod; // 修改方法
     source: 'llm';          // 处理来源 (移除rule，只保留llm)
 }
 
@@ -140,7 +143,10 @@ export class QueryProcessor {
                 value: result.value || '',
                 confidence: result.confidence || 0,
                 method: result.method || 'style',
-                source: 'llm'
+                source: 'llm',
+                newTargets: result.newTargets || [],
+                code: result.code || '',
+                desc: result.desc || ''
             }));
 
         } catch (error) {
@@ -198,7 +204,11 @@ export class QueryProcessor {
             property: result.property,
             value: result.value,
             method: result.method,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            newTargets: result.newTargets,
+            code: result.code,
+            desc: result.desc,
+            blobUrl: ''
         };
     }
 } 

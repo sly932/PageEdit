@@ -20,12 +20,28 @@ export class ContentManager {
 
     constructor() {
         console.log('[content] ContentManager initialized');
+        this.initializeTabId();
         this.initializePage();
         this.initializeMessageListener();
         this.initializeStorageListener();
 
         // 为 window 添加一个属性，方便从 devtools 访问
         (window as any).__CONTENT_MANAGER__ = this;
+    }
+
+    /**
+     * 初始化tab ID，从background script获取当前标签页ID
+     */
+    private initializeTabId(): void {
+        console.log('[content] Initializing tab ID');
+        chrome.runtime.sendMessage({ type: 'GET_TAB_ID' }, (response) => {
+            if (response && response.tabId) {
+                (window as any).__pageEditTabId = response.tabId;
+                console.log('[content] Tab ID initialized:', response.tabId);
+            } else {
+                console.error('[content] Failed to get tab ID:', response?.error || 'Unknown error');
+            }
+        });
     }
 
     /**

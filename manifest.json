@@ -3,14 +3,26 @@
   "name": "PageEdit",
   "version": "1.0",
   "description": "A Chrome extension for editing web pages",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'unsafe-eval' 'unsafe-inline'; object-src 'self'"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [{
-    "resources": ["styles/*"],
+    "resources": ["styles/*", "scripts/*"],
     "matches": ["<all_urls>"]
   }]
 } 

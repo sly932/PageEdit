@@ -32,7 +32,6 @@ export class StyleService {
      */
     private static createStyleElementSnapshot(
         selector: string, 
-        cssText: string,
         cssPropertyMap?: Record<string, string>
     ): StyleElementSnapshot {
         // 如果没有提供cssPropertyMap，从cssText解析
@@ -40,26 +39,30 @@ export class StyleService {
         if (cssPropertyMap) {
             propertyMap = cssPropertyMap;
         } else {
-            // 从cssText解析属性映射
-            const cssContent = cssText.replace(/^\s*\{|\}\s*$/g, '').trim();
-            const properties = cssContent.split(';').filter(prop => prop.trim());
-            properties.forEach(prop => {
-                const [property, value] = prop.split(':').map(s => s.trim());
-                if (property && value) {
-                    propertyMap[property] = value;
-                }
-            });
+            propertyMap = {};
         }
-
-        // 从propertyMap生成cssText（保持向后兼容）
-        const generatedCssText = `${selector} {\n${Object.entries(propertyMap).map(([prop, val]) => `  ${prop}: ${val};`).join('\n')}\n}`;
 
         return {
             id: `style_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             selector,
-            cssText: generatedCssText,
             cssPropertyMap: propertyMap,
             timestamp: Date.now()
+        };
+    }
+
+    /**
+     * 创建script快照
+     */
+    private static createScriptSnapshot(
+        code: string
+    ): ScriptSnapshot {
+        const blob = new Blob([code], { type: 'text/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+        return {
+            id: `script_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            code: code,
+            timestamp: Date.now(),
+            blobUrl: blobUrl
         };
     }
 
@@ -68,12 +71,13 @@ export class StyleService {
      */
     private static createSnapshot(
         elements: StyleElementSnapshot[], 
+        scripts: ScriptSnapshot[],
         userQuery?: string
     ): Snapshot {
         return {
             id: `snapshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             elements: [...elements],
-            scripts: [],
+            scripts: [...scripts],
             userQuery: userQuery || "",
             timestamp: Date.now()
         };
@@ -104,11 +108,59 @@ export class StyleService {
 
     /**
      * 应用script快照到页面
+     * 抽取了不同的方法，方便切换
      */
     private static applyScriptSnapshot(snapshot: ScriptSnapshot): void {
+        this.applyScriptSnapshotByExecuteScript(snapshot);
+    }
+
+    /**
+     * 应用script快照到页面(通过直接执行)
+     */
+    private static applyScriptSnapshotByDirectExecution(snapshot: ScriptSnapshot): void {
+        // 直接创建script元素并添加到页面
         const script = document.createElement('script');
         script.id = snapshot.id;
         script.textContent = snapshot.code;
+        document.head.appendChild(script);
+
+        console.log('[StyleService] Applied script directly:', {
+            id: snapshot.id,
+            code: snapshot.code
+        });
+    }
+    /**
+     * 应用script快照到页面(通过executeScript)
+     */
+    private static applyScriptSnapshotByExecuteScript(snapshot: ScriptSnapshot): void {
+        try {
+            // 在content script中，chrome.scripting不可用，需要通过background script执行
+            chrome.runtime.sendMessage({
+                type: 'EXECUTE_SCRIPT',
+                data: {
+                    tabId: (window as any).__pageEditTabId,
+                    code: snapshot.code,
+                    scriptId: snapshot.id
+                }
+            }, (response) => {
+                if (response && response.success) {
+                    console.log('[StyleService] Script executed successfully via background:', snapshot.id);
+                } else {
+                    console.error('[StyleService] Failed to execute script via background:', response?.error);
+                }
+            });
+        } catch (error) {
+            console.error('[StyleService] Failed to execute script:', error);
+        }
+    }
+
+    /**
+     * 应用script快照到页面(通过blobUrl)
+     */
+    private static applyScriptSnapshotByBlobUrl(snapshot: ScriptSnapshot): void {
+        const script = document.createElement('script');
+        script.id = snapshot.id;
+        script.src = snapshot.blobUrl || '';
         document.head.appendChild(script);
 
         console.log('[StyleService] Applied script:', {
@@ -131,9 +183,28 @@ export class StyleService {
      * 移除script
      */
     private static removeScript(snapshot: ScriptSnapshot): void {
-        const script = document.getElementById(snapshot.id) as HTMLScriptElement;
-        if (script && script.parentNode) {
-            script.remove();
+        try {
+            // 通过background script移除脚本
+            chrome.runtime.sendMessage({
+                type: 'REMOVE_SCRIPT',
+                data: {
+                    tabId: (window as any).__pageEditTabId,
+                    scriptId: snapshot.id
+                }
+            }, (response) => {
+                if (response && response.success) {
+                    console.log('[StyleService] Script removed successfully via background:', snapshot.id);
+                } else {
+                    console.error('[StyleService] Failed to remove script via background:', response?.error);
+                }
+            });
+        } catch (error) {
+            console.error('[StyleService] Failed to remove script:', error);
+        }
+        
+        // 清理blob URL（如果存在）
+        if (snapshot.blobUrl) {
+            URL.revokeObjectURL(snapshot.blobUrl);
         }
     }
 
@@ -143,7 +214,7 @@ export class StyleService {
      * @returns 是否修改成功
      */
     static applyModification(
-        modification: Pick<Modification, 'target' | 'property' | 'value' | 'method'>
+        modification: Modification
     ): boolean {
         try {
             const state = this.getGlobalState();
@@ -178,7 +249,6 @@ export class StyleService {
                         const propertyMap = { [modification.property]: modification.value };
                         const styleElementsnapshot = this.createStyleElementSnapshot(
                             modification.target, 
-                            '', // cssText不再使用
                             propertyMap
                         );
                         currentElements.push(styleElementsnapshot);
@@ -187,13 +257,28 @@ export class StyleService {
 
                 case 'script':
                     // 查看是否已存在相同target的script
-                    const existingScriptIndex = currentScripts.findIndex(
-                        script => script.target === modification.target
-                    );
-                    if (existingScriptIndex >= 0) {
-                        // 更新现有script
-                    } else {
-                        // 创建新script
+                    // 判断是否存在newTargets（新的cssElement），如果存在，则先创建cssElement，再创建script
+                    if (modification.newTargets) {
+                        // 创建新的cssElement
+                        for (const target of modification.newTargets) {
+                            //生成新的cssElement名称
+                            const newTargetName = `cssElement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                            // 创建新的cssElement
+                            const cssElementSnapshot = this.createStyleElementSnapshot(
+                                newTargetName, 
+                                {}
+                            );
+                            currentElements.push(cssElementSnapshot);
+
+                            // 把code中的target替换为newTargetName
+                            const modifiedCode = modification.code.replace(target, newTargetName);
+                            modification.code = modifiedCode;
+                        }
+                        // 创建新的script
+                        const scriptSnapshot = this.createScriptSnapshot(
+                            modification.code
+                        );
+                        currentScripts.push(scriptSnapshot);
                     }
                     break;
                 default:
@@ -203,10 +288,10 @@ export class StyleService {
 
             // 创建新的Snapshot，保持当前快照的userQuery
             const currentUserQuery = state.currentSnapshot ? state.currentSnapshot.userQuery : undefined;
-            const newSnapshot = this.createSnapshot(currentElements, currentUserQuery);
+            const newSnapshot = this.createSnapshot(currentElements, currentScripts, currentUserQuery);
             
             // 更新全局状态
-            this.updateGlobalState({ currentSnapshot: newSnapshot });
+            this.updateGlobalState({ currentSnapshot: newSnapshot});
             
             // 重新应用所有样式元素到页面
             this.applyAllStyleAndScript(currentElements, currentScripts);
@@ -333,7 +418,7 @@ export class StyleService {
         
         // 如果当前没有快照，创建一个空的
         if (!state.currentSnapshot) {
-            const emptySnapshot = this.createSnapshot([], userQuery);
+            const emptySnapshot = this.createSnapshot([], [], userQuery);
             this.updateGlobalState({ currentSnapshot: emptySnapshot });
         } else if (userQuery) {
             // 如果有用户查询，总是更新用户查询（不管当前快照是否已有userQuery）
