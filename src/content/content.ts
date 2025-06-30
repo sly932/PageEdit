@@ -183,7 +183,7 @@ export class ContentManager {
             const startTime = Date.now();
             // 使用 QueryProcessor 处理用户输入
             const result = await QueryProcessor.processInput(text, htmlContext, {
-                minConfidence: 0.6 // 最小置信度
+                minConfidence: 0.5 // 最小置信度
             });
             // 记录结束时间
             const endTime = Date.now();
@@ -759,7 +759,7 @@ export class ContentManager {
         if (newState) {
             StyleService.reapplyAllAppliedStyles();
         } else {
-            StyleService.clearAllAppliedStyles();
+            StyleService.clearAllStyleAndScriptFromDOM();
         }
 
         this.floatingBall?.updateEddyToggleState(newState);

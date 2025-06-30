@@ -1,5 +1,5 @@
 import { StyleModification, ModificationMethod, Modification } from '../../types';
-import { Eddy, StyleElementSnapshot, GlobalStyleState, Snapshot } from '../../types/eddy';
+import { Eddy, StyleElementSnapshot, ScriptSnapshot, GlobalStyleState, Snapshot } from '../../types/eddy';
 
 /**
  * 样式修改服务
@@ -103,12 +103,37 @@ export class StyleService {
     }
 
     /**
+     * 应用script快照到页面
+     */
+    private static applyScriptSnapshot(snapshot: ScriptSnapshot): void {
+        const script = document.createElement('script');
+        script.id = snapshot.id;
+        script.textContent = snapshot.code;
+        document.head.appendChild(script);
+
+        console.log('[StyleService] Applied script:', {
+            id: snapshot.id,
+            code: snapshot.code
+        });
+    }
+
+    /**
      * 移除样式元素
      */
     private static removeStyleElement(snapshot: StyleElementSnapshot): void {
         const element = document.getElementById(snapshot.id) as HTMLStyleElement;
         if (element && element.parentNode) {
             element.remove();
+        }
+    }
+
+    /**
+     * 移除script
+     */
+    private static removeScript(snapshot: ScriptSnapshot): void {
+        const script = document.getElementById(snapshot.id) as HTMLScriptElement;
+        if (script && script.parentNode) {
+            script.remove();
         }
     }
 
@@ -123,6 +148,7 @@ export class StyleService {
         try {
             const state = this.getGlobalState();
             let currentElements = state.currentSnapshot ? [...state.currentSnapshot.elements] : [];
+            let currentScripts = state.currentSnapshot ? [...state.currentSnapshot.scripts] : [];
 
             switch (modification.method) {
                 case 'style':
@@ -159,11 +185,17 @@ export class StyleService {
                     }
                     break;
 
-                case 'DOM':
-                    // DOM方式直接修改元素，不创建样式快照
-                    const elements = Array.from(document.querySelectorAll(modification.target)) as HTMLElement[];
-                    return elements.every(element => this.modifyStyle(element, modification.property, modification.value));
-
+                case 'script':
+                    // 查看是否已存在相同target的script
+                    const existingScriptIndex = currentScripts.findIndex(
+                        script => script.target === modification.target
+                    );
+                    if (existingScriptIndex >= 0) {
+                        // 更新现有script
+                    } else {
+                        // 创建新script
+                    }
+                    break;
                 default:
                     console.warn('Unknown modification method:', modification.method);
                     return false;
@@ -177,7 +209,7 @@ export class StyleService {
             this.updateGlobalState({ currentSnapshot: newSnapshot });
             
             // 重新应用所有样式元素到页面
-            this.applyAllStyleElements(currentElements);
+            this.applyAllStyleAndScript(currentElements, currentScripts);
 
             console.log('[StyleService] Modification applied successfully:', {
                 elementsCount: currentElements.length,
@@ -192,49 +224,13 @@ export class StyleService {
         }
     }
 
-    /**
-     * 直接修改元素的样式
-     * @param element 目标元素
-     * @param property 样式属性
-     * @param value 样式值
-     * @returns 是否修改成功
-     */
-    static modifyStyle(element: HTMLElement, property: string, value: string): boolean {
-        try {
-            element.style.setProperty(property, value);
-            return true;
-        } catch (error) {
-            console.error('Style modification failed:', error);
-            return false;
-        }
-    }
 
     /**
-     * 合并CSS属性
+     * 应用所有样式和script到页面
      */
-    private static mergeCSSProperties(
-        existingCss: string, 
-        property: string, 
-        value: string
-    ): string {
-        // 从现有CSS解析属性映射
-        const cssContent = existingCss.replace(/^\s*\{|\}\s*$/g, '').trim();
-        const propertyMap: Record<string, string> = {};
-        
-        const properties = cssContent.split(';').filter(prop => prop.trim());
-        properties.forEach(prop => {
-            const [propName, propValue] = prop.split(':').map(s => s.trim());
-            if (propName && propValue) {
-                propertyMap[propName] = propValue;
-            }
-        });
-
-        // 更新或添加新属性
-        propertyMap[property] = value;
-
-        // 重新生成CSS文本
-        const selector = existingCss.match(/^[^{]+/)?.[0]?.trim() || '';
-        return `${selector} {\n${Object.entries(propertyMap).map(([prop, val]) => `  ${prop}: ${val};`).join('\n')}\n}`;
+    private static applyAllStyleAndScript(elements: StyleElementSnapshot[], scripts: ScriptSnapshot[]): void {
+        this.applyAllStyleElements(elements);
+        this.applyAllScripts(scripts);
     }
 
     /**
@@ -253,6 +249,16 @@ export class StyleService {
     }
 
     /**
+     * 应用所有script到页面
+     */
+    private static applyAllScripts(scripts: ScriptSnapshot[]): void {
+        console.log('[StyleService] Applying all scripts:', scripts);
+        scripts.forEach(script => {
+            this.applyScriptSnapshot(script);
+        });
+    }
+
+    /**
      * 重置状态：清空当前快照，并将undo栈移动到redo栈
      */
     static resetState(): boolean {
@@ -260,7 +266,7 @@ export class StyleService {
             console.log('[StyleService] Resetting state');
             
             // 清除所有样式元素
-            this.clearAllStyleElementsFromDOM();
+            this.clearAllStyleAndScriptFromDOM();
             
             const state = this.getGlobalState();
             
@@ -288,6 +294,14 @@ export class StyleService {
     }
 
     /**
+     * 从DOM中清除所有script和style
+     */
+    static clearAllStyleAndScriptFromDOM(): void {
+        this.clearAllStyleElementsFromDOM();
+        this.clearAllScriptsFromDOM();
+    }
+
+    /**
      * 从DOM中清除所有样式元素
      */
     static clearAllStyleElementsFromDOM(): void {
@@ -295,6 +309,18 @@ export class StyleService {
         if (state.currentSnapshot) {
             state.currentSnapshot.elements.forEach(snapshot => {
                 this.removeStyleElement(snapshot);
+            });
+        }
+    }   
+
+    /**
+     * 从DOM中清除所有script
+     */
+    static clearAllScriptsFromDOM(): void {
+        const state = this.getGlobalState();
+        if (state.currentSnapshot) {
+            state.currentSnapshot.scripts.forEach(snapshot => { 
+                this.removeScript(snapshot);
             });
         }
     }
@@ -346,7 +372,7 @@ export class StyleService {
         // 检查是否还有更多状态可以撤销
         if (state.undoStack.length === 0) {
             // 如果没有更多状态，先清除所有样式元素
-            this.clearAllStyleElementsFromDOM();
+            this.clearAllStyleAndScriptFromDOM();
             
             // 应用空状态
             this.updateGlobalState({
@@ -357,7 +383,7 @@ export class StyleService {
         } else {
             // 应用undo栈顶端的快照
             const currentSnapshot = state.undoStack[state.undoStack.length - 1];
-            this.applyAllStyleElements(currentSnapshot.elements);
+            this.applyAllStyleAndScript(currentSnapshot.elements, currentSnapshot.scripts);
             this.updateGlobalState({
                 currentSnapshot: currentSnapshot,
                 undoStack: state.undoStack,
@@ -385,7 +411,7 @@ export class StyleService {
 
         const nextSnapshot = state.redoStack.pop()!;
         state.undoStack.push(nextSnapshot);
-        this.applyAllStyleElements(nextSnapshot.elements);
+        this.applyAllStyleAndScript(nextSnapshot.elements, nextSnapshot.scripts);
 
         // 更新全局状态
         this.updateGlobalState({
@@ -471,6 +497,7 @@ export class StyleService {
      * 从Eddy恢复GlobalState
      * @param eddy Eddy对象
      * @param options Options for the restoration, e.g., whether to apply styles to the DOM.
+     * applyToDOM: 是否应用修改（style和script）到DOM
      */
     static restoreFromEddy(eddy: Eddy, options: { applyToDOM: boolean } = { applyToDOM: true }): boolean {
         try {
@@ -488,7 +515,7 @@ export class StyleService {
 
             // 3. Apply the styles from the new currentSnapshot to the DOM only if specified
             if (options.applyToDOM && this.globalState.currentSnapshot) {
-                this.applyAllStyleElements(this.globalState.currentSnapshot.elements);
+                this.applyAllStyleAndScript(this.globalState.currentSnapshot.elements, this.globalState.currentSnapshot.scripts);
                 console.log('[StyleService] Applied', this.globalState.currentSnapshot.elements.length, 'style elements from restored eddy.');
             }
 
@@ -537,7 +564,7 @@ export class StyleService {
      * 彻底清除状态：清空所有栈和快照
      */
     static clearState(): void {
-        this.clearAllStyleElementsFromDOM();
+        this.clearAllStyleAndScriptFromDOM();
         this.updateGlobalState({
             currentSnapshot: null,
             undoStack: [],
@@ -563,7 +590,7 @@ export class StyleService {
         const state = this.getGlobalState();
         if (state.currentSnapshot && state.currentSnapshot.elements.length > 0) {
             console.log('[StyleService] Re-applying all styles from current snapshot.');
-            this.applyAllStyleElements(state.currentSnapshot.elements);
+            this.applyAllStyleAndScript(state.currentSnapshot.elements, state.currentSnapshot.scripts);
         } else {
             console.log('[StyleService] No styles in current snapshot to re-apply.');
         }

@@ -6,7 +6,7 @@ export type ModificationType = 'style' | 'layout';
 /**
  * 修改方法
  */
-export type ModificationMethod = 'style' | 'DOM';
+export type ModificationMethod = 'style' | 'script';
 
 /**
  * 布局修改选项
@@ -43,14 +43,12 @@ export interface LayoutOptions {
  */
 export interface Modification {
     id?: string;           // 可选，因为创建时可能还没有
-    type: ModificationType;
     target: string;        // CSS 选择器
     property: string;      // 样式属性
     value: string;         // 样式值
     originalValue?: string;
     options?: LayoutOptions;
     timestamp?: number;    // 可选，因为创建时可能还没有
-    location?: ElementLocation;
     method: ModificationMethod;
 }
 

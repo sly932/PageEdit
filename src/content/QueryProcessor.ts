@@ -194,16 +194,11 @@ export class QueryProcessor {
      */
     private static createModification(result: NLPResult): Modification {
         return {
-            type: 'style', // 默认类型
             target: result.target,
             property: result.property,
             value: result.value,
             method: result.method,
-            location: {
-                selector: result.target,
-                method: 'selector',
-                confidence: result.confidence
-            }
+            timestamp: Date.now()
         };
     }
 } 
