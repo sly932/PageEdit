@@ -351,8 +351,8 @@ export class StyleService {
      * 应用所有样式和script到页面
      */
     private static async applySnapshotToDOM(snapshot: Snapshot): Promise<void> {
-        this.applyAllStyleElements(snapshot.elements);
         await this.applyAllScripts(snapshot.scripts);
+        this.applyAllStyleElements(snapshot.elements);
     }
 
     /**
