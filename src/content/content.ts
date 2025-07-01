@@ -535,12 +535,11 @@ export class ContentManager {
         // Auto-enable eddy if it's disabled
         await this.ensureEddyIsEnabled();
 
-        // todo:测试，后面需要删除
-        const parser = new DOMParser();
-        const originalDoc = parser.parseFromString(this.getOriginHtml(), 'text/html');
-
-        // 只替换内容部分，不替换整个html元素
-        document.documentElement.innerHTML = originalDoc.documentElement.innerHTML;
+        // 恢复原始样式
+        // const parser = new DOMParser();
+        // const originalDoc = parser.parseFromString(this.getOriginHtml(), 'text/html');
+        // // 只替换内容部分，不替换整个html元素
+        // document.documentElement.innerHTML = originalDoc.documentElement.innerHTML;
 
         const success = await StyleService.undo();
         if (success) {

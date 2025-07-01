@@ -188,6 +188,7 @@ export class StyleService {
      * 移除样式元素
      */
     private static removeStyleElement(snapshot: StyleElementSnapshot): void {
+        console.log('[StyleService][removeStyleElement] Removing style element:', snapshot.id);
         const element = document.getElementById(snapshot.id) as HTMLStyleElement;
         if (element && element.parentNode) {
             element.remove();
@@ -267,24 +268,23 @@ export class StyleService {
                 case 'script':
                     // 查看是否已存在相同target的script
                     // 判断是否存在newTargets（新的cssElement），如果存在，则先创建cssElement，再创建script
-                    if (modification.newTargets) {
+                    if (modification.newIds) {
                         // 创建新的cssElement
-                        for (const target of modification.newTargets) {
-                            //生成新的cssElement名称
-                            const newTargetName = `cssElement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                        for (const id of modification.newIds) {
                             // 创建新的cssElement
                             const cssElementSnapshot = this.createStyleElementSnapshot(
-                                newTargetName, 
+                                'cssByScript', 
                                 {}
                             );
                             currentElements.push(cssElementSnapshot);
 
-                            // 把code中所有的target替换为newTargetName（使用正则表达式替换所有匹配项）
-                            const hasSpecialChars = /[.*+?^${}()|[\]\\]/.test(target);
+                            // 把code中所有的id替换为newId（使用正则表达式替换所有匹配项）
+                            const hasSpecialChars = /[.*+?^${}()|[\]\\]/.test(id);
                             const regex = hasSpecialChars 
-                                ? new RegExp(target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
-                                : new RegExp(target, 'g');
-                            const modifiedCode = modification.code.replace(regex, newTargetName);
+                                ? new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+                                : new RegExp(id, 'g');
+                            const newId = cssElementSnapshot.id;
+                            const modifiedCode = modification.code.replace(regex, newId);
                             modification.code = modifiedCode;
                         }
                         // 创建新的script

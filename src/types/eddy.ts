@@ -14,6 +14,7 @@ export interface ScriptSnapshot {
     id: string; // script的唯一标识符
     desc?: string; // 描述
     newTargets?: string[]; // 新建元素的名称数组（可选）
+    newIds?: string[]; // 新建元素的id数组（可选）
     code: string; // JavaScript代码片段 
     timestamp: number; // 创建时间
     blobUrl?: string; // 脚本文件的blobUrl（可选）

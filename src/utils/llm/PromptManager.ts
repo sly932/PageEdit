@@ -26,7 +26,7 @@ export class PromptManager {
 - **method**: "style"
 
 ## Script方法（必选字段）
-- **newTargets**: 新建元素的class名称数组（可选，当代码创建新元素时使用，格式如 ["{{{ele_1}}}", "{{{ele_2}}}"]）
+- **newIds**: 新建元素的id名称数组（可选，当代码创建新元素时使用，格式如 ["{{{id_1}}}", "{{{id_2}}}"]）
 - **code**: JavaScript代码片段（必选，要执行的脚本内容，包含元素的创建、功能逻辑和样式设计）
 - **confidence**: 置信度 (0-1)
 - **desc**: 修改描述（必选，简要说明此脚本的作用）
@@ -44,8 +44,8 @@ export class PromptManager {
         "method": "style"
     },
     {
-        "newTargets": ["{{{toggle_button}}}"],
-        "code": "const {{{toggle_button}}} = document.createElement('button'); {{{toggle_button}}}.textContent = '切换模式'; {{{toggle_button}}}.className = '{{{toggle_button}}}'; {{{toggle_button}}}.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; z-index: 1000;'; document.body.appendChild({{{toggle_button}}}); let isDarkMode = false; {{{toggle_button}}}.addEventListener('click', () => { isDarkMode = !isDarkMode; document.body.style.backgroundColor = isDarkMode ? '#1a1a1a' : '#ffffff'; document.body.style.color = isDarkMode ? '#e0e0e0' : '#333333'; {{{toggle_button}}}.textContent = isDarkMode ? '切换到白天模式' : '切换到夜间模式'; {{{toggle_button}}}.style.background = isDarkMode ? '#28a745' : '#007bff'; });",
+        "newIds": ["{{{toggle_button}}}"],
+        "code": "const {{{toggle_button}}} = document.createElement('button'); {{{toggle_button}}}.textContent = '切换模式'; {{{toggle_button}}}.id = '{{{toggle_button}}}'; {{{toggle_button}}}.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; z-index: 1000;'; document.body.appendChild({{{toggle_button}}}); let isDarkMode = false; {{{toggle_button}}}.addEventListener('click', () => { isDarkMode = !isDarkMode; document.body.style.backgroundColor = isDarkMode ? '#1a1a1a' : '#ffffff'; document.body.style.color = isDarkMode ? '#e0e0e0' : '#333333'; {{{toggle_button}}}.textContent = isDarkMode ? '切换到白天模式' : '切换到夜间模式'; {{{toggle_button}}}.style.background = isDarkMode ? '#28a745' : '#007bff'; });",
         "confidence": 0.9,
         "desc": "创建一个完整的主题切换按钮，包含样式、功能和交互逻辑",
         "method": "script"
@@ -57,7 +57,7 @@ export class PromptManager {
         "method": "script"
     }
 ]
-\`\`\`
+\`
 
 # 修改指南
 
@@ -75,7 +75,7 @@ export class PromptManager {
 - 需要JavaScript逻辑的样式变化
 - 基于用户行为的动态样式
 - 需要获取和设置计算样式的场景
-- 动态生成DOM元素（如按钮、模态框、组件）- 使用newTargets字段，包含完整的创建、样式和功能逻辑
+- 动态生成DOM元素（如按钮、模态框、组件）- 使用newIds字段，包含完整的创建、样式和功能逻辑
 - 事件驱动的样式变化（如点击、悬停、滚动）
 - 数据驱动的动态样式（如进度条、状态指示器）
 - 复杂的动画效果和过渡
@@ -89,7 +89,7 @@ export class PromptManager {
 4. 如果用户指令包含多个修改，请返回多个修改对象
 5. 对于复杂的选择器和伪类/伪元素，使用相应的CSS选择器语法
 6. Script方法中的代码应该包含完整的JavaScript逻辑，包括错误处理
-7. 当创建新元素时，使用newTargets字段指定class名称，格式为"{{{ele_1}}}"，并在代码中使用className设置
+7. 当创建新元素时，使用newIds字段指定id名称，格式为"{{{id_1}}}"，并在代码中使用id设置
 8. 一个完整的组件（创建、样式、功能）应该在一个script中实现，避免分散在多个script和style中
 9. desc字段应该简洁明了地描述修改的作用，便于理解和调试
 10. 返回的json需要包含在 \`\`\`json 和 \`\`\` 之间
@@ -123,4 +123,4 @@ export class PromptManager {
       systemMessage: this.getSystemMessage()
     };
   }
-} 
+}
