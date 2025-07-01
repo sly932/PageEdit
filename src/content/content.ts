@@ -13,9 +13,26 @@ export class ContentManager {
     private currentEddy: Eddy | null = null;
     private domainEddys: Eddy[] = [];
     private floatingBall: FloatingBall | null = null;
+    private originHtml: string = ''; // 记录网页原始HTML版本
 
     public setFloatingBall(ball: FloatingBall): void {
         this.floatingBall = ball;
+    }
+
+    /**
+     * 获取网页原始HTML版本
+     * @returns 原始HTML字符串
+     */
+    public getOriginHtml(): string {
+        return this.originHtml;
+    }
+
+    /**
+     * 检查是否已记录原始HTML
+     * @returns 是否已记录
+     */
+    public hasOriginHtml(): boolean {
+        return this.originHtml.length > 0;
     }
 
     constructor() {
@@ -49,6 +66,11 @@ export class ContentManager {
      */
     private async initializePage(): Promise<void> {
         console.log('[content] Initializing page content script');
+        
+        // 记录原始HTML版本
+        this.originHtml = document.documentElement.outerHTML;
+        console.log('[content] Original HTML captured, length:', this.originHtml.length);
+        
         const { StorageService } = await import('../services/storageService');
         const domain = window.location.hostname;
         
@@ -163,9 +185,9 @@ export class ContentManager {
             console.log('[content] Loading most recent eddy:', recentEddy.name);
             this.currentEddy = recentEddy;
             
-            // Always restore state to StyleService, but only apply to DOM if enabled.
-            const isEnabled = this.currentEddy.isEnabled ?? true;
-            StyleService.restoreFromEddy(recentEddy, { applyToDOM: isEnabled });
+            // 恢复Eddy状态到StyleService
+            const isEnabled = recentEddy.isEnabled ?? true;
+            await StyleService.restoreFromEddy(recentEddy, { applyToDOM: isEnabled });
 
         } else {
             console.log('[content] No eddys found for this domain. Creating a new temporary one.');
@@ -242,7 +264,7 @@ export class ContentManager {
             // 应用所有修改
             for (const modification of parseResult.modifications) {
                 try {
-                    const success = StyleService.applyModification(modification);
+                    const success = await StyleService.applyModification(modification);
                     if (!success) {
                         throw new Error(`Failed to apply modification: ${modification.property}`);
                     }
@@ -487,7 +509,7 @@ export class ContentManager {
                     break;
                 case 'restore_eddy_style':
                     if (this.currentEddy?.isEnabled) {
-                        StyleService.reapplyAllAppliedStyles();
+                        await StyleService.reapplyAllAppliedStyles();
                     }
                     break;
                 default:
@@ -513,7 +535,14 @@ export class ContentManager {
         // Auto-enable eddy if it's disabled
         await this.ensureEddyIsEnabled();
 
-        const success = StyleService.undo();
+        // todo:测试，后面需要删除
+        const parser = new DOMParser();
+        const originalDoc = parser.parseFromString(this.getOriginHtml(), 'text/html');
+
+        // 只替换内容部分，不替换整个html元素
+        document.documentElement.innerHTML = originalDoc.documentElement.innerHTML;
+
+        const success = await StyleService.undo();
         if (success) {
             await this.saveCurrentEddyToStorage();
             
@@ -534,7 +563,7 @@ export class ContentManager {
         // Auto-enable eddy if it's disabled
         await this.ensureEddyIsEnabled();
 
-        const success = StyleService.redo();
+        const success = await StyleService.redo();
         if (success) {
             await this.saveCurrentEddyToStorage();
             
@@ -610,7 +639,7 @@ export class ContentManager {
         
         // Always restore state, only apply to DOM if enabled.
         const isEnabled = this.currentEddy.isEnabled ?? true;
-        StyleService.restoreFromEddy(this.currentEddy, { applyToDOM: isEnabled });
+        await StyleService.restoreFromEddy(this.currentEddy, { applyToDOM: isEnabled });
 
         if (this.floatingBall) {
             this.floatingBall.updatePanelDisplay(this.currentEddy.name, this.currentEddy.id, false, isEnabled);
@@ -773,7 +802,7 @@ export class ContentManager {
         console.log(`[ContentManager] Toggling Eddy "${this.currentEddy.name}" to ${newState ? 'ENABLED' : 'DISABLED'}`);
 
         if (newState) {
-            StyleService.reapplyAllAppliedStyles();
+            await StyleService.reapplyAllAppliedStyles();
         } else {
             StyleService.clearAllStyleAndScriptFromDOM();
         }

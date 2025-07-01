@@ -110,8 +110,57 @@ export class StyleService {
      * 应用script快照到页面
      * 抽取了不同的方法，方便切换
      */
-    private static applyScriptSnapshot(snapshot: ScriptSnapshot): void {
-        this.applyScriptSnapshotByDirectExecution(snapshot);
+    private static async applyScriptSnapshot(snapshot: ScriptSnapshot): Promise<void> {
+        await this.applyScriptSnapshotByBackgroundExecution(snapshot);
+    }
+
+    /**
+     * 获取当前标签页ID
+     */
+    private static async getCurrentTabId(): Promise<number> {
+        try {
+            const response = await chrome.runtime.sendMessage({ type: 'GET_TAB_ID' });
+            if (response.tabId) {
+                return response.tabId;
+            } else {
+                throw new Error('Failed to get tab ID');
+            }
+        } catch (error) {
+            console.error('[StyleService] Failed to get tab ID:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 应用script快照到页面(通过background script执行)
+     */
+    private static async applyScriptSnapshotByBackgroundExecution(snapshot: ScriptSnapshot): Promise<void> {
+        try {
+            const tabId = await this.getCurrentTabId();
+            
+            // 通过background script执行，绕过CSP
+            const response = await chrome.runtime.sendMessage({
+                type: 'EXECUTE_SCRIPT',
+                data: {
+                    tabId: tabId,
+                    scriptId: snapshot.id,
+                    code: snapshot.code
+                }
+            });
+            
+            if (!response.success) {
+                throw new Error(`Script execution failed: ${response.error}`);
+            }
+
+            console.log('[StyleService] Applied script via background:', {
+                id: snapshot.id,
+                code: snapshot.code,
+                result: response
+            });
+        } catch (error) {
+            console.error('[StyleService] Failed to execute script via background:', error);
+            throw error;
+        }
     }
 
     /**
@@ -133,21 +182,6 @@ export class StyleService {
         } catch (error) {
             console.error('[StyleService] Failed to execute script:', error);
         }
-    }
-
-    /**
-     * 应用script快照到页面(通过blobUrl)
-     */
-    private static applyScriptSnapshotByBlobUrl(snapshot: ScriptSnapshot): void {
-        const script = document.createElement('script');
-        script.id = snapshot.id;
-        script.src = snapshot.blobUrl || '';
-        document.head.appendChild(script);
-
-        console.log('[StyleService] Applied script:', {
-            id: snapshot.id,
-            code: snapshot.code
-        });
     }
 
     /**
@@ -188,9 +222,9 @@ export class StyleService {
      * @param modification 样式修改对象
      * @returns 是否修改成功
      */
-    static applyModification(
+    static async applyModification(
         modification: Modification
-    ): boolean {
+    ): Promise<boolean> {
         try {
             const state = this.getGlobalState();
             let currentElements = state.currentSnapshot ? [...state.currentSnapshot.elements] : [];
@@ -245,8 +279,12 @@ export class StyleService {
                             );
                             currentElements.push(cssElementSnapshot);
 
-                            // 把code中的target替换为newTargetName
-                            const modifiedCode = modification.code.replace(target, newTargetName);
+                            // 把code中所有的target替换为newTargetName（使用正则表达式替换所有匹配项）
+                            const hasSpecialChars = /[.*+?^${}()|[\]\\]/.test(target);
+                            const regex = hasSpecialChars 
+                                ? new RegExp(target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+                                : new RegExp(target, 'g');
+                            const modifiedCode = modification.code.replace(regex, newTargetName);
                             modification.code = modifiedCode;
                         }
                         // 创建新的script
@@ -269,7 +307,7 @@ export class StyleService {
             this.updateGlobalState({ currentSnapshot: newSnapshot});
             
             // 重新应用所有样式元素到页面
-            this.applyAllStyleAndScript(currentElements, currentScripts);
+            await this.applyAllStyleAndScript(currentElements, currentScripts);
 
             console.log('[StyleService] Modification applied successfully:', {
                 elementsCount: currentElements.length,
@@ -288,9 +326,9 @@ export class StyleService {
     /**
      * 应用所有样式和script到页面
      */
-    private static applyAllStyleAndScript(elements: StyleElementSnapshot[], scripts: ScriptSnapshot[]): void {
+    private static async applyAllStyleAndScript(elements: StyleElementSnapshot[], scripts: ScriptSnapshot[]): Promise<void> {
         this.applyAllStyleElements(elements);
-        this.applyAllScripts(scripts);
+        await this.applyAllScripts(scripts);
     }
 
     /**
@@ -311,11 +349,11 @@ export class StyleService {
     /**
      * 应用所有script到页面
      */
-    private static applyAllScripts(scripts: ScriptSnapshot[]): void {
+    private static async applyAllScripts(scripts: ScriptSnapshot[]): Promise<void> {
         console.log('[StyleService] Applying all scripts:', scripts);
-        scripts.forEach(script => {
-            this.applyScriptSnapshot(script);
-        });
+        for (const script of scripts) {
+            await this.applyScriptSnapshot(script);
+        }
     }
 
     /**
@@ -418,7 +456,7 @@ export class StyleService {
     /**
      * 撤销操作
      */
-    static undo(): boolean {
+    static async undo(): Promise<boolean> {
         const state = this.getGlobalState();
         
         if (state.undoStack.length === 0) {
@@ -443,7 +481,7 @@ export class StyleService {
         } else {
             // 应用undo栈顶端的快照
             const currentSnapshot = state.undoStack[state.undoStack.length - 1];
-            this.applyAllStyleAndScript(currentSnapshot.elements, currentSnapshot.scripts);
+            await this.applyAllStyleAndScript(currentSnapshot.elements, currentSnapshot.scripts);
             this.updateGlobalState({
                 currentSnapshot: currentSnapshot,
                 undoStack: state.undoStack,
@@ -461,7 +499,7 @@ export class StyleService {
     /**
      * 重做操作
      */
-    static redo(): boolean {
+    static async redo(): Promise<boolean> {
         const state = this.getGlobalState();
         
         if (state.redoStack.length === 0) {
@@ -471,7 +509,7 @@ export class StyleService {
 
         const nextSnapshot = state.redoStack.pop()!;
         state.undoStack.push(nextSnapshot);
-        this.applyAllStyleAndScript(nextSnapshot.elements, nextSnapshot.scripts);
+        await this.applyAllStyleAndScript(nextSnapshot.elements, nextSnapshot.scripts);
 
         // 更新全局状态
         this.updateGlobalState({
@@ -559,7 +597,7 @@ export class StyleService {
      * @param options Options for the restoration, e.g., whether to apply styles to the DOM.
      * applyToDOM: 是否应用修改（style和script）到DOM
      */
-    static restoreFromEddy(eddy: Eddy, options: { applyToDOM: boolean } = { applyToDOM: true }): boolean {
+    static async restoreFromEddy(eddy: Eddy, options: { applyToDOM: boolean } = { applyToDOM: true }): Promise<boolean> {
         try {
             console.log(`[StyleService] Restoring from eddy: ${eddy.name}, applyToDOM: ${options.applyToDOM}`);
             
@@ -575,7 +613,7 @@ export class StyleService {
 
             // 3. Apply the styles from the new currentSnapshot to the DOM only if specified
             if (options.applyToDOM && this.globalState.currentSnapshot) {
-                this.applyAllStyleAndScript(this.globalState.currentSnapshot.elements, this.globalState.currentSnapshot.scripts);
+                await this.applyAllStyleAndScript(this.globalState.currentSnapshot.elements, this.globalState.currentSnapshot.scripts);
                 console.log('[StyleService] Applied', this.globalState.currentSnapshot.elements.length, 'style elements from restored eddy.');
             }
 
@@ -646,11 +684,11 @@ export class StyleService {
      * Re-applies all styles from the current snapshot to the DOM.
      * This is used to restore styles after temporarily viewing the original page.
      */
-    public static reapplyAllAppliedStyles(): void {
+    public static async reapplyAllAppliedStyles(): Promise<void> {
         const state = this.getGlobalState();
         if (state.currentSnapshot && state.currentSnapshot.elements.length > 0) {
             console.log('[StyleService] Re-applying all styles from current snapshot.');
-            this.applyAllStyleAndScript(state.currentSnapshot.elements, state.currentSnapshot.scripts);
+            await this.applyAllStyleAndScript(state.currentSnapshot.elements, state.currentSnapshot.scripts);
         } else {
             console.log('[StyleService] No styles in current snapshot to re-apply.');
         }
