@@ -803,7 +803,7 @@ export class ContentManager {
         if (newState) {
             await StyleService.reapplyAllAppliedStyles();
         } else {
-            StyleService.clearAllStyleAndScriptFromDOM();
+            StyleService.clearAllAppliedStyles();
         }
 
         this.floatingBall?.updateEddyToggleState(newState);

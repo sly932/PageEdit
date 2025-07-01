@@ -18,6 +18,7 @@ export interface ScriptSnapshot {
     code: string; // JavaScript代码片段 
     timestamp: number; // 创建时间
     blobUrl?: string; // 脚本文件的blobUrl（可选）
+    createdElementIds?: string[]; // 该脚本创建的样式元素的ID数组
 }
 
 // 新的Snapshot类，包含样式元素和用户查询
