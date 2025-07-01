@@ -112,7 +112,8 @@ export class StorageService {
             updatedAt: Date.now(),
             currentSnapshot: null,
             undoStack: [],
-            redoStack: []
+            redoStack: [],
+            isEnabled: true
         };
 
         eddys.push(newEddy);
