@@ -142,9 +142,9 @@ const PROVIDER_CONFIGS = {
  * 默认配置
  */
 const DEFAULT_CONFIG: LLMConfig = {
-  provider: 'openai',
-  model: 'gpt-4',
-  maxTokens: 4096,
+  provider: 'google',
+  model: 'gemini-2.5-flash-preview',
+  maxTokens: 128000,
   temperature: 0.7
 };
 

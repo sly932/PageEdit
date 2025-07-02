@@ -704,12 +704,12 @@ export class StyleService {
         const state = this.getGlobalState();
         if (state.currentSnapshot) {
             console.log('[StyleService] Temporarily clearing all applied styles from DOM.');
-            this.clearStyleElementsFromDOM(state.currentSnapshot.elements);
+            this.clearSnapshotFromDOM(state.currentSnapshot);
         }
     }
 
     /**
-     * Re-applies all styles from the current snapshot to the DOM.
+     * Re-applies all styles & scripts from the current snapshot to the DOM.
      * This is used to restore styles after temporarily viewing the original page.
      */
     public static async reapplyAllAppliedStyles(): Promise<void> {

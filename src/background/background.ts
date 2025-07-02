@@ -16,7 +16,7 @@ class ScriptExecutionService {
      */
     async executeScript(tabId: number, scriptId: string, code: string): Promise<any> {
         try {
-            console.log('[ScriptExecutionService] Executing script:', scriptId, 'in tab:', tabId);
+            console.log('[ScriptExecutionService] Executing script', scriptId, 'in tab:', tabId);
             
             // 使用Chrome Debugger API执行脚本，完全绕过CSP限制
             await chrome.debugger.attach({ tabId: tabId }, "1.3");
