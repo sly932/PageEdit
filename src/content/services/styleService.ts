@@ -374,6 +374,7 @@ export class StyleService {
     private static async applyAllScripts(scripts: ScriptSnapshot[]): Promise<void> {
         console.log('[StyleService] Applying all scripts:', scripts);
         for (const script of scripts) {
+            console.log('[StyleService] Applying script:', script);
             await this.applyScriptSnapshot(script);
         }
     }
