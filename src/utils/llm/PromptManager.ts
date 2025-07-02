@@ -93,6 +93,7 @@ export class PromptManager {
 8. 一个完整的组件（创建、样式、功能）应该在一个script中实现，避免分散在多个script和style中
 9. desc字段应该简洁明了地描述修改的作用，便于理解和调试
 10. 返回的json需要包含在 \`\`\`json 和 \`\`\` 之间
+11. 重要：所有 "script" 方法中的 "code" 都必须用立即执行函数表达式 (IIFE) (function() { ... })(); 包裹，以确保作用域隔离和可重复执行。
     `.trim();
   }
 

@@ -1,5 +1,6 @@
 import { StyleModification, ModificationMethod, Modification } from '../../types';
 import { Eddy, StyleElementSnapshot, ScriptSnapshot, GlobalStyleState, Snapshot } from '../../types/eddy';
+import { ensureIIFE } from '../../utils/scriptUtils';
 
 /**
  * 样式修改服务
@@ -56,11 +57,12 @@ export class StyleService {
     private static createScriptSnapshot(
         code: string
     ): ScriptSnapshot {
-        const blob = new Blob([code], { type: 'text/javascript' });
+        const wrappedCode = ensureIIFE(code);
+        const blob = new Blob([wrappedCode], { type: 'text/javascript' });
         const blobUrl = URL.createObjectURL(blob);
         return {
             id: `script_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            code: code,
+            code: wrappedCode,
             timestamp: Date.now(),
             blobUrl: blobUrl
         };
@@ -179,8 +181,8 @@ export class StyleService {
      */
     private static removeStyleElement(snapshot: StyleElementSnapshot): void {
         console.log('[StyleService][removeStyleElement] Removing style element:', snapshot.id);
-        const element = document.getElementById(snapshot.id) as HTMLStyleElement;
-        //const element = document.querySelector(`style#${snapshot.id}`) as HTMLStyleElement;
+        const element = document.querySelector(`style#${snapshot.id}`) as HTMLStyleElement;
+        //const element = document.getElementById(snapshot.id) as HTMLStyleElement;
         console.log('[StyleService][removeStyleElement] find and remove element:', element);
         if (element && element.parentNode) {
             element.remove();
@@ -193,8 +195,8 @@ export class StyleService {
     private static removeScript(snapshot: ScriptSnapshot): void {
         try {
             // 直接移除script元素
-            const script = document.getElementById(snapshot.id) as HTMLScriptElement;
-            //const script = document.querySelector(`script#${snapshot.id}`) as HTMLScriptElement;
+            const script = document.querySelector(`script#${snapshot.id}`) as HTMLScriptElement;
+            //const script = document.getElementById(snapshot.id) as HTMLScriptElement;
             console.log('[StyleService][removeScript] find and remove element:', script);
             if (script) {
                 script.remove();

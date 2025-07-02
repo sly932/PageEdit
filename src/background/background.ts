@@ -1,3 +1,4 @@
+import { ensureIIFE } from '../utils/scriptUtils';
 console.log('PageEdit: Background script loaded');
 
 /**
@@ -15,6 +16,7 @@ class ScriptExecutionService {
      * @returns 执行结果
      */
     async executeScript(tabId: number, scriptId: string, code: string): Promise<any> {
+        const safeCode = ensureIIFE(code);
         try {
             console.log('[ScriptExecutionService] Executing script', scriptId, 'in tab:', tabId);
             
@@ -25,16 +27,30 @@ class ScriptExecutionService {
                 { tabId: tabId },
                 "Runtime.evaluate",
                 {
-                    expression: code,
+                    expression: safeCode,
                     returnByValue: true
                 }
             ) as any;
+            
+            if (result.exceptionDetails) {
+                console.error('[ScriptExecutionService] Script execution failed with exception:', {
+                    scriptId,
+                    exception: result.exceptionDetails.exception?.description,
+                    details: result.exceptionDetails,
+                });
+                await chrome.debugger.detach({ tabId: tabId });
+                return { 
+                    success: false, 
+                    error: result.exceptionDetails.exception?.description || 'Script execution failed', 
+                    details: result.exceptionDetails 
+                };
+            }
             
             await chrome.debugger.detach({ tabId: tabId });
             
             console.log('[PageEdit] Script executed successfully via debugger:',{
                 'scriptId': scriptId,
-                'code': code
+                'code': safeCode
             });
             return { success: true, scriptId, result: result?.result?.value };
             
