@@ -57,11 +57,16 @@ export class StyleService {
     private static createScriptSnapshot(
         code: string
     ): ScriptSnapshot {
-        const wrappedCode = ensureIIFE(code);
+        const snapshotId = `script_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // 用真实的快照ID替换代码中的占位符
+        const finalizedCode = code.replace(/{{{SCRIPT_ID}}}/g, snapshotId);
+
+        const wrappedCode = ensureIIFE(finalizedCode);
         const blob = new Blob([wrappedCode], { type: 'text/javascript' });
         const blobUrl = URL.createObjectURL(blob);
         return {
-            id: `script_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: snapshotId,
             code: wrappedCode,
             timestamp: Date.now(),
             blobUrl: blobUrl
@@ -194,6 +199,10 @@ export class StyleService {
      */
     private static removeScript(snapshot: ScriptSnapshot): void {
         try {
+            // 派发清理事件，让脚本自行清理副作用
+            console.log(`[StyleService][removeScript] Dispatching cleanup event for script: ${snapshot.id}:`, `cleanup-${snapshot.id}`);
+            document.dispatchEvent(new CustomEvent(`cleanup-${snapshot.id}`));
+            
             // 直接移除script元素
             const script = document.querySelector(`script#${snapshot.id}`) as HTMLScriptElement;
             //const script = document.getElementById(snapshot.id) as HTMLScriptElement;
@@ -390,6 +399,7 @@ export class StyleService {
             const currentSnapshot = state.undoStack.pop();
             if (currentSnapshot) {
                 this.clearSnapshotFromDOM(currentSnapshot);
+                state.redoStack.push(currentSnapshot);
             }
             
             // 2. 创建一个 undoStack 的副本并将其反转。
