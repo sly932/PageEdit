@@ -32,7 +32,10 @@ class ScriptExecutionService {
             
             await chrome.debugger.detach({ tabId: tabId });
             
-            console.log('[PageEdit] Script executed successfully via debugger:', scriptId);
+            console.log('[PageEdit] Script executed successfully via debugger:',{
+                'scriptId': scriptId,
+                'code': code
+            });
             return { success: true, scriptId, result: result?.result?.value };
             
         } catch (error) {

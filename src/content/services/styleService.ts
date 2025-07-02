@@ -96,13 +96,6 @@ export class StyleService {
         
         document.head.appendChild(styleElement);
         
-        console.log('[StyleService] Applied style element:', {
-            id: snapshot.id,
-            selector: snapshot.selector,
-            cssText: cssText,
-            propertyCount: Object.keys(snapshot.cssPropertyMap).length
-        });
-        
         return styleElement;
     }
 
@@ -112,6 +105,7 @@ export class StyleService {
      */
     private static async applyScriptSnapshot(snapshot: ScriptSnapshot): Promise<void> {
         await this.applyScriptSnapshotByBackgroundExecution(snapshot);
+        console.log('[StyleService][applyScriptSnapshot] Applied scriptSnapshot:', snapshot);
     }
 
     /**
@@ -152,11 +146,7 @@ export class StyleService {
                 throw new Error(`Script execution failed: ${response.error}`);
             }
 
-            console.log('[StyleService] Applied script via background:', {
-                id: snapshot.id,
-                code: snapshot.code,
-                result: response
-            });
+            console.log('[StyleService] Applied scriptSnapshot via background:', snapshot);
         } catch (error) {
             console.error('[StyleService] Failed to execute script via background:', error);
             throw error;
@@ -190,6 +180,8 @@ export class StyleService {
     private static removeStyleElement(snapshot: StyleElementSnapshot): void {
         console.log('[StyleService][removeStyleElement] Removing style element:', snapshot.id);
         const element = document.getElementById(snapshot.id) as HTMLStyleElement;
+        //const element = document.querySelector(`style#${snapshot.id}`) as HTMLStyleElement;
+        console.log('[StyleService][removeStyleElement] find and remove element:', element);
         if (element && element.parentNode) {
             element.remove();
         }
@@ -202,7 +194,9 @@ export class StyleService {
         try {
             // 直接移除script元素
             const script = document.getElementById(snapshot.id) as HTMLScriptElement;
-            if (script && script.getAttribute('data-pageedit') === 'true') {
+            //const script = document.querySelector(`script#${snapshot.id}`) as HTMLScriptElement;
+            console.log('[StyleService][removeScript] find and remove element:', script);
+            if (script) {
                 script.remove();
                 console.log('[StyleService] Script removed successfully:', snapshot.id);
             } else {
@@ -210,13 +204,14 @@ export class StyleService {
             }
 
             // 移除由该脚本创建的关联样式元素
+            //todo
             if (snapshot.createdElementIds && snapshot.createdElementIds.length > 0) {
-                console.log(`[StyleService] Removing ${snapshot.createdElementIds.length} style elements created by script ${snapshot.id}`);
+                console.log(`[StyleService][removeScript] Removing ${snapshot.createdElementIds.length} style elements created by script ${snapshot.id}`);
                 snapshot.createdElementIds.forEach(styleId => {
                     const styleElement = document.getElementById(styleId);
                     if (styleElement) {
                         styleElement.remove();
-                        console.log(`[StyleService] Removed associated style element: ${styleId}`);
+                        console.log(`[StyleService][removeScript] Removed associated style element: `, styleElement);
                     }
                 });
             }
@@ -292,6 +287,8 @@ export class StyleService {
                                 'cssByScript', 
                                 {}
                             );
+                            
+                            //todo
                             currentElements.push(cssElementSnapshot);
                             newElementIds.push(cssElementSnapshot.id);
 
@@ -351,8 +348,8 @@ export class StyleService {
      * 应用所有样式和script到页面
      */
     private static async applySnapshotToDOM(snapshot: Snapshot): Promise<void> {
-        await this.applyAllScripts(snapshot.scripts);
         this.applyAllStyleElements(snapshot.elements);
+        await this.applyAllScripts(snapshot.scripts);
     }
 
     /**
@@ -365,6 +362,7 @@ export class StyleService {
         // 应用新的样式元素
         elements.forEach(snapshot => {
             this.applyStyleElementSnapshot(snapshot);
+            console.log('[StyleService] Applied style element:', snapshot);
         });
     }
 
@@ -372,9 +370,8 @@ export class StyleService {
      * 应用所有script到页面
      */
     private static async applyAllScripts(scripts: ScriptSnapshot[]): Promise<void> {
-        console.log('[StyleService] Applying all scripts:', scripts);
+        console.log('[StyleService][applyAllScripts] Applying all scripts:', scripts);
         for (const script of scripts) {
-            console.log('[StyleService] Applying script:', script);
             await this.applyScriptSnapshot(script);
         }
     }
@@ -420,6 +417,7 @@ export class StyleService {
      * 从DOM中清除指定快照的script和style
      */
     static clearSnapshotFromDOM(snapshot: Snapshot): void {
+        console.log('[StyleService][clearSnapshotFromDOM] clear current snapshot:', snapshot);
         this.clearStyleElementsFromDOM(snapshot.elements);
         this.clearScriptsFromDOM(snapshot.scripts);
     }
@@ -704,6 +702,7 @@ export class StyleService {
         const state = this.getGlobalState();
         if (state.currentSnapshot) {
             console.log('[StyleService] Temporarily clearing all applied styles from DOM.');
+            // this.clearStyleElementsFromDOM(state.currentSnapshot.elements);
             this.clearSnapshotFromDOM(state.currentSnapshot);
         }
     }
