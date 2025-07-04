@@ -14,7 +14,6 @@ interface NLPResult {
     newIds: string[]; // script: 新建元素的id数组,
     code: string;         // script: JavaScript代码片段
     desc: string;         // script & style: 描述
-    confidence: number;     // 置信度 (0-1)
     method: ModificationMethod; // 修改方法
     source: 'llm';          // 处理来源 (移除rule，只保留llm)
 }
@@ -34,12 +33,8 @@ export class QueryProcessor {
     public static async processInput(
         text: string,
         htmlContext: string,
-        options: {
-            minConfidence?: number; // 最小置信度
-        } = {}
     ): Promise<ParseResult> {
         try {
-            const { minConfidence = 0.6 } = options;
             
             // 1. 获取LLM配置
             const config = await ConfigManager.getLLMConfig();
@@ -70,13 +65,13 @@ export class QueryProcessor {
             console.log('[QueryProcessor] Parsed results:', results);
 
             // 6. 过滤低置信度结果
-            const filteredResults = results.filter(result => result.confidence >= minConfidence);
+            const filteredResults = results;
 
             if (filteredResults.length === 0) {
                 return {
                     modifications: [],
                     success: false,
-                    error: 'No valid modifications found with sufficient confidence'
+                    error: 'No valid modifications found'
                 };
             }
 
@@ -142,7 +137,6 @@ export class QueryProcessor {
                 target: result.target || '',
                 property: result.property || '',
                 value: result.value || '',
-                confidence: result.confidence || 0,
                 method: result.method || 'style',
                 source: 'llm',
                 newTargets: result.newTargets || [],

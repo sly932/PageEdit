@@ -1,4 +1,4 @@
-import { Message, Modification, UserInput, ElementLocation, ParseResult, ModificationMethod, StyleModification } from '../types';
+import { Message, Modification, ParseResult, ModificationMethod, StyleModification } from '../types';
 import { Eddy } from '../types/eddy';
 import { StyleService } from './services/styleService';
 import { StorageService } from '../services/storageService';
@@ -220,9 +220,7 @@ export class ContentManager {
             // 记录开始时间
             const startTime = Date.now();
             // 使用 QueryProcessor 处理用户输入
-            const result = await QueryProcessor.processInput(text, htmlContext, {
-                minConfidence: 0.5 // 最小置信度
-            });
+            const result = await QueryProcessor.processInput(text, htmlContext);
             // 记录结束时间
             const endTime = Date.now();
             console.log('[content] Processed result:', result);

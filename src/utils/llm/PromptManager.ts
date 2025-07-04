@@ -21,14 +21,12 @@ export class PromptManager {
 - **target**: 目标元素选择器（必选，如 'body', 'h1', 'p', '.class', '#id'）
 - **property**: CSS 属性名（必选，如 'background-color', 'font-size', 'color'）
 - **value**: CSS 属性值（必选，如 'blue', '16px', 'red'）
-- **confidence**: 置信度 (0-1)
 - **desc**: 修改描述（必选，简要说明此修改的作用）
 - **method**: "style"
 
 ## Script方法（必选字段）
 - **newIds**: 新建元素的id名称数组（可选，当代码创建新元素时使用，格式如 ["{{{id_1}}}", "{{{id_2}}}"]）
 - **code**: JavaScript代码片段（必选，要执行的脚本内容，包含元素的创建、功能逻辑和样式设计）
-- **confidence**: 置信度 (0-1)
 - **desc**: 修改描述（必选，简要说明此脚本的作用）
 - **method**: "script"
 
@@ -39,20 +37,17 @@ export class PromptManager {
         "target": "body",
         "property": "background-color",
         "value": "blue",
-        "confidence": 0.95,
         "desc": "将页面背景色改为蓝色",
         "method": "style"
     },
     {
         "newIds": ["{{{toggle_button}}}"],
         "code": "const {{{toggle_button}}} = document.createElement('button'); {{{toggle_button}}}.textContent = '切换模式'; {{{toggle_button}}}.id = '{{{toggle_button}}}'; {{{toggle_button}}}.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; z-index: 1000;'; document.body.appendChild({{{toggle_button}}}); let isDarkMode = false; {{{toggle_button}}}.addEventListener('click', () => { isDarkMode = !isDarkMode; document.body.style.backgroundColor = isDarkMode ? '#1a1a1a' : '#ffffff'; document.body.style.color = isDarkMode ? '#e0e0e0' : '#333333'; {{{toggle_button}}}.textContent = isDarkMode ? '切换到白天模式' : '切换到夜间模式'; {{{toggle_button}}}.style.background = isDarkMode ? '#28a745' : '#007bff'; });",
-        "confidence": 0.9,
         "desc": "创建一个完整的主题切换按钮，包含样式、功能和交互逻辑",
         "method": "script"
     },
     {
         "code": "document.addEventListener('mousemove', (e) => { const element = document.querySelector('.floating'); if (element) { element.style.left = e.clientX + 'px'; element.style.top = e.clientY + 'px'; } });",
-        "confidence": 0.85,
         "desc": "添加鼠标跟随效果，让.floating元素跟随鼠标移动",
         "method": "script"
     }
@@ -89,12 +84,12 @@ export class PromptManager {
 4. 如果用户指令包含多个修改，请返回多个修改对象
 5. 对于复杂的选择器和伪类/伪元素，使用相应的CSS选择器语法
 6. Script方法中的代码应该包含完整的JavaScript逻辑，包括错误处理
-7. 当创建新元素时，使用newIds字段指定id名称，格式为"{{{id_1}}}"，并在代码中使用id设置
+7. 如需创建新元素，在返回json的newIds字段中指定id名称，并在代码中使用占位符"{{{id_xxx}}}"，xxx为id名称，如"{{{id_1}}}"，"{{{id_2}}}"等
 8. 一个完整的组件（创建、样式、功能）应该在一个script中实现，避免分散在多个script和style中
 9. desc字段应该简洁明了地描述修改的作用，便于理解和调试
 10. 返回的json需要包含在 \`\`\`json 和 \`\`\` 之间
 11. 重要：所有 "script" 方法中的 "code" 都必须用立即执行函数表达式 (IIFE) (function() { ... })(); 包裹，以确保作用域隔离和可重复执行。
-12. 重要：对于需要清理的脚本（如动画、定时器、全局事件监听），必须实现自清理逻辑。使用特殊的占位符 {{{SCRIPT_ID}}} 代表脚本自身的ID。脚本必须监听一个名为 'cleanup-{{{SCRIPT_ID}}}' 的自定义事件，并在收到该事件时，停止所有动画、移除所有自行创建的DOM元素和全局事件监听器。
+12. 重要：对于需要清理的脚本（如动画、定时器、全局事件监听），必须实现自清理逻辑。使用特殊的占位符 {{{SCRIPT_ID}}} 代表脚本自身的ID。脚本必须使用document监听一个名为 'cleanup-{{{SCRIPT_ID}}}' 的自定义事件，并在收到该事件时，停止所有动画、移除所有自行创建的DOM元素和全局事件监听器。
     `.trim();
   }
 

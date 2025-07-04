@@ -52,16 +52,6 @@ export interface Modification {
 }
 
 /**
- * 用户输入的类型定义
- */
-export interface UserInput {
-    // 用户输入的自然语言
-    text: string;
-    // 输入时间戳
-    timestamp: number;
-}
-
-/**
  * 消息类型定义
  */
 export interface Message {
@@ -85,18 +75,6 @@ export interface StyleModification {
     method: ModificationMethod;
     // 目标选择器
     target: string;
-}
-
-/**
- * 元素定位的类型定义
- */
-export interface ElementLocation {
-    // 元素选择器
-    selector: string;
-    // 定位方式（选择器、位置、文本等）
-    method: 'selector' | 'position' | 'text';
-    // 定位的置信度（0-1）
-    confidence: number;
 }
 
 /**

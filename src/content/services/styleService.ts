@@ -202,6 +202,7 @@ export class StyleService {
             // 派发清理事件，让脚本自行清理副作用
             console.log(`[StyleService][removeScript] Dispatching cleanup event for script: ${snapshot.id}:`, `cleanup-${snapshot.id}`);
             document.dispatchEvent(new CustomEvent(`cleanup-${snapshot.id}`));
+            window.dispatchEvent(new CustomEvent(`cleanup-${snapshot.id}`));
             
             // 直接移除script元素
             const script = document.querySelector(`script#${snapshot.id}`) as HTMLScriptElement;
