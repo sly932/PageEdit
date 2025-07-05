@@ -63,13 +63,10 @@ export class StyleService {
         const finalizedCode = code.replace(/{{{SCRIPT_ID}}}/g, snapshotId);
 
         const wrappedCode = ensureIIFE(finalizedCode);
-        const blob = new Blob([wrappedCode], { type: 'text/javascript' });
-        const blobUrl = URL.createObjectURL(blob);
         return {
             id: snapshotId,
             code: wrappedCode,
             timestamp: Date.now(),
-            blobUrl: blobUrl
         };
     }
 
@@ -232,10 +229,6 @@ export class StyleService {
             console.error('[StyleService] Failed to remove script:', error);
         }
         
-        // 清理blob URL（如果存在）
-        if (snapshot.blobUrl) {
-            URL.revokeObjectURL(snapshot.blobUrl);
-        }
     }
 
     /**

@@ -10,7 +10,6 @@ interface NLPResult {
     target: string;          // style: 目标元素选择器
     property: string;        // style: CSS属性
     value: string;          // style: 属性值
-    newTargets: string[]; // script: 新建元素的名称数组,
     newIds: string[]; // script: 新建元素的id数组,
     code: string;         // script: JavaScript代码片段
     desc: string;         // script & style: 描述
@@ -201,11 +200,9 @@ export class QueryProcessor {
             value: result.value,
             method: result.method,
             timestamp: Date.now(),
-            newTargets: result.newTargets,
             newIds: result.newIds,
             code: result.code,
             desc: result.desc,
-            blobUrl: ''
         };
     }
 } 
