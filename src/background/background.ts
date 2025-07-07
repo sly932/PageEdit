@@ -67,6 +67,62 @@ class ScriptExecutionService {
     }
 
     /**
+     * 使用 chrome.scripting API 执行脚本
+     * @param tabId 标签页ID
+     * @param scriptId 脚本ID
+     * @param code 脚本代码
+     * @returns 执行结果
+     */
+    async executeScriptByScriptingAPI(tabId: number, scriptId: string, code: string): Promise<any> {
+        const safeCode = ensureIIFE(code);
+        try {
+            console.log('[ScriptExecutionService] Executing script via scripting API in MAIN world', scriptId, 'in tab:', tabId);
+            
+            const injectionResults = await chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                world: 'MAIN', // 在主世界中执行，以利用扩展的权限注入脚本
+                func: (scriptToRun, id) => {
+                    // 这个函数现在在页面的主JS环境中运行
+                    // 它可以创建一个script标签并注入，这将绕过页面的CSP
+                    try {
+                        const scriptElement = document.createElement('script');
+                        scriptElement.id = id;
+                        scriptElement.textContent = scriptToRun;
+                        document.head.appendChild(scriptElement);
+                        // 脚本是自包含的，执行后可以自行清理
+                        scriptElement.remove(); 
+                    } catch (e) {
+                        // 这里的console.error会打印在页面的控制台
+                        console.error(`PageEdit - Error executing script ${id}:`, e);
+                    }
+                },
+                args: [safeCode, scriptId],
+            });
+
+            if (injectionResults) {
+                for (const frameResult of injectionResults) {
+                    const resultWithError = frameResult as any;
+                    if (resultWithError.error) {
+                        console.error(`[ScriptExecutionService] Script injection failed in frame ${frameResult.frameId}:`, resultWithError.error);
+                        return { success: false, error: resultWithError.error.message || 'Script execution failed' };
+                    }
+                }
+            }
+
+            console.log('[PageEdit] Script injected successfully via scripting API:', {
+                'scriptId': scriptId,
+                'code': safeCode
+            });
+            
+            return { success: true, scriptId, result: injectionResults?.[0]?.result };
+
+        } catch (error) {
+            console.error('[ScriptExecutionService] Failed to inject script via scripting API:', error);
+            return { success: false, error: (error as Error).message };
+        }
+    }
+
+    /**
      * 移除脚本
      * @param tabId 标签页ID
      * @param scriptId 脚本ID
@@ -308,7 +364,7 @@ class BackgroundManager {
      */
     private async handleExecuteScriptWithService(data: any, sendResponse: (response?: any) => void): Promise<void> {
         try {
-            const result = await scriptExecutionService.executeScript(data.tabId, data.scriptId, data.code);
+            const result = await scriptExecutionService.executeScriptByScriptingAPI(data.tabId, data.scriptId, data.code);
             sendResponse(result);
         } catch (error) {
             console.error('[background] Failed to execute script with service:', error);
