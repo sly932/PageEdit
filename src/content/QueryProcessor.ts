@@ -22,6 +22,26 @@ interface NLPResult {
  * 负责协调整个处理流程
  */
 export class QueryProcessor {
+
+    /**
+     * 处理用户输入
+     * @param text 用户输入的自然语言文本
+     * @param htmlContext 页面HTML上下文（暂不使用）
+     * @param options 处理选项
+     * @returns 解析结果
+     */
+    public static async processInputInBackground(
+        text: string,
+        htmlContext: string,
+    ): Promise<ParseResult> {
+        //暂时不实现
+        return {
+            modifications: [],
+            success: false,
+            error: 'Not implemented'
+        };
+    }
+
     /**
      * 处理用户输入
      * @param text 用户输入的自然语言文本

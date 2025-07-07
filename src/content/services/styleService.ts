@@ -10,7 +10,10 @@ export class StyleService {
     private static globalState: GlobalStyleState = {
         currentSnapshot: null,
         undoStack: [],
-        redoStack: []
+        redoStack: [],
+
+        snapshotArray: [],
+        currentSnapshotId: -1,
     };
 
     /**
@@ -18,6 +21,19 @@ export class StyleService {
      */
     private static getGlobalState(): GlobalStyleState {
         return this.globalState;
+    }
+
+    /**
+     * 初始化全局样式状态
+     */
+    private static resetGlobalState(): void {
+        this.globalState = {
+            currentSnapshot: null,
+            undoStack: [],
+            redoStack: [],
+            snapshotArray: [],
+            currentSnapshotId: -1
+        };
     }
 
     /**
@@ -232,11 +248,140 @@ export class StyleService {
     }
 
     /**
+     * 根据修改方法应用样式。负责从modifications中提取style和script的快照，并保存到global state
+     * @param modifications 样式修改对象
+     * @returns 是否修改成功
+     */
+    static async applyModifications(
+        modifications: Modification[],
+        userQuery?: string
+    ): Promise<boolean> {
+        try {
+            const state = this.getGlobalState();
+
+            let currentElements: StyleElementSnapshot[] = [];
+            let currentScripts: ScriptSnapshot[] = [];
+
+            for (const modification of modifications) {
+                switch (modification.method) {
+                case 'style':
+                    // 查找是否已存在相同选择器的样式
+                    const existingIndex = currentElements.findIndex(
+                        element => element.selector === modification.target
+                    );
+
+                    if (existingIndex >= 0) {
+                        // 更新现有样式
+                        console.log('[StyleService] detect existing style for modification:', modification);
+                        console.log('[StyleService] Updating existing style:', currentElements[existingIndex]);
+                        const existing = currentElements[existingIndex];
+                        
+                        // 更新属性映射
+                        const updatedPropertyMap = { ...existing.cssPropertyMap };
+                        updatedPropertyMap[modification.property] = modification.value;
+                        
+                        currentElements[existingIndex] = {
+                            ...existing,
+                            cssPropertyMap: updatedPropertyMap,
+                            timestamp: Date.now()
+                        };
+                        console.log('[StyleService] Updated existing style:', currentElements[existingIndex]);
+                    } else {
+                        // 创建新样式
+                        const propertyMap = { [modification.property]: modification.value };
+                        const styleElementsnapshot = this.createStyleElementSnapshot(
+                            modification.target, 
+                            propertyMap
+                        );
+                        currentElements.push(styleElementsnapshot);
+                    }
+                    break;
+                case 'script':
+                    // 查看是否已存在相同target的script
+                    // 判断是否存在newTargets（新的cssElement），如果存在，则先创建cssElement，再创建script
+                    if (modification.newIds) {
+                        const newElementIds: string[] = [];
+                        // 创建新的cssElement
+                        for (const id of modification.newIds) {
+                            // 创建新的cssElement
+                            const cssElementSnapshot = this.createStyleElementSnapshot(
+                                'cssByScript', 
+                                {}
+                            );
+                            
+                            //todo
+                            currentElements.push(cssElementSnapshot);
+                            newElementIds.push(cssElementSnapshot.id);
+
+                            // 把code中所有的id替换为newId（使用正则表达式替换所有匹配项）
+                            const hasSpecialChars = /[.*+?^${}()|[\]\\]/.test(id);
+                            const regex = hasSpecialChars 
+                                ? new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+                                : new RegExp(id, 'g');
+                            const newId = cssElementSnapshot.id;
+                            const modifiedCode = modification.code.replace(regex, newId);
+                            modification.code = modifiedCode;
+                        }
+                        // 创建新的script
+                        const scriptSnapshot = this.createScriptSnapshot(
+                            modification.code
+                        );
+                        // 关联创建的样式元素ID
+                        scriptSnapshot.createdElementIds = newElementIds;
+                        currentScripts.push(scriptSnapshot);
+                    }
+                    break;
+                default:
+                    console.warn('Unknown modification method:', modification.method);
+                    break;
+                }
+            }
+
+            // 创建新的Snapshot
+            const newSnapshot = this.createSnapshot(currentElements, currentScripts, userQuery);
+            
+            console.log('[StyleService][printStateInfo] newSnapshot:', newSnapshot);
+
+            this.printStateInfo('before update stackArray');
+            
+            //更新currentSnapshotId，如果currentId不存在，则修改为0；如果currentId存在，则修改为currentId+1
+            state.currentSnapshotId = (state.currentSnapshotId ?? -1) + 1;
+            //更新stackArray，插入到currentId+1的位置
+            state.snapshotArray = state.snapshotArray ? [...state.snapshotArray.slice(0, state.currentSnapshotId), newSnapshot, ...state.snapshotArray.slice(state.currentSnapshotId)] : [newSnapshot];
+
+            this.updateGlobalState({ currentSnapshotId: state.currentSnapshotId, snapshotArray: state.snapshotArray });
+            
+            console.log('[StyleService][printStateInfo] snapshotarray:', state.snapshotArray);
+            
+            // 重新计算current snapshot并赋值到global state
+            state.currentSnapshot = this.calculateCurrentSnapshot();
+
+            this.updateGlobalState({ currentSnapshot: state.currentSnapshot });
+
+            // 应用新的状态到DOM
+            await this.applySnapshotToDOM(state.currentSnapshot!);
+
+            console.log('[StyleService] Modification applied successfully:', {
+                elementsCount: currentElements.length,
+                snapshotId: newSnapshot.id,
+                userQuery: newSnapshot.userQuery
+            });
+
+            this.printStateInfo('after update stackArray');
+
+            return true;
+        } catch (error) {
+            console.error('Modification failed:', error);
+            return false;
+        }
+    }
+
+    /**
      * 根据修改方法应用样式
      * @param modification 样式修改对象
      * @returns 是否修改成功
      */
-    static async applyModification(
+    static async applyModification_BAK_VERSION(
         modification: Modification
     ): Promise<boolean> {
         try {
@@ -348,11 +493,82 @@ export class StyleService {
         }
     }
 
+    /**
+     * 根据snapshotArray和snapshotId，计算currentSnapshot
+     */
+    private static calculateCurrentSnapshot(): Snapshot {
+        const state = this.getGlobalState();
+        var currentSnapshot: Snapshot = {
+            id: 'style_snapshot',
+            elements: [],
+            scripts: [],
+            timestamp: Date.now()
+        };
+        state.currentSnapshotId = state.currentSnapshotId ? state.currentSnapshotId : 0;
+        state.snapshotArray = state.snapshotArray ? [...state.snapshotArray] : [];
+        //如果currentId大于array长度-1，则id修改为array长度-1；如果currentId小于-1，则id修改为-1
+        if (state.currentSnapshotId > state.snapshotArray.length - 1) {
+            state.currentSnapshotId = state.snapshotArray.length - 1;
+        } else if (state.currentSnapshotId < -1) {
+            state.currentSnapshotId = -1;
+        }
+        
+        //如果array为空，或者currentId为-1，则返回空快照
+        if (state.snapshotArray.length === 0 || state.currentSnapshotId === -1) {
+            return currentSnapshot;
+        }
+        
+
+        //遍历snapshotArray，从0到currentSnapshotId，将每个snapshot的elements和scripts合并到currentSnapshot中
+        for (let i = 0; i <= state.currentSnapshotId; i++) {
+            const styleElements = state.snapshotArray[i].elements;
+            const scriptElements = state.snapshotArray[i].scripts;
+            styleElements.forEach(element => {
+                //查看currentSnapshot中是否存在相同的selector
+                const existingIndex = currentSnapshot.elements.findIndex(
+                    e => e.selector === element.selector
+                );
+                if (existingIndex >= 0) {
+                    //如果存在，则合并cssPropertyMap。对于cssPropertyMap中的每个property，如果currentSnapshot中的propertyMap中不存在，则添加，如果存在，则覆盖
+                    for (const property in element.cssPropertyMap) {
+                        currentSnapshot.elements[existingIndex].cssPropertyMap[property] = element.cssPropertyMap[property];
+                    }
+                } else {
+                    const newElement = {
+                        ...element,
+                        id: `style_snapshot_${Date.now()}`,
+                        timestamp: Date.now()
+                    };
+                    currentSnapshot.elements.push(newElement);
+                }
+            });
+            scriptElements.forEach(element => {
+                //查看currentSnapshot中是否存在相同id的script，如果存在，把currentSnapshot中的script的code替换为element的code
+                const existingIndex = currentSnapshot.scripts.findIndex(
+                    e => e.id === element.id
+                );
+                if (existingIndex >= 0) {
+                    currentSnapshot.scripts[existingIndex] = element;
+                } else {
+                    const newScript = {
+                        ...element,
+                        id: `script_snapshot_${Date.now()}`,
+                        timestamp: Date.now()
+                    };
+                    currentSnapshot.scripts.push(newScript);
+                }
+            });
+        }
+        return currentSnapshot;
+    }
 
     /**
      * 应用所有样式和script到页面
      */
-    private static async applySnapshotToDOM(snapshot: Snapshot): Promise<void> {
+    public static async applySnapshotToDOM(snapshot: Snapshot | null): Promise<void> {
+        if (!snapshot) {
+            return;
+        }
         this.applyAllStyleElements(snapshot.elements);
         await this.applyAllScripts(snapshot.scripts);
     }
@@ -382,9 +598,34 @@ export class StyleService {
     }
 
     /**
-     * 重置状态：清空当前快照，并将undo栈移动到redo栈
+     * 重置状态：清空当前快照，id设置为-1，但是array不清空
      */
     static resetState(): boolean {
+        try {
+            console.log('[StyleService] Resetting state');
+            const state = this.getGlobalState();
+
+            // 1. id - 1
+            state.currentSnapshotId = -1;
+            this.updateGlobalState({ currentSnapshotId: state.currentSnapshotId });
+
+            // 2. 清空currentSnapshot
+            this.clearSnapshotFromDOM(state.currentSnapshot);
+            this.updateGlobalState({ currentSnapshot: null });
+
+
+            console.log('[StyleService] All elements cleared. Undo stack moved to redo stack.');
+            return true;
+        } catch (error) {
+            console.error('[StyleService] Reset failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 重置状态：清空当前快照，并将undo栈移动到redo栈
+     */
+    static resetState_BAK_VERSION(): boolean {
         try {
             console.log('[StyleService] Resetting state');
             const state = this.getGlobalState();
@@ -422,7 +663,10 @@ export class StyleService {
     /**
      * 从DOM中清除指定快照的script和style
      */
-    static clearSnapshotFromDOM(snapshot: Snapshot): void {
+    static clearSnapshotFromDOM(snapshot: Snapshot | null): void {
+        if (!snapshot) {
+            return;
+        }
         console.log('[StyleService][clearSnapshotFromDOM] clear current snapshot:', snapshot);
         this.clearStyleElementsFromDOM(snapshot.elements);
         this.clearScriptsFromDOM(snapshot.scripts);
@@ -482,6 +726,33 @@ export class StyleService {
     static async undo(): Promise<boolean> {
         const state = this.getGlobalState();
         
+        if (state.currentSnapshotId === -1) {
+            console.log('[StyleService] currentSnapshotId is -1, no undo');
+            return false;
+        }
+        // 1. 设置currentSnapshotId为currentSnapshotId - 1， currentsnapshotid如果存在的话就直接+1，不存在的话就设置为0
+        state.currentSnapshotId = (state.currentSnapshotId ?? 0) - 1;
+
+        // 2. 从DOM中清除该快照的效果
+        this.clearSnapshotFromDOM(state.currentSnapshot);
+
+        // 3. 新的当前快照是undo栈的新栈顶（如果栈不为空）
+        state.currentSnapshot = this.calculateCurrentSnapshot();
+
+        // 4. 应用新的当前快照到DOM
+        await this.applySnapshotToDOM(state.currentSnapshot);
+
+        this.printStateInfo();
+        
+        return true;
+    }
+
+    /**
+     * 撤销操作
+     */
+    static async undo_BAK_VERSION(): Promise<boolean> {
+        const state = this.getGlobalState();
+        
         if (state.undoStack.length === 0) {
             console.log('[StyleService] Undo stack is empty');
             return false;
@@ -515,10 +786,50 @@ export class StyleService {
         return true;
     }
 
+     /**
+     * 重做操作
+     */
+     static async redo(): Promise<boolean> {
+        const state = this.getGlobalState();
+        
+        if (state.currentSnapshotId === (state.snapshotArray?.length ?? 0) - 1) {
+            console.log('[StyleService] currentSnapshotId(', state.currentSnapshotId, ') is snapshotArray.length(', state.snapshotArray?.length, '), no redo');
+            return false;
+        }
+
+        // 1. 从DOM中清除当前快照的效果
+        if (state.currentSnapshot) {
+            this.clearSnapshotFromDOM(state.currentSnapshot);
+        }
+
+        const newCurrentSnapshotId = (state.currentSnapshotId ?? -1) + 1;
+
+        console.log('[StyleService][redo] global state before update currentSnapshotId:', this.getGlobalState());
+        // 2. 设置currentSnapshotId为currentSnapshotId + 1
+        this.updateGlobalState({ currentSnapshotId: newCurrentSnapshotId });
+
+        console.log('[StyleService][redo] global state after update currentSnapshotId:', this.getGlobalState());
+
+        console.log('[StyleService][redo] expect currentSnapshotId:', newCurrentSnapshotId);
+        
+        console.log('[StyleService][redo] actual currentSnapshotId:', this.getGlobalState().currentSnapshotId);
+        
+        // 3.重新计算currentSnapshot
+        state.currentSnapshot = this.calculateCurrentSnapshot();
+
+        this.updateGlobalState({ currentSnapshot: state.currentSnapshot });
+
+        // 4. 应用新的当前快照到DOM
+        await this.applySnapshotToDOM(state.currentSnapshot!);
+
+        this.printStateInfo("after redo");
+        return true;
+    }
+
     /**
      * 重做操作
      */
-    static async redo(): Promise<boolean> {
+    static async redo_BAK_VERSION(): Promise<boolean> {
         const state = this.getGlobalState();
         
         if (state.redoStack.length === 0) {
@@ -556,6 +867,22 @@ export class StyleService {
      */
     static getStateInfo(): { canUndo: boolean; canRedo: boolean; elementCount: number } {
         const state = this.getGlobalState();
+        const currentSnapshotId = state.currentSnapshotId ?? -1;
+        const snapshotArrayLength = state.snapshotArray?.length ?? 0;
+        return {
+            canUndo: currentSnapshotId >= 0,
+            // canredo: snapshotarray不为空，且currentSnapshotId小于snapshotarray长度-1
+            canRedo: snapshotArrayLength > 0 && currentSnapshotId < snapshotArrayLength - 1,
+            elementCount: state.currentSnapshot ? state.currentSnapshot.elements.length : 0
+        };
+    }
+
+    
+    /**
+     * 获取当前状态信息
+     */
+    static getStateInfo_BAK_VERSION(): { canUndo: boolean; canRedo: boolean; elementCount: number } {
+        const state = this.getGlobalState();
         return {
             canUndo: state.undoStack.length > 0,
             canRedo: state.redoStack.length > 0,
@@ -585,9 +912,12 @@ export class StyleService {
     /**
      * 打印状态信息
      */
-    static printStateInfo(): void {
+    static printStateInfo(message?: string): void {
         const state = this.getGlobalState();
         console.log('[StyleService][printStateInfo] ===== STATE INFO =====');
+        if (message) {
+            console.log('[StyleService][printStateInfo] Message:', message);
+        }
         //打印currenteddy
         const floatingBall = (window as any).__pageEditFloatingBall;
         if (floatingBall && floatingBall.panel && floatingBall.panel.currentEddy) {
@@ -596,6 +926,8 @@ export class StyleService {
         console.log('[StyleService][printStateInfo] Current snapshot:', state.currentSnapshot);
         console.log('[StyleService][printStateInfo] Undo stack:', state.undoStack);
         console.log('[StyleService][printStateInfo] Redo stack:', state.redoStack);
+        console.log('[StyleService][printStateInfo] Current snapshotId:', state.currentSnapshotId);
+        console.log('[StyleService][printStateInfo] Snapshot array:', state.snapshotArray);
         console.log('[StyleService] ======================');
     }
 
@@ -625,6 +957,43 @@ export class StyleService {
      * applyToDOM: 是否应用修改（style和script）到DOM
      */
     static async restoreFromEddy(eddy: Eddy, options: { applyToDOM: boolean } = { applyToDOM: true }): Promise<boolean> {
+        try {
+            console.log(`[StyleService] Restoring from eddy: ${eddy.name}, applyToDOM: ${options.applyToDOM}`);
+            
+            // 1. 清除当前DOM状态和内存中的状态
+            this.clearState();
+            
+            // 2. 从eddy设置全局状态
+            this.updateGlobalState({
+                currentSnapshot: eddy.currentSnapshot || null,
+                undoStack: eddy.undoStack || [],
+                redoStack: eddy.redoStack || [],
+                snapshotArray: eddy.snapshotArray || [],
+                currentSnapshotId: eddy.currentSnapshotId ?? -1
+            });
+
+            // 3. 如果需要，将新状态应用到DOM
+            if (options.applyToDOM) {
+                const currentSnapshot = this.calculateCurrentSnapshot();
+                this.updateGlobalState({ currentSnapshot: currentSnapshot });
+                await this.applySnapshotToDOM(currentSnapshot);
+                console.log('[StyleService] Applied', currentSnapshot?.elements.length, 'style elements from restored eddy.');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('[StyleService] Failed to restore from eddy:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 从Eddy恢复GlobalState
+     * @param eddy Eddy对象
+     * @param options Options for the restoration, e.g., whether to apply styles to the DOM.
+     * applyToDOM: 是否应用修改（style和script）到DOM
+     */
+    static async restoreFromEddy_BAK_VERSION(eddy: Eddy, options: { applyToDOM: boolean } = { applyToDOM: true }): Promise<boolean> {
         try {
             console.log(`[StyleService] Restoring from eddy: ${eddy.name}, applyToDOM: ${options.applyToDOM}`);
             
@@ -668,15 +1037,12 @@ export class StyleService {
                 currentSnapshot: state.currentSnapshot,
                 undoStack: state.undoStack,
                 redoStack: state.redoStack,
-                updatedAt: Date.now()
+                updatedAt: Date.now(),
+                snapshotArray: state.snapshotArray,
+                currentSnapshotId: state.currentSnapshotId
             };
             
-            console.log('[StyleService] GlobalState saved to eddy:', {
-                currentSnapshot: state.currentSnapshot ? state.currentSnapshot.id : null,
-                undoStackSize: state.undoStack.length,
-                redoStackSize: state.redoStack.length,
-                elementsCount: updatedEddy.currentSnapshot?.elements.length || 0
-            });
+            console.log('[StyleService] GlobalState saved to eddy:', updatedEddy);
             
             return updatedEddy;
         } catch (error) {
@@ -686,18 +1052,12 @@ export class StyleService {
     }
 
     /**
-     * 彻底清除状态：清空所有栈和快照
+     * 彻底清除状态：清空snapshot，reset globalState
      */
     static clearState(): void {
-        const state = this.getGlobalState();
-        if(state.currentSnapshot) {
-            this.clearSnapshotFromDOM(state.currentSnapshot);
-        }
-        this.updateGlobalState({
-            currentSnapshot: null,
-            undoStack: [],
-            redoStack: []
-        });
+        this.printStateInfo("before clearState");
+        this.clearSnapshotFromDOM(this.getGlobalState().currentSnapshot);
+        this.resetGlobalState();
     }
 
     /**

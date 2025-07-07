@@ -31,9 +31,14 @@ export interface Snapshot {
 
 // 全局状态管理
 export interface GlobalStyleState {
-    currentSnapshot: Snapshot | null; // 当前快照
     undoStack: Snapshot[]; // undo栈，每个元素是一个完整的快照
     redoStack: Snapshot[]; // redo栈，每个元素是一个完整的快照
+
+    currentSnapshot: Snapshot | null; // 当前快照。新版本中依然保留，但是每次都要从snapshotArray中重新计算。
+
+    //新版本，只需要一个snapshot数组，不需要undoStack和redoStack，并且只需要一个snapshotid标识当前位置，不需要currentSnapshot
+    snapshotArray: Snapshot[];
+    currentSnapshotId: number;
 }
 
 export interface Eddy {
@@ -50,4 +55,8 @@ export interface Eddy {
     undoStack?: Snapshot[]; // 撤销栈
     redoStack?: Snapshot[]; // 重做栈
     isEnabled?: boolean; // 新增字段：此 Eddy 是否启用。设为可选以兼容旧数据。
+
+    //新版本，只需要一个snapshot数组，不需要undoStack和redoStack，并且只需要一个snapshotid标识当前位置，不需要currentSnapshot
+    snapshotArray?: Snapshot[];
+    currentSnapshotId?: number;
 } 

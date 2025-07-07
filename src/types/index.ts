@@ -42,6 +42,7 @@ export interface Modification {
     target: string;        // style：CSS 选择器
     property: string;      // style：样式属性
     value: string;         // style：样式值
+    
     newIds: string[]; // script：新建元素的id数组
     code: string;         // script：JavaScript代码片段
     desc: string;         // script：描述

@@ -159,7 +159,7 @@ export class ContentManager {
             // 注意：这里我们不重新应用样式，因为样式修改只应该由当前标签页发起
         } else {
             // 3b. 如果不存在，加载最新的 Eddy
-            console.log('[ContentManager] Current eddy was deleted or is no longer available. Loading latest.');
+            console.log('[ContentManager] Current eddy was deleted or is no longer available. Loading latest.currentEddy:', this.currentEddy);
             await this.loadLatestEddy(domain);
         }
         
@@ -259,17 +259,15 @@ export class ContentManager {
             }
 
 
-            // 应用所有修改
-            for (const modification of parseResult.modifications) {
-                try {
-                    const success = await StyleService.applyModification(modification);
-                    if (!success) {
-                        throw new Error(`Failed to apply modification: ${modification.property}`);
-                    }
-                } catch (error) {
-                    console.error('Failed to apply modification:', error);
-                    throw error;
+            // 应用修改，并保存到global state 的 snapshotArray 和 currentSnapshot。
+            try {
+                const success = await StyleService.applyModifications(parseResult.modifications, message.data.text);
+                if (!success) {
+                    throw new Error(`Failed to apply modifications`);
                 }
+            } catch (error) {
+                console.error('Failed to apply modifications:', error);
+                throw error;
             }
 
             // 保存快照，记录用户查询
@@ -364,6 +362,8 @@ export class ContentManager {
             realEddy.currentSnapshot = this.currentEddy.currentSnapshot;
             realEddy.undoStack = this.currentEddy.undoStack;
             realEddy.redoStack = this.currentEddy.redoStack;
+            realEddy.snapshotArray = this.currentEddy.snapshotArray;
+            realEddy.currentSnapshotId = this.currentEddy.currentSnapshotId;
 
             // d. 用返回的真实 Eddy 替换当前 Eddy
             this.currentEddy = realEddy; 
@@ -388,30 +388,10 @@ export class ContentManager {
             this.floatingBall.updateViewOriginalButtonState(isEnabled);
             this.floatingBall.updateEddyList(this.domainEddys, this.currentEddy?.id); // Update the dropdown list
             this.floatingBall.setHasUnsavedChanges(false);
+            this.updateInputWithSnapshotQuery();
         }
     }
         
-
-    /**
-     * 保存 Eddy 到存储
-     * @param eddy Eddy 对象
-     */
-    private async saveEddyToStorage(eddy: any): Promise<void> {
-        try {
-            // 导入 StorageService
-            const { StorageService } = await import('../services/storageService');
-            
-            // 更新 Eddy 的更新时间
-            eddy.updatedAt = Date.now();
-            
-            // 保存到存储
-            await StorageService.updateEddy(eddy);
-            
-            console.log('[content] Eddy saved to storage:', eddy.name, '(ID:', eddy.id, ')');
-        } catch (error) {
-            console.error('[content] Error saving eddy to storage:', error);
-        }
-    }
 
     /**
      * 处理应用修改事件
@@ -479,6 +459,9 @@ export class ContentManager {
                     await this.resetStateAndSaveToStorage();
                     break;
                 case 'new_eddy':
+                    // 1. 保存当前Eddy到存储。有bug，出发了handleStorageChange，但是此时已经创建了新Eddy，所以currentEddy被清空了。
+                    // await this.saveCurrentEddyToStorage();
+                    // 2. 创建新Eddy
                     await this.handleNewEddy(event.data);
                     break;
                 case 'switch_eddy':
@@ -612,6 +595,7 @@ export class ContentManager {
             isEnabled: true
         };
         this.currentEddy = tempEddy;
+        console.log('[ContentManager] handleNewEddy', this.currentEddy);
         StyleService.clearState(); // Clear any existing styles from previous eddy
 
         if (this.floatingBall) {
