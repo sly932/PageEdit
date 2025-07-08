@@ -175,7 +175,7 @@ export class FloatingPanel {
         // 添加 Tooltip 事件监听器
         PanelTooltip.addTooltipEvents(this.undoButton, 'UNDO');
         PanelTooltip.addTooltipEvents(this.redoButton, 'REDO');
-        PanelTooltip.addTooltipEvents(this.resetButton, 'RESET ALL');
+        PanelTooltip.addTooltipEvents(this.resetButton, 'RESET TO ORIGINAL');
         PanelTooltip.addTooltipEvents(this.newEddyButton, 'CREATE NEW EDDY');
         PanelTooltip.addTooltipEvents(this.dropdownButton, 'SWITCH EDDY');
         
