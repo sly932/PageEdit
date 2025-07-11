@@ -284,7 +284,9 @@ export class StyleService {
     ): Promise<boolean> {
         try {
             const state = this.getGlobalState();
-
+            console.log('[StyleService][printStateInfo]state:', state);
+            this.printStateInfo('applyModifications start');
+            
             let currentElements: StyleElementSnapshot[] = [];
             let currentScripts: ScriptSnapshot[] = [];
 
@@ -391,6 +393,9 @@ export class StyleService {
             
             console.log('[StyleService][printStateInfo] snapshotarray:', state.snapshotArray);
             
+            // 清除currentSnapshot
+            this.clearSnapshotFromDOM(state.currentSnapshot);
+
             // 重新计算current snapshot并赋值到global state
             state.currentSnapshot = this.calculateCurrentSnapshot();
 
@@ -542,7 +547,7 @@ export class StyleService {
             scripts: [],
             timestamp: Date.now()
         };
-        state.currentSnapshotId = state.currentSnapshotId ? state.currentSnapshotId : 0;
+        state.currentSnapshotId = state.currentSnapshotId ?? -1;
         state.snapshotArray = state.snapshotArray ? [...state.snapshotArray] : [];
         //如果currentId大于array长度-1，则id修改为array长度-1；如果currentId小于-1，则id修改为-1
         if (state.currentSnapshotId > state.snapshotArray.length - 1) {
@@ -550,6 +555,8 @@ export class StyleService {
         } else if (state.currentSnapshotId < -1) {
             state.currentSnapshotId = -1;
         }
+
+        this.updateGlobalState({ currentSnapshotId: state.currentSnapshotId, snapshotArray: state.snapshotArray });
         
         //如果array为空，或者currentId为-1，则返回空快照
         if (state.snapshotArray.length === 0 || state.currentSnapshotId === -1) {
@@ -966,7 +973,7 @@ export class StyleService {
         console.log('[StyleService][printStateInfo] Redo stack:', state.redoStack);
         console.log('[StyleService][printStateInfo] Current snapshotId:', state.currentSnapshotId);
         console.log('[StyleService][printStateInfo] Snapshot array:', state.snapshotArray);
-        console.log('[StyleService] ======================');
+        console.log('[StyleService][printStateInfo] ======================');
     }
 
 

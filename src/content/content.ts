@@ -244,7 +244,7 @@ export class ContentManager {
     private async handleModifyPage(message: Message, applyId?: string): Promise<void> {
         try {
             
-
+            StyleService.printStateInfo('handleModifyPage start');
             // 解析用户输入
             const parseResult = await this.parseUserInput(message.data.text);
             
@@ -277,7 +277,7 @@ export class ContentManager {
             await this.saveCurrentEddyToStorage();
 
             console.log('[content] Modification completed successfully and saved.');
-            StyleService.printStateInfo();
+            StyleService.printStateInfo("handleModifyPage end");
 
         } catch (error) {
             console.error('Failed to handle page modification:', error);
@@ -411,7 +411,7 @@ export class ContentManager {
 
         try {
             // 异步处理页面修改
-            this.handleModifyPage({
+            await this.handleModifyPage({
                 type: 'MODIFY_PAGE',
                 data: { text: payload.text }
             }, applyId);
