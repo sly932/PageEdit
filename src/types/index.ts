@@ -1,4 +1,3 @@
-
 /**
  * 修改方法
  */
@@ -55,7 +54,7 @@ export interface Modification {
  */
 export interface Message {
     // 消息类型
-    type: 'MODIFY_PAGE' | 'UNDO' | 'REDO' | 'GET_HISTORY';
+    type: 'MODIFY_PAGE';
     // 消息数据
     data?: any;
 }

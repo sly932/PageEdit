@@ -8,14 +8,14 @@ module.exports = {
   mode: 'development',
   devtool: 'source-map',
   entry: {
-    popup: './src/popup/popup.ts',
-    content: './src/content/content.ts',
-    background: './src/background/background.ts',
-    styles: './src/styles/main.css'
+    'popup/popup': ['./src/popup/popup.ts', './src/popup/popup.css'],
+    'content/content': './src/content/content.ts',
+    'background/background': './src/background/background.ts',
+    'styles/main': './src/styles/main.css'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: '[name]/[name].js',
+    filename: '[name].js',
     clean: true
   },
   module: {
@@ -57,7 +57,7 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin({
-      filename: 'styles/[name].css'
+      filename: '[name].css'
     }),
     new CopyWebpackPlugin({
       patterns: [

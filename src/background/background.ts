@@ -15,7 +15,7 @@ class ScriptExecutionService {
      * @param code 脚本代码
      * @returns 执行结果
      */
-    async executeScript(tabId: number, scriptId: string, code: string): Promise<any> {
+    async executeScriptByDebuggerAPI(tabId: number, scriptId: string, code: string): Promise<any> {
         const safeCode = ensureIIFE(code);
         try {
             console.log('[ScriptExecutionService] Executing script', scriptId, 'in tab:', tabId);
@@ -80,7 +80,7 @@ class ScriptExecutionService {
             
             const injectionResults = await chrome.scripting.executeScript({
                 target: { tabId: tabId },
-                world: 'MAIN', // 在主世界中执行，以利用扩展的权限注入脚本
+                world: 'ISOLATED', // 在隔离环境中执行，以利用扩展的权限注入脚本
                 func: (scriptToRun, id) => {
                     // 这个函数现在在页面的主JS环境中运行
                     // 它可以创建一个script标签并注入，这将绕过页面的CSP
@@ -154,7 +154,7 @@ class ScriptExecutionService {
         const results: any[] = [];
         
         for (const script of scripts) {
-            const result = await this.executeScript(tabId, script.id, script.code);
+            const result = await this.executeScriptByDebuggerAPI(tabId, script.id, script.code);
             results.push(result);
             
             // 每个脚本执行间隔100ms，避免冲突
@@ -249,19 +249,12 @@ class BackgroundManager {
      */
     private async initializeStorage(): Promise<void> {
         try {
-            // 初始化修改历史
-            await chrome.storage.local.set({ modificationHistory: [] });
-            
-            // 初始化用户设置
-            await chrome.storage.local.set({
-                settings: {
-                    enabled: true,
-                    autoSave: true,
-                    maxHistoryLength: 50
-                }
+            await chrome.storage.local.set({ 
+                modifications: [],
             });
+            console.log('[background] PageEdit: Storage initialized');
         } catch (error) {
-            console.error('Failed to initialize storage:', error);
+            console.error('[background] PageEdit: Failed to initialize storage:', error);
         }
     }
 
@@ -270,10 +263,9 @@ class BackgroundManager {
      * @param previousVersion 之前的版本
      */
     private async handleUpdate(previousVersion: string | undefined): Promise<void> {
-        console.log('Extension updated from', previousVersion, 'to', chrome.runtime.getManifest().version);
+        console.log(`[background] PageEdit: Updated from version ${previousVersion}`);
         
-        // TODO: 处理版本更新逻辑
-        // 例如：迁移数据、更新设置等
+        // 可以在这里添加基于旧版本的数据迁移逻辑
     }
 
     /**
@@ -364,7 +356,7 @@ class BackgroundManager {
      */
     private async handleExecuteScriptWithService(data: any, sendResponse: (response?: any) => void): Promise<void> {
         try {
-            const result = await scriptExecutionService.executeScriptByScriptingAPI(data.tabId, data.scriptId, data.code);
+            const result = await scriptExecutionService.executeScriptByDebuggerAPI(data.tabId, data.scriptId, data.code);
             sendResponse(result);
         } catch (error) {
             console.error('[background] Failed to execute script with service:', error);

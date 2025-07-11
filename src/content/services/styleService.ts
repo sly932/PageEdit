@@ -49,7 +49,8 @@ export class StyleService {
      */
     private static createStyleElementSnapshot(
         selector: string, 
-        cssPropertyMap?: Record<string, string>
+        cssPropertyMap?: Record<string, string>,
+        originPropertyMap?: Record<string, string>
     ): StyleElementSnapshot {
         // 如果没有提供cssPropertyMap，从cssText解析
         let propertyMap: Record<string, string> = {};
@@ -63,6 +64,7 @@ export class StyleService {
             id: `style_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             selector,
             cssPropertyMap: propertyMap,
+            originPropertyMap: originPropertyMap || {},
             timestamp: Date.now()
         };
     }
@@ -115,6 +117,14 @@ export class StyleService {
         styleElement.textContent = cssText;
         
         document.head.appendChild(styleElement);
+
+        //如果cssproperty中有“content”或者“text”，则还需要设置对应的元素的textContent
+        if (Object.keys(snapshot.cssPropertyMap).includes('content') || Object.keys(snapshot.cssPropertyMap).includes('text')) {
+            const targetElement = document.querySelector(snapshot.selector);
+            if (targetElement instanceof HTMLElement) {
+                (targetElement as HTMLElement).textContent = snapshot.cssPropertyMap['content'] || snapshot.cssPropertyMap['text'];
+            }
+        }
         
         return styleElement;
     }
@@ -203,7 +213,23 @@ export class StyleService {
         //const element = document.getElementById(snapshot.id) as HTMLStyleElement;
         console.log('[StyleService][removeStyleElement] find and remove element:', element);
         if (element && element.parentNode) {
-            element.remove();
+            // 如果originPropertyMap存在，则恢复原始属性，否则删除该元素
+            const originPropertyMap = snapshot.originPropertyMap;
+            console.log('[StyleService][removeStyleElement] originPropertyMap:', originPropertyMap);
+            if (Object.keys(originPropertyMap).length > 0) {
+                for (const property in originPropertyMap) {
+                    const targetElement = document.querySelector(snapshot.selector);
+                    if (targetElement instanceof HTMLElement) {
+                        if (property === 'content' || property === 'text') {
+                            (targetElement as HTMLElement).textContent = originPropertyMap[property];
+                        } else {
+                            (targetElement.style as any)[property] = originPropertyMap[property];
+                        }
+                    } 
+                }
+            } else {
+                element.remove();
+            }
         }
     }
 
@@ -269,6 +295,16 @@ export class StyleService {
                     const existingIndex = currentElements.findIndex(
                         element => element.selector === modification.target
                     );
+                    
+                    const originPropertyMap: Record<string, string> = {};
+                    //属性如果是“content”或者“text”，则还需要先获取对应元素的原始值，并保存到originPropertyMap中
+                    if (modification.property === 'content') {
+                        const element = document.querySelector(modification.target);
+                        console.log('[StyleService] get origin text value:', element?.textContent);
+                        if (element && element.textContent) {
+                            originPropertyMap[modification.property] = element.textContent;
+                        }
+                    }
 
                     if (existingIndex >= 0) {
                         // 更新现有样式
@@ -283,6 +319,7 @@ export class StyleService {
                         currentElements[existingIndex] = {
                             ...existing,
                             cssPropertyMap: updatedPropertyMap,
+                            originPropertyMap: existing.originPropertyMap,
                             timestamp: Date.now()
                         };
                         console.log('[StyleService] Updated existing style:', currentElements[existingIndex]);
@@ -291,7 +328,8 @@ export class StyleService {
                         const propertyMap = { [modification.property]: modification.value };
                         const styleElementsnapshot = this.createStyleElementSnapshot(
                             modification.target, 
-                            propertyMap
+                            propertyMap,
+                            originPropertyMap
                         );
                         currentElements.push(styleElementsnapshot);
                     }

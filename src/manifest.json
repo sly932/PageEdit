@@ -7,6 +7,7 @@
     "storage",
     "activeTab",
     "scripting",
+    "debugger",
     "tabs"
   ],
   "host_permissions": [
@@ -38,5 +39,8 @@
   "web_accessible_resources": [{
     "resources": ["assets/icons/*"],
     "matches": ["<all_urls>"]
-  }]
+  }],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 } 

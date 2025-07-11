@@ -2,6 +2,7 @@
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
+    "./src/popup/popup.html",
   ],
   darkMode: 'media', // or 'class' for manual dark mode
   theme: {

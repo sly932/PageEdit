@@ -6,6 +6,7 @@ export interface StyleElementSnapshot {
     desc?: string; // 描述
     selector: string; // CSS选择器
     cssPropertyMap: Record<string, string>; // CSS属性映射：property -> value
+    originPropertyMap: Record<string, string>; // 原始CSS属性映射：property -> value
     timestamp: number; // 创建时间
 }
 
