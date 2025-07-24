@@ -6,8 +6,8 @@
     "test:llm": "ts-node --esm scripts/test-llm.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "build": "webpack --config webpack.config.cjs",
-    "dev": "webpack --watch --config webpack.config.cjs"
+    "build": "webpack --mode production --config webpack.config.cjs",
+    "dev": "webpack --mode development --watch --config webpack.config.cjs"
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",

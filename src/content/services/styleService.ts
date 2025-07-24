@@ -1,3 +1,4 @@
+import { debug } from 'console';
 import { StyleModification, ModificationMethod, Modification } from '../../types';
 import { Eddy, StyleElementSnapshot, ScriptSnapshot, GlobalStyleState, Snapshot } from '../../types/eddy';
 import { ensureIIFE } from '../../utils/scriptUtils';
@@ -215,8 +216,9 @@ export class StyleService {
         if (element && element.parentNode) {
             // 如果originPropertyMap存在，则恢复原始属性，否则删除该元素
             const originPropertyMap = snapshot.originPropertyMap;
+            
             console.log('[StyleService][removeStyleElement] originPropertyMap:', originPropertyMap);
-            if (Object.keys(originPropertyMap).length > 0) {
+            if (originPropertyMap && Object.keys(originPropertyMap).length > 0) {
                 for (const property in originPropertyMap) {
                     const targetElement = document.querySelector(snapshot.selector);
                     if (targetElement instanceof HTMLElement) {
@@ -556,7 +558,6 @@ export class StyleService {
             state.currentSnapshotId = -1;
         }
 
-        this.updateGlobalState({ currentSnapshotId: state.currentSnapshotId, snapshotArray: state.snapshotArray });
         
         //如果array为空，或者currentId为-1，则返回空快照
         if (state.snapshotArray.length === 0 || state.currentSnapshotId === -1) {
@@ -579,11 +580,9 @@ export class StyleService {
                         currentSnapshot.elements[existingIndex].cssPropertyMap[property] = element.cssPropertyMap[property];
                     }
                 } else {
-                    const newElement = {
-                        ...element,
-                        id: `style_snapshot_${Date.now()}`,
-                        timestamp: Date.now()
-                    };
+                    const newElement = JSON.parse(JSON.stringify(element));
+                    newElement.id = `style_snapshot_${Date.now()}`;
+                    newElement.timestamp = Date.now();
                     currentSnapshot.elements.push(newElement);
                 }
             });
@@ -595,11 +594,10 @@ export class StyleService {
                 if (existingIndex >= 0) {
                     currentSnapshot.scripts[existingIndex] = element;
                 } else {
-                    const newScript = {
-                        ...element,
-                        id: `script_snapshot_${Date.now()}`,
-                        timestamp: Date.now()
-                    };
+                    const newScript = JSON.parse(JSON.stringify(element));
+                    newScript.id = `script_snapshot_${Date.now()}`;
+                    newScript.timestamp = Date.now();
+
                     currentSnapshot.scripts.push(newScript);
                 }
             });
@@ -769,6 +767,7 @@ export class StyleService {
      * 撤销操作
      */
     static async undo(): Promise<boolean> {
+        debugger;
         const state = this.getGlobalState();
         
         if (state.currentSnapshotId === -1) {
@@ -835,13 +834,13 @@ export class StyleService {
      * 重做操作
      */
      static async redo(): Promise<boolean> {
+        debugger;
         const state = this.getGlobalState();
-        
-        if (state.currentSnapshotId === (state.snapshotArray?.length ?? 0) - 1) {
+        if (state.currentSnapshotId === ((state.snapshotArray?.length ?? 0) - 1)) {
             console.log('[StyleService] currentSnapshotId(', state.currentSnapshotId, ') is snapshotArray.length(', state.snapshotArray?.length, '), no redo');
             return false;
         }
-
+        console.log('[StyleService] redo start');
         // 1. 从DOM中清除当前快照的效果
         if (state.currentSnapshot) {
             this.clearSnapshotFromDOM(state.currentSnapshot);
@@ -968,11 +967,11 @@ export class StyleService {
         if (floatingBall && floatingBall.panel && floatingBall.panel.currentEddy) {
             console.log('[StyleService][printStateInfo] Current eddy:', floatingBall.panel.currentEddy);
         }
-        console.log('[StyleService][printStateInfo] Current snapshot:', state.currentSnapshot);
-        console.log('[StyleService][printStateInfo] Undo stack:', state.undoStack);
-        console.log('[StyleService][printStateInfo] Redo stack:', state.redoStack);
+        console.log('[StyleService][printStateInfo] Current snapshot:', JSON.parse(JSON.stringify(state.currentSnapshot)));
+        // console.log('[StyleService][printStateInfo] Undo stack:', JSON.parse(JSON.stringify(state.undoStack)));
+        // console.log('[StyleService][printStateInfo] Redo stack:', JSON.parse(JSON.stringify(state.redoStack)));
         console.log('[StyleService][printStateInfo] Current snapshotId:', state.currentSnapshotId);
-        console.log('[StyleService][printStateInfo] Snapshot array:', state.snapshotArray);
+        console.log('[StyleService][printStateInfo] Snapshot array:', JSON.parse(JSON.stringify(state.snapshotArray)));
         console.log('[StyleService][printStateInfo] ======================');
     }
 
